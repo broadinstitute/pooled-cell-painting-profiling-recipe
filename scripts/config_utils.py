@@ -2,7 +2,7 @@ import pathlib
 import yaml
 
 
-def load_config(config, subset=None):
+def load_config(config):
     data = {}
     with open(config, "r") as stream:
         for document in yaml.load_all(stream, Loader=yaml.FullLoader):
