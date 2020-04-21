@@ -56,7 +56,12 @@ else:
     features_df = load_features(core_args, example_dir)
     features_df = features_df.assign(prefilter_column=False)
 
-force_assert = "Warning, prefilter file already exists! Use --force to rewrite. First, check 'perform' in the config: 'perform: false' will still output a file without prefiltered column indicators"
+force_assert = """
+Warning, prefilter file already exists!
+Use --force to overwrite.
+First, check 'perform' in the config.
+Note that 'perform: false' will still output a file lacking prefiltered features.
+"""
 if pathlib.Path(output_file).exists():
     assert force, force_assert
 
