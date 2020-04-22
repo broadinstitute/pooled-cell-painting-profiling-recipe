@@ -18,9 +18,13 @@ core:
     cytoplasm:
       - Parent_Nuclei
       - Parent_Cells
+    spots:
+      - Parent_Cells
   id_cols:
     - ImageNumber
     - ObjectNumber
+  trash_files:
+    - .DS_Store
 ---
 prefilter:
   perform: true
@@ -31,17 +35,22 @@ prefilter:
     - Location
     - Count
 ---
-process-foci:
+process-spots:
   perform: true
-  barcode_col: Barcode_MatchedTo_Barcode
-  gene_col: Barcode_MatchedTo_GeneCode
+  output_basedir: data
+  cell_quality: simple
+  barcode_cols:
+    - Barcode_MatchedTo_Barcode
+  gene_cols:
+    - Barcode_MatchedTo_GeneCode
   location_cols:
     - Location_Center_X
     - Location_Center_Y
+  spot_score_cols:
+    - Barcode_MatchedTo_Score
   foci_cols:
     - Barcode_BarcodeCalled
     - Barcode_MatchedTo_ID
-    - Barcode_MatchedTo_Score
 ---
 process-cells:
   perform: true
