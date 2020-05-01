@@ -23,6 +23,8 @@ core:
   id_cols:
     - ImageNumber
     - ObjectNumber
+  control_barcodes:
+    - NT
   trash_files:
     - .DS_Store
 ---
@@ -51,6 +53,9 @@ process-spots:
   foci_cols:
     - Barcode_BarcodeCalled
     - Barcode_MatchedTo_ID
+  cell_filter:
+    - Perfect
+    - Great
 ---
 process-cells:
   perform: true
