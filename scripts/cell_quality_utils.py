@@ -35,18 +35,90 @@ import pandas as pd
 
 
 class CellQuality:
-    def __init__(self, method, avg_col="mean", count_col="count"):
+    def __init__(
+        self,
+        method,
+        avg_col="mean",
+        count_col="count",
+        category_col_name="Cell_Quality",
+    ):
         self.method = method
         self.avg_col = avg_col
         self.count_col = count_col
+        self.category_col_name = category_col_name
 
         if self.method == "simple":
             self.categorize = simple_categorize
         elif self.method == "simple_plus":
             self.categorize = simple_plus_categorize
 
+        category_dict = self.define_cell_quality()
+        self.category_df = (
+            pd.DataFrame(category_dict, index=["Cell_Class"])
+            .transpose()
+            .reset_index()
+            .rename({"index": self.category_col_name}, axis="columns")
+        )
+
     def define_cell_quality(self):
         return get_cell_quality_dict(method=self.method)
+
+    def assign_cell_quality(
+        self, count_df, parent_cols, score_col, quality_col_name="Cell_Quality"
+    ):
+        self.quality_col = quality_col_name
+
+        quality_estimate_df = (
+            pd.DataFrame(
+                count_df.groupby(parent_cols).apply(
+                    lambda x: self.categorize(x, score_col=score_col)
+                ),
+                columns=[self.quality_col],
+            )
+            .reset_index()
+            .merge(count_df, on=parent_cols)
+        ).assign(cell_quality_method=self.method)
+
+        return quality_estimate_df
+
+    def summarize_cell_quality_counts(self, quality_df, parent_cols):
+        dup_cols = parent_cols + [self.quality_col]
+
+        quality_count_df = (
+            quality_df.drop_duplicates(dup_cols)
+            .loc[:, self.quality_col]
+            .value_counts()
+            .reset_index()
+            .rename(
+                {self.category_col_name: "Cell_Count", "index": self.category_col_name},
+                axis="columns",
+            )
+            .merge(self.category_df, on=self.category_col_name)
+        )
+
+        return quality_count_df
+
+    def summarize_perturbation_quality_counts(
+        self, quality_df, parent_cols, group_cols, guide=False
+    ):
+
+        category_group_cols = group_cols + [self.category_col_name]
+        category_group_cols = list(set(category_group_cols))
+
+        if guide:
+            level = "Guide"
+        else:
+            level = "Gene"
+
+        summary_df = (
+            quality_df.groupby(category_group_cols)[parent_cols[0]]
+            .count()
+            .reset_index()
+            .rename({parent_cols[0]: f"Cell_Count_Per_{level}"}, axis="columns")
+            .merge(self.category_df, on=self.category_col_name, how="left")
+        )
+
+        return summary_df
 
 
 def get_cell_quality_dict(method):
