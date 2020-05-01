@@ -1,5 +1,5 @@
 """
-scripts/prefilter-features.py
+0.prefilter-features.py
 
 Determine which features should be used for building morphology profiles.
 
@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scripts.site_processing_utils import prefilter_features
 
-sys.path.append("../scripts")
+sys.path.append(os.path.join("..", "scripts"))
 from config_utils import get_config
 
 parser = argparse.ArgumentParser()
