@@ -80,7 +80,8 @@ def flag_features(df, flags):
     return df
 
 
-def prefilter_features(core, example_dir, flag_columns):
+def prefilter_features(core, example_dir, flag_cols):
     feature_df = load_features(core, example_dir)
-    feature_df = flag_features(feature_df, flag_columns)
+    if flag_cols:
+        feature_df = flag_features(feature_df, flag_cols)
     return feature_df
