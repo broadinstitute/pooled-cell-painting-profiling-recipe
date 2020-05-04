@@ -36,6 +36,7 @@ prefilter:
     - Barcode
     - Location
     - Count
+    - Resize
 ---
 process-spots:
   perform: true
@@ -59,4 +60,6 @@ process-spots:
 ---
 process-cells:
   perform: true
+  prefilter-features: true
+  output_basedir: data
   sort_col: Metadata_Cells_ObjectNumber
