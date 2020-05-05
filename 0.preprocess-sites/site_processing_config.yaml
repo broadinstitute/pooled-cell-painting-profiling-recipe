@@ -7,7 +7,7 @@ core:
   project_dir: /Users/gway/work/projects/2018_11_20_Periscope_Calico
   data_dir: /workspace/analysis/20190919_6W_CP074A
   output_dir: data
-  categorize_cells: simple
+  categorize_cell_quality: simple
   compartments:
     - Cells
     - Nuclei
@@ -41,7 +41,6 @@ prefilter:
 process-spots:
   perform: true
   output_basedir: data
-  cell_quality: simple
   barcode_cols:
     - Barcode_MatchedTo_Barcode
   gene_cols:

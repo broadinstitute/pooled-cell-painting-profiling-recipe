@@ -68,7 +68,7 @@ spot_args = config["process-spots"]
 project = core_args["project"]
 batch = core_args["batch"]
 batch_dir = core_args["batch_dir"]
-quality_func = core_args["cell_quality"]
+quality_func = core_args["categorize_cell_quality"]
 control_barcodes = core_args["control_barcodes"]
 trash_files = core_args["trash_files"]
 
