@@ -68,14 +68,14 @@ spot_args = config["process-spots"]
 project = core_args["project"]
 batch = core_args["batch"]
 batch_dir = core_args["batch_dir"]
+quality_func = core_args["categorize_cell_quality"]
 control_barcodes = core_args["control_barcodes"]
 trash_files = core_args["trash_files"]
 
-quality_func = spot_args["cell_quality"]
-output_basedir = spot_args["output_basedir"]
-
 id_cols = core_args["id_cols"]
 spot_parent_cols = core_args["parent_cols"]["spots"]
+
+output_basedir = spot_args["output_basedir"]
 barcode_cols = spot_args["barcode_cols"]
 gene_cols = spot_args["gene_cols"]
 location_cols = spot_args["location_cols"]

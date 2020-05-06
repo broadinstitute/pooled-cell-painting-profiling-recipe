@@ -7,7 +7,7 @@ core:
   project_dir: /Users/gway/work/projects/2018_11_20_Periscope_Calico
   data_dir: /workspace/analysis/20190919_6W_CP074A
   output_dir: data
-  categorize_cells: simple
+  categorize_cell_quality: simple
   compartments:
     - Cells
     - Nuclei
@@ -36,11 +36,11 @@ prefilter:
     - Barcode
     - Location
     - Count
+    - Resize
 ---
 process-spots:
   perform: true
   output_basedir: data
-  cell_quality: simple
   barcode_cols:
     - Barcode_MatchedTo_Barcode
   gene_cols:
@@ -59,4 +59,6 @@ process-spots:
 ---
 process-cells:
   perform: true
+  prefilter-features: true
+  output_basedir: data
   sort_col: Metadata_Cells_ObjectNumber
