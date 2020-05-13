@@ -18,29 +18,45 @@ def get_step(config):
 
 def make_batch_path(config, load_data=True):
     if load_data:
-        data = load_config(config)
-    else:
-        data = config
-    core = data["core"]
-    batch_dir = pathlib.PurePath(f'{core["project_dir"]}/{core["data_dir"]}')
+        config = load_config(config)
+    core = config["core"]
+    batch_dir = pathlib.Path(
+        core["project_dir"], core["project"], "workspace", "analysis", core["batch"],
+    )
     return batch_dir
 
 
 def preprocess_sites_config(config):
-    data = load_config(config)
-    batch_dir = make_batch_path(data, load_data=False)
-    data["core"]["batch_dir"] = batch_dir
-    return data
+    config = load_config(config)
+    batch_dir = make_batch_path(config, load_data=False)
+    config["core"]["batch_dir"] = batch_dir
+
+    # Build paths in the prefilter yaml document
+    config["prefilter"]["prefilter_file"] = pathlib.Path(
+        config["prefilter"]["output_basedir"],
+        config["core"]["batch"],
+        "feature_prefilter.tsv",
+    )
+    config["prefilter"]["example_site_dir"] = pathlib.Path(
+        batch_dir, config["prefilter"]["example_site"]
+    )
+
+    # Build paths in the process-spots yaml document
+    config["process-spots"]["output_spotdir"] = pathlib.Path(
+        config["process-spots"]["output_basedir"], config["core"]["batch"], "spots"
+    )
+
+    return config
 
 
 def generate_profiles_config(config):
-    data = load_config(config)
-    batch_dir = make_batch_path(data, load_data=False)
-    data["core"]["batch_dir"] = batch_dir
-    return data
+    config = load_config(config)
+    batch_dir = make_batch_path(config, load_data=False)
+    config["core"]["batch_dir"] = batch_dir
+    return config
 
 
-def get_config(config):
+def process_config_file(config):
     step = get_step(config)
     # Processes specified configuration file
     if step == "preprocess-sites":
