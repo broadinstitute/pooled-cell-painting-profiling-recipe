@@ -1,0 +1,50 @@
+---
+core:
+  step: generate-profiles
+  pipeline: Pooled Cell Painting
+  project: 2018_11_20_Periscope_Calico
+  batch: 20190919_6W_CP074A
+  project_dir: /Users/gway/work/projects/
+  site_dir: ../0.preprocess-sites/data/
+  output_single_cell_dir: single_cell/
+  output_profile_dir: profiles/
+  categorize_cell_quality: simple
+  compression: gzip
+  float_format: "%.5g"
+  compartments:
+    - Cells
+    - Nuclei
+    - Cytoplasm
+  parent_cols:
+    cells:
+      - Parent_Nuclei
+    cytoplasm:
+      - Parent_Nuclei
+      - Parent_Cells
+    spots:
+      - Parent_Cells
+  id_cols:
+    - ImageNumber
+    - ObjectNumber
+  control_barcodes:
+    - NT
+  trash_files:
+    - .DS_Store
+---
+single_cell:
+  perform: true
+  prefilter_features: true
+  filter_cells:
+    - Perfect
+    - Great
+  cell_quality_column: Metadata_Foci_Cell_Quality
+  output_basedir: data/single_cell
+  merge_columns:
+    image_column: ImageNumber
+    linking_compartment: Cytoplasm
+    linking_columns:
+      cells: Metadata_Cytoplasm_Parent_Cells
+      nuclei: Metadata_Cytoplasm_Parent_Nuclei
+    metadata_linking_columns:
+      - Metadata_Foci_site
+      - Metadata_Cells_ObjectNumber
