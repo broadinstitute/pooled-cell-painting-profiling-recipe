@@ -48,7 +48,7 @@ from scripts.spot_utils import (
 )
 
 sys.path.append(os.path.join("..", "scripts"))
-from config_utils import get_config
+from config_utils import process_config_file
 from cell_quality_utils import CellQuality
 
 parser = argparse.ArgumentParser()
@@ -60,7 +60,7 @@ parser.add_argument(
 args = parser.parse_args()
 config_file = args.config_file
 
-config = get_config(config_file)
+config = process_config_file(config_file)
 
 core_args = config["core"]
 spot_args = config["process-spots"]
@@ -75,7 +75,7 @@ trash_files = core_args["trash_files"]
 id_cols = core_args["id_cols"]
 spot_parent_cols = core_args["parent_cols"]["spots"]
 
-output_basedir = spot_args["output_basedir"]
+output_spotdir = spot_args["output_spotdir"]
 barcode_cols = spot_args["barcode_cols"]
 gene_cols = spot_args["gene_cols"]
 location_cols = spot_args["location_cols"]
@@ -94,20 +94,20 @@ cell_quality = CellQuality(quality_func)
 cell_category_dict = cell_quality.define_cell_quality()
 cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"])
 
-sites = [x for x in os.listdir(batch_dir) if x not in trash_files]
+sites = [x.name for x in batch_dir.iterdir() if x.name not in trash_files]
 num_sites = len(sites)
 
 for site in sites:
     print(f"Now processing {site}...")
-    output_dir = pathlib.PurePath(f"{output_basedir}/{batch}/spots/{site}")
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = pathlib.Path(output_spotdir, site)
+    output_dir.mkdir(exist_ok=True)
 
     # Load spot data
     try:
-        barcode_file = pathlib.PurePath(f"{batch_dir}/{site}/BarcodeFoci.csv")
+        barcode_file = pathlib.Path(batch_dir, site, "BarcodeFoci.csv")
         barcodefoci_df = pd.read_csv(barcode_file)
 
-        foci_file = pathlib.PurePath(f"{batch_dir}/{site}/Foci.csv")
+        foci_file = pathlib.Path(batch_dir, site, "Foci.csv")
         foci_df = pd.read_csv(foci_file)
     except FileNotFoundError:
         print(f"{site} data not found")
@@ -144,16 +144,16 @@ for site in sites:
     num_assigned_spots = cell_spot_df.shape[0]
 
     # Figure 1 - histogram of barcode counts per cell
-    fig_file = pathlib.PurePath(f"{output_dir}/num_spots_per_cell_histogram.png")
+    fig_file = pathlib.Path(output_dir, "num_spots_per_cell_histogram.png")
     spot_counts_per_cell_histogram(cell_spot_df, spot_parent_cols, fig_file)
 
     # Figure 2 - histogram of barcode scores per spot
-    fig_file = pathlib.PurePath(f"{output_dir}/barcode_scores_per_spot_histogram.png")
+    fig_file = pathlib.Path(output_dir, "barcode_scores_per_spot_histogram.png")
     spot_score_histogram(cell_spot_df, spot_score_cols, fig_file)
 
     # Figure 3 - Joint plot of relationship of barcode counts per cell and mean score
-    fig_file = pathlib.PurePath(
-        f"{output_dir}/per_cell_barcode_count_by_mean_score_jointplot.png"
+    fig_file = pathlib.Path(
+        output_dir, "per_cell_barcode_count_by_mean_score_jointplot.png"
     )
     spot_count_score_jointplot(
         cell_spot_df, spot_parent_cols[0], spot_score_cols[0], fig_file
@@ -193,16 +193,14 @@ for site in sites:
     ).assign(ImageNumber=image_number, site=site)
 
     # Table 1 - Full Cell and Gene Category with Scores
-    out_file = pathlib.PurePath(
-        f"{output_dir}/full_cell_category_scores_by_guide.tsv.gz"
-    )
+    out_file = pathlib.Path(output_dir, "full_cell_category_scores_by_guide.tsv.gz")
     crispr_barcode_gene_df.to_csv(out_file, sep="\t", index=False, compression="gzip")
 
     # Table 2 - Full Cell and CRISPR Guide Quality Category with Scores
     num_unique_guides = len(
         crispr_barcode_gene_df.loc[:, barcode_cols].squeeze().unique()
     )
-    out_file = pathlib.PurePath(f"{output_dir}/full_cell_category_scores.tsv.gz")
+    out_file = pathlib.Path(output_dir, "full_cell_category_scores.tsv.gz")
     cell_barcode_gene_df.to_csv(out_file, sep="\t", index=False, compression="gzip")
 
     # Table 3 - Cell Category Summary
@@ -210,7 +208,7 @@ for site in sites:
         quality_df=crispr_barcode_gene_df, parent_cols=spot_parent_cols
     ).assign(ImageNumber=image_number, site=site)
 
-    out_file = pathlib.PurePath(f"{output_dir}/cell_category_summary_count.tsv")
+    out_file = pathlib.Path(output_dir, "cell_category_summary_count.tsv")
     cell_quality_summary_df.to_csv(out_file, sep="\t", index=False)
 
     # Table 4 - Gene by cell category counts
@@ -222,7 +220,7 @@ for site in sites:
         group_cols=gene_cols,
     ).assign(ImageNumber=image_number, site=site)
 
-    out_file = pathlib.PurePath(f"{output_dir}/gene_by_cell_category_summary_count.tsv")
+    out_file = pathlib.Path(output_dir, "gene_by_cell_category_summary_count.tsv")
     gene_category_count_df.to_csv(out_file, sep="\t", index=False)
 
     # Table 5 - Guide by cell category counts
@@ -233,9 +231,7 @@ for site in sites:
         guide=True,
     ).assign(ImageNumber=image_number, site=site)
 
-    out_file = pathlib.PurePath(
-        f"{output_dir}/guide_by_cell_category_summary_count.tsv"
-    )
+    out_file = pathlib.Path(output_dir, "guide_by_cell_category_summary_count.tsv")
     gene_category_count_df.to_csv(out_file, sep="\t", index=False)
 
     passed_gene_df = (
@@ -268,6 +264,6 @@ for site in sites:
         "number_nontarget_controls_good_cells": num_nt,
     }
 
-    output_file = pathlib.PurePath(f"{output_dir}/site_stats.tsv")
+    output_file = pathlib.Path(output_dir, "site_stats.tsv")
     descriptive_results = pd.DataFrame(descriptive_results, index=[site])
     descriptive_results.to_csv(output_file, sep="\t", index=True)
