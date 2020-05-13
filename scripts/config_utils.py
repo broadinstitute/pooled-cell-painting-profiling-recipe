@@ -53,6 +53,23 @@ def generate_profiles_config(config):
     config = load_config(config)
     batch_dir = make_batch_path(config, load_data=False)
     config["core"]["batch_dir"] = batch_dir
+
+    # Build paths to single cell yaml document of the profiling pipeline
+    config["single_cell"]["prefilter_file"] = pathlib.Path(
+        config["core"]["site_dir"], config["core"]["batch"], "feature_prefilter.tsv"
+    )
+
+    config["single_cell"]["spot_metadata_dir"] = pathlib.Path(
+        config["core"]["site_dir"], config["core"]["batch"], "spots"
+    )
+
+    config["single_cell"]["paint_metadata_dir"] = pathlib.Path(
+        config["core"]["site_dir"], config["core"]["batch"], "paint"
+    )
+
+    config["single_cell"]["single_cell_output_dir"] = pathlib.Path(
+        config["single_cell"]["output_basedir"], config["core"]["batch"]
+    )
     return config
 
 
