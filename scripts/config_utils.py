@@ -68,13 +68,18 @@ def generate_profiles_config(config):
     )
 
     config["single_cell"]["single_cell_output_dir"] = pathlib.Path(
-        config["single_cell"]["output_basedir"], config["core"]["batch"]
+        config["single_cell"]["output_basedir"], batch
     )
 
     # This file is only used if single_file_only flag is used in 0.merge-single-cells.py
     config["single_cell"]["single_file_only_output_file"] = pathlib.Path(
         config["single_cell"]["single_cell_output_dir"],
         f"{batch}_single_cell_profiles.csv.gz",
+    )
+
+    # Build paths to aggregate yaml document
+    config["aggregate"]["aggregate_output_dir"] = pathlib.Path(
+        config["aggregate"]["output_basedir"], batch
     )
 
     return config
