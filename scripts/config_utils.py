@@ -53,23 +53,30 @@ def generate_profiles_config(config):
     config = load_config(config)
     batch_dir = make_batch_path(config, load_data=False)
     config["core"]["batch_dir"] = batch_dir
-
+    batch = config["core"]["batch"]
     # Build paths to single cell yaml document of the profiling pipeline
     config["single_cell"]["prefilter_file"] = pathlib.Path(
-        config["core"]["site_dir"], config["core"]["batch"], "feature_prefilter.tsv"
+        config["core"]["site_dir"], batch, "feature_prefilter.tsv"
     )
 
     config["single_cell"]["spot_metadata_dir"] = pathlib.Path(
-        config["core"]["site_dir"], config["core"]["batch"], "spots"
+        config["core"]["site_dir"], batch, "spots"
     )
 
     config["single_cell"]["paint_metadata_dir"] = pathlib.Path(
-        config["core"]["site_dir"], config["core"]["batch"], "paint"
+        config["core"]["site_dir"], batch, "paint"
     )
 
     config["single_cell"]["single_cell_output_dir"] = pathlib.Path(
         config["single_cell"]["output_basedir"], config["core"]["batch"]
     )
+
+    # This file is only used if single_file_only flag is used in 0.merge-single-cells.py
+    config["single_cell"]["single_file_only_output_file"] = pathlib.Path(
+        config["single_cell"]["single_cell_output_dir"],
+        f"{batch}_single_cell_profiles.csv.gz",
+    )
+
     return config
 
 

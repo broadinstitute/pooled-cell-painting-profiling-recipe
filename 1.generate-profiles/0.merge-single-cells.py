@@ -61,14 +61,14 @@ spot_batch_dir = single_cell_args["spot_metadata_dir"]
 paint_metadata_dir = single_cell_args["paint_metadata_dir"]
 merge_info = single_cell_args["merge_columns"]
 single_cell_output_dir = single_cell_args["single_cell_output_dir"]
+single_file_only_output_file = single_cell_args["single_file_only_output_file"]
 
-# This file is only used if single_file_only flag is used
-single_file_only_output_file = pathlib.Path(
-    single_cell_output_dir, f"{batch}_single_cell_profiles.csv.gz"
-)
-if single_file_only_output_file.exists():
-    if not force:
-        warnings.warn("Combined single cell file exists. Use '--force' to overwrite.")
+if single_file_only:
+    if single_file_only_output_file.exists():
+        if not force:
+            warnings.warn(
+                "Combined single cell file exists. Use '--force' to overwrite."
+            )
 
 # Load preselected features
 all_feature_df = pd.read_csv(prefilter_file, sep="\t")
