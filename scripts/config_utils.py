@@ -13,15 +13,16 @@ def load_config(config):
 def get_step(config):
     # Determines which configuration to process
     data = load_config(config)
-    return data["core"]["step"]
+    return data["master_config"]["step"]
 
 
 def make_batch_path(config, load_data=True):
     if load_data:
         config = load_config(config)
+    master = config["master_config"]
     core = config["core"]
     batch_dir = pathlib.Path(
-        core["project_dir"], core["project"], "workspace", "analysis", core["batch"],
+        core["project_dir"], master["project_tag"], "workspace", "analysis", core["batch"],
     )
     return batch_dir
 
@@ -53,6 +54,35 @@ def generate_profiles_config(config):
     config = load_config(config)
     batch_dir = make_batch_path(config, load_data=False)
     config["core"]["batch_dir"] = batch_dir
+    batch = config["core"]["batch"]
+    # Build paths to single cell yaml document of the profiling pipeline
+    config["single_cell"]["prefilter_file"] = pathlib.Path(
+        config["core"]["site_dir"], batch, "feature_prefilter.tsv"
+    )
+
+    config["single_cell"]["spot_metadata_dir"] = pathlib.Path(
+        config["core"]["site_dir"], batch, "spots"
+    )
+
+    config["single_cell"]["paint_metadata_dir"] = pathlib.Path(
+        config["core"]["site_dir"], batch, "paint"
+    )
+
+    config["single_cell"]["single_cell_output_dir"] = pathlib.Path(
+        config["single_cell"]["output_basedir"], batch
+    )
+
+    # This file is only used if single_file_only flag is used in 0.merge-single-cells.py
+    config["single_cell"]["single_file_only_output_file"] = pathlib.Path(
+        config["single_cell"]["single_cell_output_dir"],
+        f"{batch}_single_cell_profiles.csv.gz",
+    )
+
+    # Build paths to aggregate yaml document
+    config["aggregate"]["aggregate_output_dir"] = pathlib.Path(
+        config["aggregate"]["output_basedir"], batch
+    )
+
     return config
 
 
