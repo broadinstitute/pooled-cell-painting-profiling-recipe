@@ -37,16 +37,17 @@ force = args.force
 config = process_config_file(config_file)
 
 # Extract config arguments
+master_args = config["master_config"]
 core_args = config["core"]
 single_cell_args = config["single_cell"]
 
-project = core_args["project"]
+project = master_args["project_tag"]
 batch = core_args["batch"]
 batch_dir = core_args["batch_dir"]
 compartments = core_args["compartments"]
 parent_col_info = core_args["parent_cols"]
 id_cols = core_args["id_cols"]
-trash_files = core_args["trash_files"]
+ignore_files = core_args["ignore_files"]
 float_format = core_args["float_format"]
 compression = core_args["compression"]
 
@@ -55,7 +56,7 @@ spot_parent_cols = core_args["parent_cols"]["spots"]
 
 prefilter_features = single_cell_args["prefilter_features"]
 prefilter_file = single_cell_args["prefilter_file"]
-filter_cell_quality = single_cell_args["filter_cells"]
+filter_cell_quality = single_cell_args["filter_cell_quality"]
 cell_quality_col = single_cell_args["cell_quality_column"]
 spot_batch_dir = single_cell_args["spot_metadata_dir"]
 paint_metadata_dir = single_cell_args["paint_metadata_dir"]
@@ -77,7 +78,7 @@ if prefilter_features:
     all_feature_df = all_feature_df.query("not prefilter_column")
 
 # Pull out all sites that were measured
-sites = [x.name for x in spot_batch_dir.iterdir() if x.name not in trash_files]
+sites = [x.name for x in spot_batch_dir.iterdir() if x.name not in ignore_files]
 
 sc_df = []
 for site in sites:
