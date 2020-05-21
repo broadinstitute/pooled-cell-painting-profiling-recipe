@@ -13,15 +13,16 @@ def load_config(config):
 def get_step(config):
     # Determines which configuration to process
     data = load_config(config)
-    return data["core"]["step"]
+    return data["master_config"]["step"]
 
 
 def make_batch_path(config, load_data=True):
     if load_data:
         config = load_config(config)
+    master = config["master_config"]
     core = config["core"]
     batch_dir = pathlib.Path(
-        core["project_dir"], core["project"], "workspace", "analysis", core["batch"],
+        core["project_dir"], master["project_tag"], "workspace", "analysis", core["batch"],
     )
     return batch_dir
 
