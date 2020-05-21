@@ -25,7 +25,7 @@ config = process_config_file(config_file)
 # Extract config arguments
 core_args = config["core"]
 batch = core_args["batch"]
-trash_files = core_args["trash_files"]
+ignore_files = core_args["ignore_files"]
 float_format = core_args["float_format"]
 compression = core_args["compression"]
 
@@ -56,7 +56,7 @@ if aggregate_from_single_file and aggregate_from_site:
 if aggregate_from_single_file:
     single_cell_df = pd.read_csv(single_cell_file, sep=",")
 else:
-    sites = [x for x in single_cell_output_dir.iterdir() if x.name not in trash_files]
+    sites = [x for x in single_cell_output_dir.iterdir() if x.name not in ignore_files]
     single_cell_df = []
     for site in sites:
         if site.is_file():
