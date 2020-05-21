@@ -1,8 +1,10 @@
 ---
-core:
+master_config:
   step: generate-profiles
   pipeline: Pooled Cell Painting
-  project: 2018_11_20_Periscope_Calico
+  project_tag: 2018_11_20_Periscope_Calico
+---
+core:
   batch: 20190919_6W_CP074A
   project_dir: /Users/gway/work/projects/
   site_dir: ../0.preprocess-sites/data/
@@ -28,13 +30,13 @@ core:
     - ObjectNumber
   control_barcodes:
     - NT
-  trash_files:
+  ignore_files:
     - .DS_Store
 ---
 single_cell:
   perform: true
   prefilter_features: true
-  filter_cells:
+  filter_cell_quality:
     - Perfect
     - Great
   cell_quality_column: Metadata_Foci_Cell_Quality
@@ -48,3 +50,17 @@ single_cell:
     metadata_linking_columns:
       - Metadata_Foci_site
       - Metadata_Cells_ObjectNumber
+---
+aggregate:
+  perform: true
+  from_single_file: true
+  from_site_files: false
+  output_basedir: data/profiles
+  operation: median
+  features: infer
+  levels:
+    gene:
+      - Metadata_Foci_Barcode_MatchedTo_GeneCode
+    guide:
+      - Metadata_Foci_Barcode_MatchedTo_GeneCode
+      - Metadata_Foci_Barcode_MatchedTo_Barcode
