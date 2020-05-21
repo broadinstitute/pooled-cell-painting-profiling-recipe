@@ -43,13 +43,17 @@ aggregate_levels = aggregate_args["levels"]
 
 # Input argument flow control
 if aggregate_from_single_file:
-    assert single_cell_file.exists(), "Error! The master single cell file does not exist! Did you mean to set `from_single_file` to False?"
+    assert (
+        single_cell_file.exists()
+    ), "Error! The master single cell file does not exist! Did you mean to set `from_single_file` to False?"
 else:
-    assert aggregate_from_site, "You must set one aggregate source to true in the config (either `from_site_files` or `from_single_file`)"
+    assert (
+        aggregate_from_site
+    ), "You must set one aggregate source to true in the config (either `from_site_files` or `from_single_file`)"
 
 if aggregate_from_single_file and aggregate_from_site:
     warnings.warn(
-        "Both sources set to true. Defaulting to aggregate `from_single_file`"
+        "Both `from_site_files` and `from_single_file` are set to true in the config. Defaulting to aggregate `from_single_file`"
     )
 
 # Load single cell data
@@ -66,27 +70,33 @@ else:
             site_df = pd.read_csv(site_file, sep=",")
             single_cell_df.append(site_df)
         else:
-            warnings.warn(f"{site_file} does not exist. There must have been an error in processing")
+            warnings.warn(
+                f"{site_file} does not exist. There must have been an error in processing"
+            )
 
     single_cell_df = pd.concat(single_cell_df, axis="rows").reset_index(drop=True)
 
 # Perform the aggregation based on the defined levels and columns
 aggregate_output_dir.mkdir(parents=True, exist_ok=True)
 for aggregate_level, aggregate_columns in aggregate_levels.items():
-    aggregate_output_file = pathlib.Path(aggregate_output_dir, f"{batch}_{aggregate_level}.csv.gz")
+    aggregate_output_file = pathlib.Path(
+        aggregate_output_dir, f"{batch}_{aggregate_level}.csv.gz"
+    )
 
-    print(f"Now aggregating by {aggregate_level}...with operation: {aggregate_operation}")
+    print(
+        f"Now aggregating by {aggregate_level}...with operation: {aggregate_operation}"
+    )
 
     aggregate_df = aggregate(
         population_df=single_cell_df,
         strata=aggregate_columns,
         features=aggregate_features,
-        operation=aggregate_operation
+        operation=aggregate_operation,
     )
 
     output(
         aggregate_df,
         output_filename=aggregate_output_file,
         compression=compression,
-        float_format=float_format
+        float_format=float_format,
     )
