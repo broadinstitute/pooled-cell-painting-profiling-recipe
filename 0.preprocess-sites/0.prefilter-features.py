@@ -34,10 +34,11 @@ force = args.force
 config = process_config_file(config_file)
 
 # Set constants
+master_args = config["master_config"]
 core_args = config["core"]
 prefilter_args = config["prefilter"]
 
-project = core_args["project"]
+project = master_args["project_tag"]
 batch = core_args["batch"]
 compartments = core_args["compartments"]
 
@@ -47,7 +48,7 @@ flag_cols = prefilter_args["flag_cols"]
 output_file = prefilter_args["prefilter_file"]
 
 # Create the directory
-output_file.parent.mkdir(exist_ok=True)
+output_file.parent.mkdir(exist_ok=True, parents=True)
 
 # Perform prefiltering and output file
 if perform:
