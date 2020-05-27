@@ -70,7 +70,7 @@ batch = core_args["batch"]
 batch_dir = core_args["batch_dir"]
 quality_func = core_args["categorize_cell_quality"]
 control_barcodes = core_args["control_barcodes"]
-trash_files = core_args["trash_files"]
+ignore_files = core_args["ignore_files"]
 
 id_cols = core_args["id_cols"]
 spot_parent_cols = core_args["parent_cols"]["spots"]
@@ -94,13 +94,13 @@ cell_quality = CellQuality(quality_func)
 cell_category_dict = cell_quality.define_cell_quality()
 cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"])
 
-sites = [x.name for x in batch_dir.iterdir() if x.name not in trash_files]
+sites = [x.name for x in batch_dir.iterdir() if x.name not in ignore_files]
 num_sites = len(sites)
 
 for site in sites:
     print(f"Now processing {site}...")
     output_dir = pathlib.Path(output_spotdir, site)
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(exist_ok=True, parents=True)
 
     # Load spot data
     try:

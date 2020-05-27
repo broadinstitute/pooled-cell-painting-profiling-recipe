@@ -47,6 +47,13 @@ def preprocess_sites_config(config):
         config["process-spots"]["output_basedir"], config["core"]["batch"], "spots"
     )
 
+    # Build paths to the foci files
+    config["process-cells"]["foci_dir"] = pathlib.Path(
+        config["process-spots"]["output_basedir"],
+        config["core"]["batch"],
+        "spots",
+    )
+
     return config
 
 
