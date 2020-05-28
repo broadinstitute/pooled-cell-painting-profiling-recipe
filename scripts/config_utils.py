@@ -83,6 +83,31 @@ def generate_profiles_config(config):
         config["aggregate"]["output_basedir"], batch
     )
 
+    # Build aggregated output files
+    config["aggregate"]["aggregate_output_files"] = {}
+    for aggregate_level, aggregate_columns in config["aggregate"]["levels"].items():
+        config["aggregate"]["aggregate_output_files"][aggregate_level] = pathlib.Path(
+            config["aggregate"]["aggregate_output_dir"],
+            f"{batch}_{aggregate_level}.csv.gz",
+        )
+
+    config["aggregate"]["aggregate_output_files"]["single_cell"] = config[
+        "single_cell"
+    ]["single_file_only_output_file"]
+
+    # Build paths to normalize yaml document
+    config["normalize"]["normalize_output_dir"] = pathlib.Path(
+        config["normalize"]["output_basedir"], batch
+    )
+
+    # Build normalized output files
+    config["normalize"]["normalize_output_files"] = {}
+    for normalize_level in config["normalize"]["levels"]:
+        config["normalize"]["normalize_output_files"][normalize_level] = pathlib.Path(
+            config["normalize"]["normalize_output_dir"],
+            f"{batch}_{normalize_level}_normalized.csv.gz",
+        )
+
     return config
 
 

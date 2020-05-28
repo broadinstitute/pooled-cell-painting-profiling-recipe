@@ -10,6 +10,7 @@ core:
   site_dir: ../0.preprocess-sites/data/
   output_single_cell_dir: single_cell/
   output_profile_dir: profiles/
+  output_one_single_cell_file_only: true
   categorize_cell_quality: simple
   compression: gzip
   float_format: "%.5g"
@@ -64,3 +65,14 @@ aggregate:
     guide:
       - Metadata_Foci_Barcode_MatchedTo_GeneCode
       - Metadata_Foci_Barcode_MatchedTo_Barcode
+---
+normalize:
+  perform: true
+  output_basedir: data/profiles
+  method: standardize
+  levels:
+    - gene
+    - guide
+    - single_cell
+  by_samples: all
+  features: infer
