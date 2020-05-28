@@ -48,12 +48,6 @@ cell_args = config["process-cells"]
 prefilter_args = config["prefilter"]
 spot_args = config["process-spots"]
 
-#Defines the sections of the config file
-core_args = config["core"]
-cell_args = config["process-cells"]
-prefilter_args = config["prefilter"]
-spot_args = config["process-spots"]
-
 #Defines the variables set in the config file
 batch = core_args["batch"]
 batch_dir = core_args["batch_dir"]
@@ -135,7 +129,7 @@ for site in sites:
     # Merge compartment csvs
     sc_merged_df = merge_single_cell_compartments(compartment_csvs, merge_info, id_cols)
     sc_merged_df = sc_merged_df.sort_values(by=sort_col)
-    
+
     # Add metadata
     sc_merged_df = sc_merged_df.rename({"Metadata_Cells_ImageNumber": "Metadata_ImageNumber"}, axis="columns")
     sc_merged_with_metadata_df = foci_df.merge(
