@@ -10,6 +10,7 @@ core:
   site_dir: ../0.preprocess-sites/data/
   output_single_cell_dir: single_cell/
   output_profile_dir: profiles/
+  output_one_single_cell_file_only: false
   categorize_cell_quality: simple
   compression: gzip
   float_format: "%.5g"
@@ -53,8 +54,6 @@ single_cell:
 ---
 aggregate:
   perform: true
-  from_single_file: true
-  from_site_files: false
   output_basedir: data/profiles
   operation: median
   features: infer
