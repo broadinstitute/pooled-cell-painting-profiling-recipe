@@ -63,3 +63,20 @@ process-cells:
   prefilter-features: true
   output_basedir: data
   sort_col: Metadata_Cells_ObjectNumber
+  merge_columns:
+    image_column: ImageNumber
+    linking_compartment: Cytoplasm
+    linking_columns:
+      cells: Metadata_Cytoplasm_Parent_Cells
+      nuclei: Metadata_Cytoplasm_Parent_Nuclei
+    metadata_linking_columns:
+      - Metadata_Foci_site
+      - Metadata_Cells_ObjectNumber
+  metadata_merge_columns:
+    left:
+      - Metadata_Foci_ImageNumber
+      - Metadata_Foci_Parent_Cells
+    right:
+      - Metadata_ImageNumber
+      - Metadata_Cells_ObjectNumber
+    cells_left: Metadata_Foci_Cell_Category
