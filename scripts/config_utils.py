@@ -22,7 +22,11 @@ def make_batch_path(config, load_data=True):
     master = config["master_config"]
     core = config["core"]
     batch_dir = pathlib.Path(
-        core["project_dir"], master["project_tag"], "workspace", "analysis", core["batch"],
+        core["project_dir"],
+        master["project_tag"],
+        "workspace",
+        "analysis",
+        core["batch"],
     )
     return batch_dir
 
@@ -55,18 +59,17 @@ def generate_profiles_config(config):
     batch_dir = make_batch_path(config, load_data=False)
     config["core"]["batch_dir"] = batch_dir
     batch = config["core"]["batch"]
+    site_dir = config["core"]["site_dir"]
+    ignore_files = config["core"]["ignore_files"]
+
     # Build paths to single cell yaml document of the profiling pipeline
     config["single_cell"]["prefilter_file"] = pathlib.Path(
-        config["core"]["site_dir"], batch, "feature_prefilter.tsv"
+        site_dir, batch, "feature_prefilter.tsv"
     )
 
-    config["single_cell"]["spot_metadata_dir"] = pathlib.Path(
-        config["core"]["site_dir"], batch, "spots"
-    )
+    config["single_cell"]["spot_metadata_dir"] = pathlib.Path(site_dir, batch, "spots")
 
-    config["single_cell"]["paint_metadata_dir"] = pathlib.Path(
-        config["core"]["site_dir"], batch, "paint"
-    )
+    config["single_cell"]["paint_metadata_dir"] = pathlib.Path(site_dir, batch, "paint")
 
     config["single_cell"]["single_cell_output_dir"] = pathlib.Path(
         config["single_cell"]["output_basedir"], batch
@@ -78,10 +81,39 @@ def generate_profiles_config(config):
         f"{batch}_single_cell_profiles.csv.gz",
     )
 
+    # Build single cell site files
+    sites = [
+        x.name
+        for x in config["single_cell"]["spot_metadata_dir"].iterdir()
+        if x.name not in ignore_files
+    ]
+
+    config["single_cell"]["site_files"] = {}
+    for site in sites:
+        # Define single cell output directory and files
+        site_output_dir = pathlib.Path(
+            config["single_cell"]["single_cell_output_dir"], site
+        )
+        config["single_cell"]["site_files"][site] = pathlib.Path(
+            site_output_dir, f"{site}_single_cell.csv.gz"
+        )
+
     # Build paths to aggregate yaml document
     config["aggregate"]["aggregate_output_dir"] = pathlib.Path(
         config["aggregate"]["output_basedir"], batch
     )
+
+    # Build aggregated output files
+    config["aggregate"]["aggregate_output_files"] = {}
+    for aggregate_level, aggregate_columns in config["aggregate"]["levels"].items():
+        config["aggregate"]["aggregate_output_files"][aggregate_level] = pathlib.Path(
+            config["aggregate"]["aggregate_output_dir"],
+            f"{batch}_{aggregate_level}.csv.gz",
+        )
+
+    config["aggregate"]["aggregate_output_files"]["single_cell"] = config[
+        "single_cell"
+    ]["single_file_only_output_file"]
 
     return config
 
