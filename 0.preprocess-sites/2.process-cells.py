@@ -131,7 +131,6 @@ for site in sites:
     sc_merged_df = sc_merged_df.sort_values(by=sort_col)
 
     # Add metadata
-    sc_merged_df = sc_merged_df.rename({"Metadata_Cells_ImageNumber": "Metadata_ImageNumber"}, axis="columns")
     sc_merged_with_metadata_df = foci_df.merge(
         sc_merged_df,
         left_on=metadata_merge_left,

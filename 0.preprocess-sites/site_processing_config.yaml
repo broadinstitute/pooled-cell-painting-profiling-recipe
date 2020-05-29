@@ -77,6 +77,6 @@ process-cells:
       - Metadata_Foci_ImageNumber
       - Metadata_Foci_Parent_Cells
     right:
-      - Metadata_ImageNumber
+      - Metadata_Cells_ImageNumber
       - Metadata_Cells_ObjectNumber
     cells_left: Metadata_Foci_Cell_Category
