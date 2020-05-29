@@ -63,3 +63,31 @@ aggregate:
     guide:
       - Metadata_Foci_Barcode_MatchedTo_GeneCode
       - Metadata_Foci_Barcode_MatchedTo_Barcode
+---
+normalize:
+  perform: true
+  output_basedir: data/profiles
+  method: standardize
+  levels:
+    - gene
+    - guide
+    - single_cell
+  by_samples: all
+  features: infer
+---
+feature_select:
+  perform: true
+  output_basedir: data/profiles
+  operations:
+    - variance_threshold
+    - drop_na_columns
+    - blacklist
+    - drop_outliers
+  levels:
+    - gene
+    - guide
+    - single_cell
+  drop_samples: none
+  features: infer
+  na_cutoff: 0
+  corr_threshold: 0.9
