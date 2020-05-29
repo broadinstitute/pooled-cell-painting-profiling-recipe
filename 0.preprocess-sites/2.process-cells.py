@@ -63,7 +63,7 @@ prefilter_file = prefilter_args["prefilter_file"]
 
 foci_dir = spot_args["output_spotdir"]
 
-sort_col = cell_args["sort_col"]
+cell_sort_col = cell_args["sort_col"]
 output_basedir = cell_args["output_basedir"]
 merge_info = cell_args["merge_columns"]
 metadata_merge_left = cell_args["metadata_merge_columns"]["left"]
