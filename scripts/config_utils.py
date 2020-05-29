@@ -108,6 +108,19 @@ def generate_profiles_config(config):
             f"{batch}_{normalize_level}_normalized.csv.gz",
         )
 
+    # Build paths to normalize yaml document
+    config["feature_select"]["feature_select_output_dir"] = pathlib.Path(
+        config["feature_select"]["output_basedir"], batch
+    )
+
+    # Build feature select output files
+    config["feature_select"]["feature_select_output_files"] = {}
+    for feature_select_level in config["feature_select"]["levels"]:
+        config["feature_select"]["feature_select_output_files"][feature_select_level] = pathlib.Path(
+            config["feature_select"]["feature_select_output_dir"],
+            f"{batch}_{feature_select_level}_normalized_feature_select.csv.gz",
+        )
+
     return config
 
 
