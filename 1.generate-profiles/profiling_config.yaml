@@ -76,3 +76,20 @@ normalize:
     - single_cell
   by_samples: all
   features: infer
+---
+feature_select:
+  perform: true
+  output_basedir: data/profiles
+  operations:
+    - variance_threshold
+    - drop_na_columns
+    - blacklist
+    - drop_outliers
+  levels:
+    - gene
+    - guide
+    - single_cell
+  drop_samples: none
+  features: infer
+  na_cutoff: 0
+  corr_threshold: 0.9
