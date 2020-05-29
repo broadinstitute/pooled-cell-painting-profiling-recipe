@@ -128,7 +128,7 @@ for site in sites:
 
     # Merge compartment csvs
     sc_merged_df = merge_single_cell_compartments(compartment_csvs, merge_info, id_cols)
-    sc_merged_df = sc_merged_df.sort_values(by=sort_col)
+    sc_merged_df = sc_merged_df.sort_values(by=cell_sort_col)
 
     # Add metadata
     sc_merged_with_metadata_df = foci_df.merge(
@@ -157,7 +157,7 @@ for site in sites:
         right_index=True,
         how="left",
     )
-    .sort_values(by=sort_col)
+    .sort_values(by=cell_sort_col)
     .reset_index(drop=True)
     .reindex(metadata_col_order, axis="columns")
     )
