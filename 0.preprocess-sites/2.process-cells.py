@@ -122,7 +122,10 @@ for site in sites:
             )
 
         # Relabel columns in foci_df to start with Metadata_Foci_
-        foci_df.columns = [f"Metadata_Foci_{x}" if not x.startswith("Metadata_Foci") else x for x in foci_df.columns]
+        foci_df.columns = [
+            f"Metadata_Foci_{x}" if not x.startswith("Metadata_Foci") else x
+            for x in foci_df.columns
+        ]
 
     except FileNotFoundError:
         print(f"{site} data not found")
@@ -146,8 +149,8 @@ for site in sites:
     ].drop_duplicates()
 
     # Adds a cell quality category to previously uncategorized cells
-    metadata_df[metadata_cell_quality_col] = metadata_df[
-        metadata_cell_quality_col
+    metadata_df.loc[:, metadata_cell_quality_col] = metadata_df.loc[
+        :, metadata_cell_quality_col
     ].fillna(empty_cell_category)
 
     # Adds the site to the metadata_foci_site column to previously uncategorized cells
@@ -166,10 +169,11 @@ for site in sites:
     )
 
     # Create a summary of counts of each cell quality class
-    quality_counts = metadata_df.Cell_Class.value_counts()
-    cell_count_df = pd.DataFrame(quality_counts)
-    cell_count_df = cell_count_df.rename(columns={"Cell_Class": "cell_count"})
-    cell_count_df["site"] = site
+    cell_count_df = pd.DataFrame(
+        metadata_df.Cell_Class.value_counts()
+        .rename(columns={"Cell_Class": "cell_count"})
+        .assign(site=site)
+    )
 
     # Save files
     metadata_df.to_csv(meta_output_file, sep="\t", index=False)
