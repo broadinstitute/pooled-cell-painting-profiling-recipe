@@ -122,7 +122,7 @@ for site in sites:
             )
 
         # Relabel columns in foci_df to start with Metadata_Foci_
-        foci_df.columns = ["Metadata_Foci_{}".format(x) for x in foci_df.columns]
+        foci_df.columns = [f"Metadata_Foci_{x}" if not x.startswith("Metadata_Foci") else x for x in foci_df.columns]
 
     except FileNotFoundError:
         print(f"{site} data not found")
