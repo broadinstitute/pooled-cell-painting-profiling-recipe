@@ -73,10 +73,11 @@ process-cells:
       - Metadata_Foci_site
       - Metadata_Cells_ObjectNumber
   metadata_merge_columns:
-    left:
+    foci_cols:
       - Metadata_Foci_ImageNumber
       - Metadata_Foci_Parent_Cells
-    right:
+    cell_cols:
       - Metadata_Cells_ImageNumber
       - Metadata_Cells_ObjectNumber
-    cells_left: Metadata_Foci_Cell_Category
+    cell_quality_col: Metadata_Foci_Cell_Quality
+  foci_site_col: Metadata_Foci_site

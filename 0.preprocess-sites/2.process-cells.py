@@ -66,13 +66,16 @@ foci_dir = spot_args["output_spotdir"]
 cell_sort_col = cell_args["sort_col"]
 output_basedir = cell_args["output_basedir"]
 merge_info = cell_args["merge_columns"]
-metadata_merge_left = cell_args["metadata_merge_columns"]["left"]
-metadata_merge_right = cell_args["metadata_merge_columns"]["right"]
-metadata_merge_cells_left = cell_args["metadata_merge_columns"]["cells_left"]
+metadata_merge_foci_cols = cell_args["metadata_merge_columns"]["foci_cols"]
+metadata_merge_cell_cols = cell_args["metadata_merge_columns"]["cell_cols"]
+metadata_cell_quality_col = cell_args["metadata_merge_columns"]["cell_quality_col"]
+foci_site_col = cell_args["foci_site_col"]
 
 cell_quality = CellQuality(quality_func)
 cell_category_dict = cell_quality.define_cell_quality()
-cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"])
+empty_cell_category = len(cell_category_dict) + 1
+cell_category_dict[empty_cell_category] = "Empty"
+cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"]).transpose()
 
 # Enables feature filtering by loading the Cell Painting feature file.
 # 0.prefilter-features.py must be run first
@@ -126,42 +129,49 @@ for site in sites:
         continue
 
 
-    # Merge compartment csvs
+    # Merge compartment csvs. Each row is a separate cell.
     sc_merged_df = merge_single_cell_compartments(compartment_csvs, merge_info, id_cols)
     sc_merged_df = sc_merged_df.sort_values(by=cell_sort_col)
 
-    # Add metadata
+    # Add metadata to the merged csvs.
     sc_merged_with_metadata_df = foci_df.merge(
         sc_merged_df,
-        left_on=metadata_merge_left,
-        right_on=metadata_merge_right,
+        left_on=metadata_merge_foci_cols,
+        right_on=metadata_merge_cell_cols,
         how="right",
     )
 
+    # Drops all columns that are not Metadata (i.e. profiles)
     metadata_df = sc_merged_with_metadata_df.loc[
         :, sc_merged_with_metadata_df.columns.str.contains("Metadata")
     ].drop_duplicates()
 
-    metadata_df.loc[
-    metadata_df.Metadata_Foci_Cell_Category.isna(), "Metadata_Foci_Cell_Category"
-    ] = 5
-    metadata_df.Metadata_Foci_Cell_Category = metadata_df.Metadata_Foci_Cell_Category.astype(
-        int
-    )
-    metadata_df.loc[metadata_df.Metadata_Foci_site.isna(), "Metadata_Foci_site"] = site
+    # Adds a cell quality category to previously uncategorized cells
+    metadata_df[metadata_cell_quality_col] = metadata_df[metadata_cell_quality_col].fillna(empty_cell_category)
 
+    # Adds the site to the metadata_foci_site column to previously uncategorized cells
+    metadata_df[foci_site_col] = metadata_df[foci_site_col].fillna(site)
+
+    # Add the cell quality metadata to the df
     metadata_df = (
     metadata_df.merge(
         cell_category_df,
-        left_on=metadata_merge_cells_left,
+        left_on=metadata_cell_quality_col,
         right_index=True,
         how="left",
     )
     .sort_values(by=cell_sort_col)
     .reset_index(drop=True)
-    .reindex(metadata_col_order, axis="columns")
     )
+
+    #Create a summary of counts of each cell quality class
+    quality_counts = metadata_df.Cell_Class.value_counts()
+    cell_count_df = pd.DataFrame(quality_counts)
+    cell_count_df = cell_count_df.rename(columns ={'Cell_Class':'cell_count'})
+    cell_count_df['site'] = site
 
     #Save files
     metadata_df.to_csv(meta_output_file, sep="\t", index=False)
-    cell_count_df.to_csv(count_output_file, sep="\t", index=False)
+    cell_count_df.to_csv(count_output_file, sep="\t", index_label="Cell_Quality")
+
+print("All sites complete.")
