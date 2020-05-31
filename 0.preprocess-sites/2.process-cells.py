@@ -1,4 +1,3 @@
-
 """
 2.process-cells.py
 
@@ -26,10 +25,7 @@ import pandas as pd
 sys.path.append(os.path.join("..", "scripts"))
 from config_utils import process_config_file
 from cell_quality_utils import CellQuality
-from paint_utils import (
-    load_single_cell_compartment_csv,
-    merge_single_cell_compartments
-)
+from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -42,13 +38,13 @@ config_file = args.config_file
 
 config = process_config_file(config_file)
 
-#Defines the sections of the config file
+# Defines the sections of the config file
 core_args = config["core"]
 cell_args = config["process-cells"]
 prefilter_args = config["prefilter"]
 spot_args = config["process-spots"]
 
-#Defines the variables set in the config file
+# Defines the variables set in the config file
 batch = core_args["batch"]
 batch_dir = core_args["batch_dir"]
 project_dir = core_args["project_dir"]
@@ -85,7 +81,7 @@ except FileNotFoundError:
     raise FileNotFoundError(
         "Error",
         f"{prefilter_file} not found.  ",
-        "Perform 0.prefilter-features.py prefilter before continuing..."
+        "Perform 0.prefilter-features.py prefilter before continuing...",
     )
 
 sites = [x for x in os.listdir(batch_dir) if x not in ignore_files]
@@ -97,11 +93,11 @@ for site in sites:
         os.makedirs(output_folder, exist_ok=True)
 
         meta_output_file = pathlib.Path(output_folder, f"metadata_{site}.tsv.gz")
-        count_output_file = pathlib.Path(output_folder,f"cell_counts_{site}.tsv")
+        count_output_file = pathlib.Path(output_folder, f"cell_counts_{site}.tsv")
 
         compartment_dir = pathlib.Path(batch_dir, site)
 
-        #Make the compartment_csvs dictionary used to merge dfs
+        # Make the compartment_csvs dictionary used to merge dfs
         compartment_csvs = {}
         for compartment in compartments:
             try:
@@ -112,22 +108,25 @@ for site in sites:
                 compartment_dir, compartment, metadata_cols
             )
 
-        #Load .tsv created in 1.process-spots
-        foci_file = pathlib.Path(foci_dir, site, "full_cell_category_scores_by_guide.tsv.gz")
+        # Load .tsv created in 1.process-spots
+        foci_file = pathlib.Path(
+            foci_dir, site, "full_cell_category_scores_by_guide.tsv.gz"
+        )
         try:
             foci_df = pd.read_csv(foci_file, sep="\t")
         except FileNotFoundError:
-            print("""Run 1.process-spots before continuing. \n
+            print(
+                """Run 1.process-spots before continuing. \n
                   If it has been run, check that output_basedir is set correctly in
-                  the process-spots section of the config""")
+                  the process-spots section of the config"""
+            )
 
-        #Relabel columns in foci_df to start with Metadata_Foci_
+        # Relabel columns in foci_df to start with Metadata_Foci_
         foci_df.columns = ["Metadata_Foci_{}".format(x) for x in foci_df.columns]
 
     except FileNotFoundError:
         print(f"{site} data not found")
         continue
-
 
     # Merge compartment csvs. Each row is a separate cell.
     sc_merged_df = merge_single_cell_compartments(compartment_csvs, merge_info, id_cols)
@@ -147,30 +146,32 @@ for site in sites:
     ].drop_duplicates()
 
     # Adds a cell quality category to previously uncategorized cells
-    metadata_df[metadata_cell_quality_col] = metadata_df[metadata_cell_quality_col].fillna(empty_cell_category)
+    metadata_df[metadata_cell_quality_col] = metadata_df[
+        metadata_cell_quality_col
+    ].fillna(empty_cell_category)
 
     # Adds the site to the metadata_foci_site column to previously uncategorized cells
     metadata_df[foci_site_col] = metadata_df[foci_site_col].fillna(site)
 
     # Add the cell quality metadata to the df
     metadata_df = (
-    metadata_df.merge(
-        cell_category_df,
-        left_on=metadata_cell_quality_col,
-        right_index=True,
-        how="left",
-    )
-    .sort_values(by=cell_sort_col)
-    .reset_index(drop=True)
+        metadata_df.merge(
+            cell_category_df,
+            left_on=metadata_cell_quality_col,
+            right_index=True,
+            how="left",
+        )
+        .sort_values(by=cell_sort_col)
+        .reset_index(drop=True)
     )
 
-    #Create a summary of counts of each cell quality class
+    # Create a summary of counts of each cell quality class
     quality_counts = metadata_df.Cell_Class.value_counts()
     cell_count_df = pd.DataFrame(quality_counts)
-    cell_count_df = cell_count_df.rename(columns ={'Cell_Class':'cell_count'})
-    cell_count_df['site'] = site
+    cell_count_df = cell_count_df.rename(columns={"Cell_Class": "cell_count"})
+    cell_count_df["site"] = site
 
-    #Save files
+    # Save files
     metadata_df.to_csv(meta_output_file, sep="\t", index=False)
     cell_count_df.to_csv(count_output_file, sep="\t", index_label="Cell_Quality")
 
