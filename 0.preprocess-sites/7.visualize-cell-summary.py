@@ -223,8 +223,8 @@ all_well_count_df = (
 
 all_well_count_df
 
-a1_sum = all_well_count_df.groupby("Well")["cell_count"].sum()
-a2_sum = all_well_count_df.groupby("Well")["cell_count"].sum()
+a1_sum = all_well_count_df.groupby("Well")["cell_count"].sum()["A1"]
+a2_sum = all_well_count_df.groupby("Well")["cell_count"].sum()["A2"]
 
 total_cell_well_count_gg = (
     gg.ggplot(all_well_count_df, gg.aes(x="Well", y="cell_count"))
