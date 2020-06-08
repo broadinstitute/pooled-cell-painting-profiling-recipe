@@ -47,6 +47,22 @@ def preprocess_sites_config(config):
         config["process-spots"]["output_basedir"], config["core"]["batch"], "spots"
     )
 
+    # Build visualization information
+    if config["core"]["categorize_cell_quality"] == "simple":
+        config["summarize-cells"]["cell_category_order"] = [
+            "Perfect", "Great", "Imperfect", "Bad", "Empty"
+        ]
+        config["summarize-cells"]["cell_category_colors"] = [
+            "#DB5F57", "#91DB57", "#57D3DB", "#A157DB", "#776244",
+        ]
+    elif config["core"]["categorize_cell_quality"] == "simple_plus":
+        config["summarize-cells"]["cell_category_order"] = [
+            "Perfect", "Great", "Imperfect-High", "Imperfect-Low", "Bad", "Empty"
+        ]
+        config["summarize-cells"]["cell_category_colors"] = [
+            "#DB5F57", "#91DB57", "#57D3DB", "#556FD4", "#A157DB", "#776244",
+        ]
+
     return config
 
 
