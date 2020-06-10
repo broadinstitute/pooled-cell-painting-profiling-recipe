@@ -11,8 +11,15 @@ sys.path.append(os.path.join("..", "scripts"))
 from config_utils import process_config_file
 from cell_quality_utils import CellQuality
 
-config_file = "site_processing_config_CP151A1.yaml"
-force = True
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--config_file",
+    help="configuration yaml file for preprocessing pipeline",
+    default="site_processing_config.yaml",
+)
+args = parser.parse_args()
+config_file = args.config_file
+
 config = process_config_file(config_file)
 
 # Defines the sections of the config file
