@@ -61,15 +61,7 @@ cell_category_list = list(cell_category_dict.values())
 # Read and Merge Data
 cell_quality_list = []
 metadata_list = []
-metadata_col_list = []
-metadata_col_list.append("Cell_Class")
-metadata_col_list.extend(cell_cols)
-metadata_col_list.extend(barcode_cols)
-metadata_col_list.extend(gene_cols)
-metadata_col_list.extend(spot_score_count_cols)
-metadata_col_list.extend(spot_score_mean_cols)
-metadata_col_list.append(cell_quality_col)
-metadata_col_list.append(foci_site_col)
+metadata_col_list = ["Cell_Class"] + cell_cols + barcode_cols + gene_cols + spot_score_count_cols + spot_score_mean_cols + [cell_quality_col, foci_site_col]
 
 input_dir = pathlib.Path(input_basedir, batch, "paint")
 sites = os.listdir(input_dir)
