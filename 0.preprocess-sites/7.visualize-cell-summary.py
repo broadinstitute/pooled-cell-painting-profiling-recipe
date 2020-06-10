@@ -47,7 +47,9 @@ cell_quality_col = cell_args["metadata_merge_columns"]["cell_quality_col"]
 foci_site_col = cell_args["foci_site_col"]
 
 output_resultsdir = summ_cell_args["output_resultsdir"]
+output_resultsdir = pathlib.Path(output_resultsdir, batch)
 output_figuresdir = summ_cell_args["output_figuresdir"]
+output_figuresdir = pathlib.Path(output_figuresdir, batch)
 cell_category_order = summ_cell_args["cell_category_order"]
 cell_category_colors = summ_cell_args["cell_category_colors"]
 
