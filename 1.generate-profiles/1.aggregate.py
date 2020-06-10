@@ -32,11 +32,12 @@ compression = core_args["compression"]
 single_cell_args = config["single_cell"]
 single_cell_output_dir = single_cell_args["single_cell_output_dir"]
 single_cell_file = single_cell_args["single_file_only_output_file"]
+single_cell_site_files = single_cell_args["site_files"]
 
 aggregate_args = config["aggregate"]
-aggregate_from_site = aggregate_args["from_site_files"]
-aggregate_from_single_file = aggregate_args["from_single_file"]
+aggregate_from_single_file = core_args["output_one_single_cell_file_only"]
 aggregate_output_dir = aggregate_args["aggregate_output_dir"]
+aggregate_output_files = aggregate_args["aggregate_output_files"]
 aggregate_operation = aggregate_args["operation"]
 aggregate_features = aggregate_args["features"]
 aggregate_levels = aggregate_args["levels"]
@@ -45,27 +46,18 @@ aggregate_levels = aggregate_args["levels"]
 if aggregate_from_single_file:
     assert (
         single_cell_file.exists()
-    ), "Error! The master single cell file does not exist! Did you mean to set `from_single_file` to False?"
-else:
-    assert (
-        aggregate_from_site
-    ), "You must set one aggregate source to true in the config (either `from_site_files` or `from_single_file`)"
-
-if aggregate_from_single_file and aggregate_from_site:
-    warnings.warn(
-        "Both `from_site_files` and `from_single_file` are set to true in the config. Defaulting to aggregate `from_single_file`"
-    )
+    ), "Error! The single cell file does not exist! Check 0.merge-single-cells.py"
 
 # Load single cell data
 if aggregate_from_single_file:
+    print(f"Loading one single cell file: {single_cell_file}")
     single_cell_df = pd.read_csv(single_cell_file, sep=",")
 else:
-    sites = [x for x in single_cell_output_dir.iterdir() if x.name not in ignore_files]
+    sites = list(single_cell_site_files)
+    print(f"Now loading data from {len(sites)} sites")
     single_cell_df = []
     for site in sites:
-        if site.is_file():
-            continue
-        site_file = pathlib.Path(site, f"{site.name}_single_cell.csv.gz")
+        site_file = single_cell_site_files[site]
         if site_file.exists():
             site_df = pd.read_csv(site_file, sep=",")
             single_cell_df.append(site_df)
@@ -79,9 +71,7 @@ else:
 # Perform the aggregation based on the defined levels and columns
 aggregate_output_dir.mkdir(parents=True, exist_ok=True)
 for aggregate_level, aggregate_columns in aggregate_levels.items():
-    aggregate_output_file = pathlib.Path(
-        aggregate_output_dir, f"{batch}_{aggregate_level}.csv.gz"
-    )
+    aggregate_output_file = aggregate_output_files[aggregate_level]
 
     print(
         f"Now aggregating by {aggregate_level}...with operation: {aggregate_operation}"
