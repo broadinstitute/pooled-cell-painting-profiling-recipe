@@ -84,7 +84,7 @@ except FileNotFoundError:
         "Perform 0.prefilter-features.py prefilter before continuing...",
     )
 
-sites = [x for x in os.listdir(batch_dir) if x not in ignore_files]
+sites = [x for x in os.listdir(foci_dir) if x not in ignore_files]
 
 for site in sites:
     try:
