@@ -22,16 +22,10 @@ parser.add_argument(
     default="profiling_config.yaml",
 )
 parser.add_argument(
-    "--single_file_only",
-    help="add flag to output all single cell profiles merged into one output file",
-    action="store_true",
-)
-parser.add_argument(
     "--force", help="force overwriting of single cell data", action="store_true"
 )
 args = parser.parse_args()
 config_file = args.config_file
-single_file_only = args.single_file_only
 force = args.force
 
 config = process_config_file(config_file)
@@ -44,6 +38,7 @@ single_cell_args = config["single_cell"]
 project = master_args["project_tag"]
 batch = core_args["batch"]
 batch_dir = core_args["batch_dir"]
+single_file_only = core_args["output_one_single_cell_file_only"]
 compartments = core_args["compartments"]
 parent_col_info = core_args["parent_cols"]
 id_cols = core_args["id_cols"]
@@ -129,7 +124,7 @@ for site in sites:
 
     if len(compartment_csvs) != len(compartments):
         warnings.warn(
-            f"Not all compartments are present in site: {site}\nCheck CellProfiler output path: {site_compartment_dir}"
+            f"Not all compartments are present in site: {site}\nCheck CellProfiler output path: {site_compartment_dir}. Skipping this site."
         )
         continue
 
