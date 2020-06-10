@@ -122,8 +122,6 @@ os.makedirs(output_folder, exist_ok=True)
 output_file = pathlib.Path(output_folder, "cell_count.tsv")
 cell_count_df.to_csv(output_file, sep="\t", index=False)
 
-print(cell_count_df.shape)
-cell_count_df.head(10)
 
 # Graph: Cell count with all wells in same graph
 cell_count_gg = (
@@ -143,8 +141,6 @@ output_file = pathlib.Path(
     output_figuresdir, "all_cellpainting_cellquality_across_sites.png"
 )
 cell_count_gg.save(output_file, dpi=300, width=10, height=7, verbose=False)
-
-cell_count_gg
 
 # Same graph as above, separated by Well.
 cell_count_gg_parsed = (
@@ -168,13 +164,10 @@ output_file = pathlib.Path(
 )
 cell_count_gg_parsed.save(output_file, dpi=300, width=10, height=7, verbose=False)
 
-cell_count_gg_parsed
-
 #  Total cells in each quality category
 all_count_df = pd.DataFrame(
     cell_count_df.groupby("Cell_Quality")["cell_count"].sum()
 ).reset_index()
-all_count_df
 
 # Graph: Total cells in each quality category
 all_cells = all_count_df.cell_count.sum()
@@ -204,10 +197,7 @@ all_well_count_df = pd.DataFrame(
     cell_count_df.groupby(["Cell_Quality", "Well"])["cell_count"].sum()
 ).reset_index()
 
-all_well_count_df
-
 # Graph: Total cell number by well
-
 total_cell_well_count_gg = (
     gg.ggplot(all_well_count_df, gg.aes(x="Well", y="cell_count"))
     + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
@@ -224,5 +214,3 @@ total_cell_well_count_gg = (
 
 output_file = pathlib.Path(output_figuresdir, "total_cell_count_by_well.png")
 total_cell_well_count_gg.save(output_file, dpi=400, width=6, height=5, verbose=False)
-
-total_cell_well_count_gg
