@@ -99,8 +99,6 @@ num_sites = len(sites)
 
 for site in sites:
     print(f"Now processing {site}...")
-    output_dir = pathlib.Path(output_spotdir, site)
-    output_dir.mkdir(exist_ok=True, parents=True)
 
     # Load spot data
     try:
@@ -112,7 +110,11 @@ for site in sites:
     except FileNotFoundError:
         print(f"{site} data not found")
 
-    image_number = foci_df.ImageNumber.unique()[0]
+    try:
+        image_number = foci_df.ImageNumber.unique()[0]
+    except IndexError:
+        print(f"{site} does not have any foci")
+        continue
 
     try:
         # Confirm that image number and object number are aligned
@@ -127,6 +129,9 @@ for site in sites:
         )
     except AssertionError:
         print(f"{site} data not aligned between foci files")
+
+    output_dir = pathlib.Path(output_spotdir, site)
+    output_dir.mkdir(exist_ok=True, parents=True)
 
     # Merge spot data files
     complete_foci_df = barcodefoci_df.loc[:, barcode_foci_cols].merge(
@@ -267,3 +272,5 @@ for site in sites:
     output_file = pathlib.Path(output_dir, "site_stats.tsv")
     descriptive_results = pd.DataFrame(descriptive_results, index=[site])
     descriptive_results.to_csv(output_file, sep="\t", index=True)
+    
+print("All sites complete.")
