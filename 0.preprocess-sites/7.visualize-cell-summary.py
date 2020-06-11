@@ -162,6 +162,9 @@ cell_count_gg_parsed.save(output_file, dpi=300, width=10, height=7, verbose=Fals
 all_count_df = pd.DataFrame(
     cell_count_df.groupby("Cell_Quality")["cell_count"].sum()
 ).reset_index()
+output_folder = pathlib.Path(output_resultsdir, "cells")
+output_file = pathlib.Path(output_folder, "total_cell_count.tsv")
+all_count_df.to_csv(output_file, sep="\t", index=False)
 
 # Graph: Total cells in each quality category
 all_cells = all_count_df.cell_count.sum()
