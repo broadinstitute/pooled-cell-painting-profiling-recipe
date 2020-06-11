@@ -63,7 +63,15 @@ cell_category_list = list(cell_category_dict.values())
 # Read and Merge Data
 cell_quality_list = []
 metadata_list = []
-metadata_col_list = ["Cell_Class"] + cell_cols + barcode_cols + gene_cols + spot_score_count_cols + spot_score_mean_cols + [cell_quality_col, foci_site_col]
+metadata_col_list = (
+    ["Cell_Class"]
+    + cell_cols
+    + barcode_cols
+    + gene_cols
+    + spot_score_count_cols
+    + spot_score_mean_cols
+    + [cell_quality_col, foci_site_col]
+)
 
 input_dir = pathlib.Path(input_basedir, batch, "paint")
 sites = [x for x in os.listdir(input_dir) if x not in ignore_files]
@@ -150,7 +158,7 @@ cell_count_gg_parsed = (
     + gg.scale_fill_manual(
         name="Cell Quality", labels=cell_category_order, values=cell_category_colors
     )
-    + gg.facet_wrap("~Well", nrow=2, ncol=2, drop=False, scales="free_x")
+    + gg.facet_wrap("~Well", drop=False, scales="free_x")
 )
 
 output_file = pathlib.Path(
