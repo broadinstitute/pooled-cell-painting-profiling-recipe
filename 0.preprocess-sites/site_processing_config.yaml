@@ -81,3 +81,8 @@ process-cells:
       - Metadata_Cells_ObjectNumber
     cell_quality_col: Metadata_Foci_Cell_Quality
   foci_site_col: Metadata_Foci_site
+---
+summarize-cells:
+  perform: true
+  output_resultsdir: results
+  output_figuresdir: figures
