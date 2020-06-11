@@ -66,7 +66,7 @@ metadata_list = []
 metadata_col_list = ["Cell_Class"] + cell_cols + barcode_cols + gene_cols + spot_score_count_cols + spot_score_mean_cols + [cell_quality_col, foci_site_col]
 
 input_dir = pathlib.Path(input_basedir, batch, "paint")
-sites = os.listdir(input_dir)
+sites = [x for x in os.listdir(input_dir) if x not in ignore_files]
 print(f"There are {len(sites)} sites.")
 
 for site in sites:
