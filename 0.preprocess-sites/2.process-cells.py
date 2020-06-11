@@ -165,8 +165,13 @@ for site in sites:
             how="left",
         )
         .sort_values(by=cell_sort_col)
+        .drop_duplicates(subset=[cell_sort_col, "Cell_Class"])
         .reset_index(drop=True)
     )
+
+    assert (
+        not metadata_df.loc[:, cell_sort_col].duplicated().any()
+    ), "Stop! You're counting cells more than once"
 
     # Create a summary of counts of each cell quality class
     cell_count_df = pd.DataFrame(
