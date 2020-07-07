@@ -9,6 +9,7 @@ core:
   project_dir: /Users/gway/work/projects/
   output_dir: data
   categorize_cell_quality: simple
+  acquisition_side: 10
   compartments:
     - Cells
     - Nuclei
@@ -86,3 +87,6 @@ summarize-cells:
   perform: true
   output_resultsdir: results
   output_figuresdir: figures
+---
+summarize-plate:
+  perform: true
