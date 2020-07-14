@@ -90,3 +90,4 @@ summarize-cells:
 ---
 summarize-plate:
   perform: true
+  correlation_threshold: .2
