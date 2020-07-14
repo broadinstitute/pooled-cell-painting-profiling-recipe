@@ -89,12 +89,6 @@ sites = [x for x in os.listdir(foci_dir) if x not in ignore_files]
 for site in sites:
     try:
         print(f"Now processing {site}...")
-        output_folder = pathlib.Path(output_basedir, batch, "paint", site)
-        os.makedirs(output_folder, exist_ok=True)
-
-        meta_output_file = pathlib.Path(output_folder, f"metadata_{site}.tsv.gz")
-        count_output_file = pathlib.Path(output_folder, f"cell_counts_{site}.tsv")
-
         compartment_dir = pathlib.Path(batch_dir, site)
 
         # Make the compartment_csvs dictionary used to merge dfs
@@ -174,11 +168,14 @@ for site in sites:
     ), "Stop! You're counting cells more than once"
 
     # Create a summary of counts of each cell quality class
-    cell_count_df = pd.DataFrame(
-        metadata_df.Cell_Class.value_counts()
-        .rename(columns={"Cell_Class": "cell_count"})
-        .assign(site=site)
-    )
+    cell_count_df = pd.DataFrame(metadata_df.Cell_Class.value_counts())
+    cell_count_df.rename(columns={"Cell_Class": "cell_count"}).assign(site=site)
+
+    output_folder = pathlib.Path(output_basedir, batch, "paint", site)
+    os.makedirs(output_folder, exist_ok=True)
+
+    meta_output_file = pathlib.Path(output_folder, f"metadata_{site}.tsv.gz")
+    count_output_file = pathlib.Path(output_folder, f"cell_counts_{site}.tsv")
 
     # Save files
     metadata_df.to_csv(meta_output_file, sep="\t", index=False)
