@@ -91,3 +91,11 @@ summarize-cells:
 summarize-plate:
   perform: true
   correlation_threshold: .2
+  painting_image_names:
+    - Pre_ConA
+    - Pre_DAPI_Painting
+    - Pre_Mito
+    - Pre_Phalloidin
+    - Pre_WGA
+  barcoding_cycles: 10
+  barcoding_prefix: CorrCycle
