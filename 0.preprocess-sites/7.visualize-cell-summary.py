@@ -24,294 +24,198 @@ config = process_config_file(config_file)
 
 # Defines the sections of the config file
 core_args = config["core"]
-spots_args = config["process-spots"]
+spot_args = config["process-spots"]
+cell_args = config["process-cells"]
 summ_cell_args = config["summarize-cells"]
-summ_plate_args = config["summarize-plate"]
 
 # Defines the variables set in the config file
 batch = core_args["batch"]
 quality_func = core_args["categorize_cell_quality"]
-ignore_files = core_args["ignore_files"]
-acquisition_side = core_args["acquisition_side"]
-batch_dir = core_args["batch_dir"]
 
-cell_filter = spots_args["cell_filter"]
+barcode_cols = spot_args["barcode_cols"]
+barcode_cols = ["Metadata_Foci_" + col for col in barcode_cols]
+gene_cols = spot_args["gene_cols"]
+gene_cols = ["Metadata_Foci_" + col for col in gene_cols]
+spot_score_cols = spot_args["spot_score_cols"]
+spot_score_count_cols = ["Metadata_Foci_" + col + "_count" for col in spot_score_cols]
+spot_score_mean_cols = ["Metadata_Foci_" + col + "_mean" for col in spot_score_cols]
 
-summ_cells_results_basedir = summ_cell_args["output_resultsdir"]
-summ_cells_figures_basedir = summ_cell_args["output_figuresdir"]
-output_figuresdir = pathlib.Path(summ_cells_figures_basedir, batch)
+input_basedir = cell_args["output_basedir"]
+metadata_foci_col = cell_args["metadata_merge_columns"]["cell_quality_col"]
+cell_cols = cell_args["metadata_merge_columns"]["cell_cols"]
+cell_quality_col = cell_args["metadata_merge_columns"]["cell_quality_col"]
+foci_site_col = cell_args["foci_site_col"]
+
+output_resultsdir = summ_cell_args["output_resultsdir"]
+output_resultsdir = pathlib.Path(output_resultsdir, batch)
+output_figuresdir = summ_cell_args["output_figuresdir"]
+output_figuresdir = pathlib.Path(output_figuresdir, batch)
 cell_category_order = summ_cell_args["cell_category_order"]
+cell_category_colors = summ_cell_args["cell_category_colors"]
 
-correlation_threshold = summ_plate_args["correlation_threshold"]
-painting_image_names = summ_plate_args["painting_image_names"]
-barcoding_cycles = summ_plate_args["barcoding_cycles"]
-barcoding_prefix = summ_plate_args["barcoding_prefix"]
+cell_quality = CellQuality(quality_func)
+cell_category_dict = cell_quality.define_cell_quality()
+empty_cell_category = len(cell_category_dict) + 1
+cell_category_dict[empty_cell_category] = "Empty"
+cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"])
+cell_category_list = list(cell_category_dict.values())
 
-cell_count_file = pathlib.Path(summ_cells_results_basedir, batch, "cells", "cell_count.tsv")
-cell_count_df = pd.read_csv(cell_count_file, sep="\t")
-
-figures_output = pathlib.Path(summ_cells_figures_basedir, batch)
-os.makedirs(figures_output, exist_ok=True)
-results_output = pathlib.Path(summ_cells_results_basedir, batch)
-os.makedirs(results_output, exist_ok=True)
-
-# creates x, y coordinates for plotting per-plate views.
-# assumes image numbering starts in upper left corner and proceeds down
-x_seq = 1
-y_seq = 1
-build_seq = []
-final_order = []
-for i in range(1, ((acquisition_side * acquisition_side) +1)):
-    if len(final_order) == (acquisition_side * acquisition_side):
-        break
-    else:
-        build_seq.append([x_seq, y_seq])
-        if len(build_seq) == acquisition_side:
-            x_seq = x_seq +1
-        if y_seq == acquisition_side:
-            y_seq = 0
-            build_seq = build_seq[::-1]
-            final_order.extend(build_seq)
-            build_seq = []
-        y_seq = y_seq + 1
-sites_list = [*range(1, (acquisition_side * acquisition_side) + 1)]
-
-# uses sites_list in case there are fewer analyzed sites than acquired sites
-loc_df = pd.DataFrame(final_order).rename(columns={0:'x_loc', 1:'y_loc'})
-loc_df["Site"] = sites_list
-
-# create total_cell_count
-cell_count_bysite_df = cell_count_df.groupby("site")["cell_count"].sum().reset_index().rename(columns={'cell_count':'total_cell_count'})
-# add total_cell_count to cell_count_df
-cell_count_df = cell_count_df.merge(cell_count_bysite_df, on="site")
-#add in x, y coordinates for plotting
-cell_count_df = cell_count_df.merge(loc_df, left_on="Site", right_on="Site")
-
-# Plot total number of cells per well
-cell_count_totalcells_df = cell_count_df.groupby(["x_loc", "y_loc", "Well", "Site"])["total_cell_count"].mean().reset_index()
-os.makedirs(output_figuresdir, exist_ok=True)
-
-by_well_gg = (
-    gg.ggplot(cell_count_totalcells_df, gg.aes(x="x_loc", y="y_loc")) +
-    gg.geom_point(gg.aes(fill="total_cell_count"), size=10) +
-    gg.geom_text(gg.aes(label="Site"), color="lightgrey") +
-    gg.facet_wrap("~Well") +
-    gg.coord_fixed() +
-    gg.theme_bw() +
-    gg.theme(axis_text=gg.element_blank(),
-             axis_title=gg.element_blank(),
-             strip_background=gg.element_rect(colour="black", fill="#fdfff4")) +
-    gg.scale_fill_cmap(name="magma")
-)
-output_file = pathlib.Path(output_figuresdir, "plate_layout_cells_count_per_well.png")
-by_well_gg.save(output_file, dpi=300, verbose=False)
-
-# Plot cell category ratios per well
-ratio_df = pd.pivot_table(cell_count_df, values='cell_count', index=['site', 'Plate', 'Well', 'Site', 'x_loc', 'y_loc'], columns=['Cell_Quality'])
-ratio_df["Sum"] = ratio_df.sum(axis=1)
-ratio_df["Pass_Filter"] = ratio_df[cell_filter].sum(axis=1)
-fail_filter = [cat for cat in cell_category_order if cat not in cell_filter]
-ratio_df["Fail_Filter"] = ratio_df[fail_filter].sum(axis=1)
-fail_filter_noempty = fail_filter.remove("Empty")
-ratio_df["Fail_Filter_noempty"] = ratio_df[fail_filter].sum(axis=1)
-ratio_df["Pass/Fail_withempty"] = ratio_df["Pass_Filter"]/ratio_df["Fail_Filter"]
-ratio_df["Pass/Fail_0empty"] = ratio_df["Pass_Filter"]/ratio_df["Fail_Filter_noempty"]
-ratio_df["Percent_Empty"] = ratio_df["Empty"]/ratio_df["Sum"]
-ratio_df = ratio_df.drop(cell_category_order + ["Sum", "Pass_Filter", "Fail_Filter", "Fail_Filter_noempty"], 1)
-ratio_df = ratio_df.stack().to_frame().reset_index().rename(columns = {0:"value"})
-
-ratio_gg = (
-    gg.ggplot(ratio_df, gg.aes(x="x_loc", y="y_loc")) +
-    gg.geom_point(gg.aes(fill="value"), size=10) +
-    gg.geom_text(gg.aes(label="Site"), color="lightgrey") +
-    gg.facet_grid("Cell_Quality~Well", scales = "free_y") +
-    gg.coord_fixed() +
-    gg.theme_bw() +
-    gg.theme(axis_text=gg.element_blank(),
-             axis_title=gg.element_blank(),
-             strip_background=gg.element_rect(colour="black", fill="#fdfff4")) +
-    gg.scale_fill_cmap(name="magma")
+# Read and Merge Data
+cell_quality_list = []
+metadata_list = []
+metadata_col_list = (
+    ["Cell_Class"]
+    + cell_cols
+    + barcode_cols
+    + gene_cols
+    + spot_score_count_cols
+    + spot_score_mean_cols
+    + [cell_quality_col, foci_site_col]
 )
 
-output_file = pathlib.Path(output_figuresdir, "plate_layout_ratios_per_well.png")
-ratio_gg.save(output_file, dpi=300, verbose=False)
-
-# Create image dataframe
-sites = [x for x in os.listdir(batch_dir) if x not in ignore_files]
-image_list = []
+input_dir = pathlib.Path(input_basedir, batch, "paint")
+sites = [x for x in os.listdir(input_dir) if x not in ignore_files]
+print(f"There are {len(sites)} sites.")
 
 for site in sites:
-    try:
-        print(f"Now processing {site}...")
-        image_file = pathlib.Path(batch_dir, site, "Image.csv")
-        # Aggregates image information by site into single list
-        image_df = pd.read_csv(image_file)
-        image_df["site"] = site
-        image_df = image_df.assign(
-            Plate=[x[0] for x in image_df.site.str.split("-")],
-            Well=[x[1] for x in image_df.site.str.split("-")],
-            Site=[x[2] for x in image_df.site.str.split("-")],
-        )
-        image_list.append(image_df)
-    except FileNotFoundError:
-        print(f"{site} data not found")
-        continue
 
-image_df = pd.concat(image_list, axis="rows").reset_index(drop=True)
-print("Done concatenating image files")
+    cell_count_file = pathlib.Path(input_dir, site, f"cell_counts_{site}.tsv")
+    metadata_file = pathlib.Path(input_dir, site, f"metadata_{site}.tsv.gz")
 
-#add in x, y coordinates for plotting
-image_df['Site']=image_df['Site'].astype(int)
-loc_df['Site']=loc_df['Site'].astype(int)
-image_df = image_df.merge(loc_df, how="left", on="Site")
+    # Aggregates cell quality by site into single list
+    cell_quality_list.append(pd.read_csv(cell_count_file, sep="\t"))
 
-# Plot final Cells thresholds per well
-cells_finalthresh_gg = (
-gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc")) +
-gg.geom_point(gg.aes(fill="Threshold_FinalThreshold_Cells"), size=10) +
-gg.geom_text(gg.aes(label="Site"), color="lightgrey") +
-gg.facet_wrap("~Well") +
-gg.coord_fixed() +
-gg.theme_bw() +
-gg.theme(axis_text=gg.element_blank(),
-         axis_title=gg.element_blank(),
-         strip_background=gg.element_rect(colour="black", fill="#fdfff4")) +
-gg.scale_fill_cmap(name="magma")
-)
-output_file = pathlib.Path(output_figuresdir, "plate_layout_Cells_FinalThreshold_per_well.png")
-cells_finalthresh_gg.save(output_file, dpi=300, verbose=False)
+    # Aggregates metadata by site into a single list
+    metadata_df = (
+        pd.read_csv(metadata_file, sep="\t")
+        .loc[:, metadata_col_list]
+        .reset_index(drop=True)
+    )
 
-# Plot final Nuclei thresholds per well
-nuclei_finalthresh_gg = (
-gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc")) +
-gg.geom_point(gg.aes(fill="Threshold_FinalThreshold_Nuclei"), size=10) +
-gg.geom_text(gg.aes(label="Site"), color="lightgrey") +
-gg.facet_wrap("~Well") +
-gg.coord_fixed() +
-gg.theme_bw() +
-gg.theme(axis_text=gg.element_blank(),
-         axis_title=gg.element_blank(),
-         strip_background=gg.element_rect(colour="black", fill="#fdfff4")) +
-gg.scale_fill_cmap(name="magma")
-)
-output_file = pathlib.Path(output_figuresdir, "plate_layout_Nuclei_FinalThreshold_per_well.png")
-nuclei_finalthresh_gg.save(output_file, dpi=300, verbose=False)
+    metadata_list.append(metadata_df)
 
-# Plot percent Confluent regions per well
-percent_confluent_gg = (
-gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc")) +
-gg.geom_point(gg.aes(fill="Math_PercentConfluent"), size=10) +
-gg.geom_text(gg.aes(label="Site"), color="lightgrey") +
-gg.facet_wrap("~Well") +
-gg.coord_fixed() +
-gg.theme_bw() +
-gg.theme(axis_text=gg.element_blank(),
-         axis_title=gg.element_blank(),
-         strip_background=gg.element_rect(colour="black", fill="#fdfff4")) +
-gg.scale_fill_cmap(name="magma")
-)
-output_file = pathlib.Path(output_figuresdir, "plate_layout_PercentConfluent_per_well.png")
-percent_confluent_gg.save(output_file, dpi=300, verbose=False)
+# Creates dataframe from cell quality list
+cell_count_df = pd.concat(cell_quality_list, axis="rows").reset_index(drop=True)
 
-# Create list of sites with confluent regions
-confluent_df = image_df.loc[image_df["Math_PercentConfluent"] > 0]
-confluent_df = confluent_df[["site", "Plate", "Well", "Site", "Math_PercentConfluent"]].sort_values(by=["site"]).reset_index(drop=True)
-if len(confluent_df.index) > 0:
-    confluent_output_file = pathlib.Path(results_output, "sites_with_confluent_regions.csv")
-    confluent_df.to_csv(confluent_output_file)
-
-# Power Log Log Slope on Cell Painting images (proxy for focus)
-PLLS_df_cols = ["Plate", "Well", "Site"]
-PLLS_cols = []
-for name in painting_image_names:
-    PLLS_df_cols.append("ImageQuality_PowerLogLogSlope_" + name)
-    PLLS_cols.append("ImageQuality_PowerLogLogSlope_" + name)
-PLLS_df = image_df.loc[:, PLLS_df_cols]
-PLLS_df = PLLS_df.melt(id_vars=['Plate', 'Well', 'Site'], var_name='Channel').replace({'ImageQuality_PowerLogLogSlope_':''}, regex=True)
-
-PLLS_gg = (
-gg.ggplot(PLLS_df, gg.aes(x="Site", y="value", label = "Site")) +
-gg.geom_point() +
-gg.coord_fixed(ratio=.25) +
-gg.geom_text(nudge_y = -.025) +
-gg.facet_grid("Channel~Well", scales = "free_y") +
-gg.theme_bw() +
-gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
+# Assigns the Cell_Quality column to the category datatype and sets categories
+cell_count_df.loc[:, "Cell_Quality"] = pd.Categorical(
+    cell_count_df.Cell_Quality, categories=cell_category_order
 )
 
-output_file = pathlib.Path(output_figuresdir, "PLLS_per_well.png")
-PLLS_gg.save(output_file, dpi=300, verbose=False)
-
-# Outputs list of sites that are saturated in any channel
-# Cell Painting images use >1% saturated, Barcoding images uses >.25% saturated
-cp_sat_cols = []
-bc_sat_cols = []
-nts = ["A", "C", "G", "T"]
-for name in painting_image_names:
-    cp_sat_cols.append("ImageQuality_PercentMaximal_" + name)
-for x in range(1, (barcoding_cycles + 1)):
-    for nt in nts:
-        bc_sat_cols.append("ImageQuality_PercentMaximal_" + barcoding_prefix + "%02d" % x + "_" + nt)
-for col in cp_sat_cols:
-    cp_sat_df = image_df[image_df[col] > 1]
-for col in bc_sat_cols:
-    bc_sat_df = image_df[image_df[col] > .25]
-sat_df_cols = cp_sat_cols + bc_sat_cols
-sat_df_cols.append("site")
-
-sat_df = cp_sat_df.append(bc_sat_df).drop_duplicates(subset = "site")
-
-if len(sat_df.index) > 0:
-    sat_output_file = pathlib.Path(results_output, "saturated_sites.csv")
-    sat_df.to_csv(sat_output_file)
-
-# Plots saturation in Cell Painting images
-cp_sat_df_cols = ["Plate", "Well", "Site"]
-for name in painting_image_names:
-    cp_sat_df_cols.append("ImageQuality_PercentMaximal_" + name)
-    cp_sat_df_cols.append("ImageQuality_StdIntensity_" + name)
-cp_sat_df = image_df.loc[:, cp_sat_df_cols]
-
-cp_sat_df = cp_sat_df.set_index(['Plate', 'Well', 'Site']).stack().reset_index()
-cp_sat_df[['cat', 'type', 'Ch']] = cp_sat_df['level_3'].str.split('_', n=2, expand=True)
-cp_sat_df = cp_sat_df.drop(['level_3', 'cat'], 1)
-cp_sat_df = pd.pivot_table(cp_sat_df, index=['Plate', 'Well', 'Site', 'Ch'], columns=['type']).reset_index()
-cp_sat_df.columns = ['Plate', 'Well', 'Site', 'Ch', 'PercentMax', 'StdIntensity']
-
-cp_saturation_gg = (
-gg.ggplot(cp_sat_df, gg.aes(x="StdIntensity", y="PercentMax", label = "Site")) +
-gg.geom_point() +
-gg.coord_fixed(ratio=.25) +
-gg.geom_text() +
-gg.facet_wrap(["Ch", "Well"], nrow = len(painting_image_names), scales = "free") +
-gg.theme_bw() +
-gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
+# Assigns the Site column to the category datatype
+cell_count_df.loc[:, "site"] = pd.Categorical(
+    cell_count_df.site,
+    categories=(
+        cell_count_df.groupby("site")["cell_count"]
+        .sum()
+        .sort_values(ascending=False)
+        .index.tolist()
+    ),
 )
-output_file = pathlib.Path(output_figuresdir, "cp_saturation.png")
-cp_saturation_gg.save(output_file, dpi=300, verbose=False)
 
-# Plots saturation in Barcoding images
-bc_sat_df_cols = ["Plate", "Well", "Site"]
-for x in range(1, (barcoding_cycles + 1)):
-    for nt in nts:
-        bc_sat_df_cols.append("ImageQuality_PercentMaximal_" + barcoding_prefix + "%02d" % x + "_" + nt)
-        bc_sat_df_cols.append("ImageQuality_StdIntensity_" + barcoding_prefix + "%02d" % x + "_" + nt)
-bc_sat_df = image_df.loc[:, bc_sat_df_cols]
-
-bc_sat_df = bc_sat_df.set_index(['Plate', 'Well', 'Site']).stack().reset_index()
-bc_sat_df[['cat', 'type', 'Ch']] = bc_sat_df['level_3'].str.split('_', n=2, expand=True)
-bc_sat_df = bc_sat_df.drop(['level_3', 'cat'], 1)
-bc_sat_df = pd.pivot_table(bc_sat_df, index=['Plate', 'Well', 'Site', 'Ch'], columns=['type']).reset_index()
-bc_sat_df.columns = ['Plate', 'Well', 'Site', 'Ch', 'PercentMax', 'StdIntensity']
-
-bc_saturation_gg = (
-gg.ggplot(bc_sat_df, gg.aes(x="StdIntensity", y="PercentMax", label = "Site")) +
-gg.geom_point() +
-gg.coord_fixed(ratio=.25) +
-gg.geom_text() +
-gg.facet_wrap(["Ch", "Well"], ncol = 4, scales = "free") +
-gg.theme_bw() +
-gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
+cell_count_df = cell_count_df.assign(
+    Plate=[x[0] for x in cell_count_df.site.str.split("-")],
+    Well=[x[1] for x in cell_count_df.site.str.split("-")],
+    Site=[x[2] for x in cell_count_df.site.str.split("-")],
 )
-output_file = pathlib.Path(output_figuresdir, "bc_saturation.png")
-bc_saturation_gg.save(output_file, dpi=300, verbose=False)
+
+output_folder = pathlib.Path(output_resultsdir, "cells")
+os.makedirs(output_folder, exist_ok=True)
+output_file = pathlib.Path(output_folder, "cell_count.tsv")
+cell_count_df.to_csv(output_file, sep="\t", index=False)
+
+
+# Graph: Cell count with all wells in same graph
+cell_count_gg = (
+    gg.ggplot(cell_count_df, gg.aes(x="site", y="cell_count"))
+    + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
+    + gg.theme_bw()
+    + gg.theme(axis_text_x=gg.element_text(rotation=90, size=5))
+    + gg.xlab("Sites")
+    + gg.ylab("Cell Count")
+    + gg.scale_fill_manual(
+        name="Cell Quality", labels=cell_category_list, values=cell_category_colors
+    )
+)
+
+os.makedirs(output_figuresdir, exist_ok=True)
+output_file = pathlib.Path(
+    output_figuresdir, "all_cellpainting_cellquality_across_sites.png"
+)
+cell_count_gg.save(output_file, dpi=300, width=10, height=7, verbose=False)
+
+# Same graph as above, separated by Well.
+cell_count_gg_parsed = (
+    gg.ggplot(cell_count_df, gg.aes(x="site", y="cell_count"))
+    + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
+    + gg.theme_bw()
+    + gg.theme(
+        axis_text_x=gg.element_text(rotation=90, size=5),
+        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+    )
+    + gg.xlab("Sites")
+    + gg.ylab("Cell Count")
+    + gg.scale_fill_manual(
+        name="Cell Quality", labels=cell_category_order, values=cell_category_colors
+    )
+    + gg.facet_wrap("~Well", drop=False, scales="free_x")
+)
+
+output_file = pathlib.Path(
+    output_figuresdir, "all_cellpainting_cellquality_across_sites_by_well.png"
+)
+cell_count_gg_parsed.save(output_file, dpi=300, width=10, height=7, verbose=False)
+
+#  Total cells in each quality category
+all_count_df = pd.DataFrame(
+    cell_count_df.groupby("Cell_Quality")["cell_count"].sum()
+).reset_index()
+output_folder = pathlib.Path(output_resultsdir, "cells")
+output_file = pathlib.Path(output_folder, "total_cell_count.tsv")
+all_count_df.to_csv(output_file, sep="\t", index=False)
+
+# Graph: Total cells in each quality category
+all_cells = all_count_df.cell_count.sum()
+
+total_cell_count_gg = (
+    gg.ggplot(all_count_df, gg.aes(x="Cell_Quality", y="cell_count"))
+    + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
+    + gg.theme_bw()
+    + gg.theme(axis_text_x=gg.element_text(rotation=90, size=9))
+    + gg.xlab("")
+    + gg.ylab("Cell Count")
+    + gg.ggtitle(f"{all_cells} Total Cells")
+    + gg.scale_fill_manual(
+        name="Cell Quality", labels=cell_category_order, values=cell_category_colors,
+    )
+)
+
+output_file = pathlib.Path(output_figuresdir, "total_cell_count.png")
+total_cell_count_gg.save(output_file, dpi=300, width=5, height=6, verbose=False)
+
+total_cell_count_gg
+
+print(f"There are a total of {all_cells} cells in {batch}")
+
+# Total cell number by well
+all_well_count_df = pd.DataFrame(
+    cell_count_df.groupby(["Cell_Quality", "Well"])["cell_count"].sum()
+).reset_index()
+
+# Graph: Total cell number by well
+total_cell_well_count_gg = (
+    gg.ggplot(all_well_count_df, gg.aes(x="Well", y="cell_count"))
+    + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
+    + gg.theme_bw()
+    + gg.theme(axis_text_x=gg.element_text(rotation=90, size=9))
+    + gg.xlab("")
+    + gg.ylab("Cell Count")
+    + gg.facet_wrap("~Cell_Quality")
+    + gg.scale_fill_manual(
+        name="Cell Quality", labels=cell_category_order, values=cell_category_colors,
+    )
+    + gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
+)
+
+output_file = pathlib.Path(output_figuresdir, "total_cell_count_by_well.png")
+total_cell_well_count_gg.save(output_file, dpi=400, width=6, height=5, verbose=False)
