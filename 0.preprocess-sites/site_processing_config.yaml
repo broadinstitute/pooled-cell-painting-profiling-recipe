@@ -9,7 +9,7 @@ core:
   project_dir: /Users/gway/work/projects/
   output_dir: data
   categorize_cell_quality: simple
-  acquisition_side: 10
+  sites_per_image_grid_side: 10
   compartments:
     - Cells
     - Nuclei
