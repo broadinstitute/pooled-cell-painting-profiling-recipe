@@ -19,7 +19,7 @@ e.g.* /Users/gway/work/projects/
 e.g.* simple  
 *e.g.* simple_plus
 
-`acquisition_side:` *The number of images making one side of the acquisition grid. If there are 100 input images then:  
+`sites_per_image_grid_side:` *The number of images making one side of the square  grid of images being processed. If there are 100 input images then:  
 e.g.* 10  
 
 `compartments:` *The cellular compartments measured in the cell painting experiment. Default cell painting compartments are:  
