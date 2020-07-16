@@ -6,8 +6,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# import numpy as np
-
 sys.path.append(os.path.join("..", "scripts"))
 from config_utils import process_config_file
 from cell_quality_utils import CellQuality
@@ -33,14 +31,13 @@ summ_plate_args = config["summarize-plate"]
 batch = core_args["batch"]
 quality_func = core_args["categorize_cell_quality"]
 ignore_files = core_args["ignore_files"]
-acquisition_side = core_args["acquisition_side"]
+sites_per_image_grid_side = core_args["sites_per_image_grid_side"]
 batch_dir = core_args["batch_dir"]
 
 cell_filter = spots_args["cell_filter"]
 
 summ_cells_results_basedir = summ_cell_args["output_resultsdir"]
 summ_cells_figures_basedir = summ_cell_args["output_figuresdir"]
-output_figuresdir = pathlib.Path(summ_cells_figures_basedir, batch)
 cell_category_order = summ_cell_args["cell_category_order"]
 
 correlation_threshold = summ_plate_args["correlation_threshold"]
@@ -58,42 +55,38 @@ os.makedirs(figures_output, exist_ok=True)
 results_output = pathlib.Path(summ_cells_results_basedir, batch)
 os.makedirs(results_output, exist_ok=True)
 
-# creates x, y coordinates for plotting per-plate views.
-# assumes image numbering starts in upper left corner and proceeds down
-x_seq = 1
-y_seq = 1
-build_seq = []
+# Creates x, y coordinates for plotting per-plate views.
+# Assumes image numbering starts in upper left corner and proceeds down
 final_order = []
-for i in range(1, ((acquisition_side * acquisition_side) + 1)):
-    if len(final_order) == (acquisition_side * acquisition_side):
-        break
-    else:
-        build_seq.append([x_seq, y_seq])
-        if len(build_seq) == acquisition_side:
-            x_seq = x_seq + 1
-        if y_seq == acquisition_side:
-            y_seq = 0
-            build_seq = build_seq[::-1]
-            final_order.extend(build_seq)
-            build_seq = []
-        y_seq = y_seq + 1
-sites_list = [*range(1, (acquisition_side * acquisition_side) + 1)]
+for i in range(1, sites_per_image_grid_side + 1):
+    build_seq = list(
+        zip(
+            ([i] * (sites_per_image_grid_side + 1)),
+            reversed(range(1, (sites_per_image_grid_side + 1))),
+        )
+    )
+    final_order = final_order + build_seq
 
-# uses sites_list in case there are fewer analyzed sites than acquired sites
-loc_df = pd.DataFrame(final_order).rename(columns={0: "x_loc", 1: "y_loc"})
-loc_df["Site"] = sites_list
+# Uses sites_list in case there are fewer analyzed sites than acquired sites
+sites_list = [*range(1, (sites_per_image_grid_side * sites_per_image_grid_side) + 1)]
+loc_df = (
+    pd.DataFrame(final_order)
+    .rename(columns={0: "x_loc", 1: "y_loc"})
+    .assign(Site=sites_list)
+)
 
-# create total_cell_count
+# Create total_cell_count
 cell_count_bysite_df = (
-    cell_count_df.groupby("site")["cell_count"]
+    cell_count_df.groupby("site_full")["cell_count"]
     .sum()
     .reset_index()
     .rename(columns={"cell_count": "total_cell_count"})
 )
-# add total_cell_count to cell_count_df
-cell_count_df = cell_count_df.merge(cell_count_bysite_df, on="site")
-# add in x, y coordinates for plotting
-cell_count_df = cell_count_df.merge(loc_df, left_on="Site", right_on="Site")
+
+# Add total_cell_count to cell_count_df and add in x, y coordinates for plotting
+cell_count_df = cell_count_df.merge(cell_count_bysite_df, on="site_full").merge(
+    loc_df, on="Site"
+)
 
 # Plot total number of cells per well
 cell_count_totalcells_df = (
@@ -101,7 +94,7 @@ cell_count_totalcells_df = (
     .mean()
     .reset_index()
 )
-os.makedirs(output_figuresdir, exist_ok=True)
+os.makedirs(figures_output, exist_ok=True)
 
 by_well_gg = (
     gg.ggplot(cell_count_totalcells_df, gg.aes(x="x_loc", y="y_loc"))
@@ -117,31 +110,44 @@ by_well_gg = (
     )
     + gg.scale_fill_cmap(name="magma")
 )
-output_file = pathlib.Path(output_figuresdir, "plate_layout_cells_count_per_well.png")
+output_file = pathlib.Path(figures_output, "plate_layout_cells_count_per_well.png")
 by_well_gg.save(output_file, dpi=300, verbose=False)
+by_well_gg
 
 # Plot cell category ratios per well
 ratio_df = pd.pivot_table(
     cell_count_df,
     values="cell_count",
-    index=["site", "Plate", "Well", "Site", "x_loc", "y_loc"],
+    index=["site_full", "Plate", "Well", "Site", "x_loc", "y_loc"],
     columns=["Cell_Quality"],
 )
-ratio_df["Sum"] = ratio_df.sum(axis=1)
-ratio_df["Pass_Filter"] = ratio_df[cell_filter].sum(axis=1)
-fail_filter = [cat for cat in cell_category_order if cat not in cell_filter]
-ratio_df["Fail_Filter"] = ratio_df[fail_filter].sum(axis=1)
-fail_filter_noempty = fail_filter.remove("Empty")
-ratio_df["Fail_Filter_noempty"] = ratio_df[fail_filter].sum(axis=1)
-ratio_df["Pass/Fail_withempty"] = ratio_df["Pass_Filter"] / ratio_df["Fail_Filter"]
-ratio_df["Pass/Fail_0empty"] = ratio_df["Pass_Filter"] / ratio_df["Fail_Filter_noempty"]
-ratio_df["Percent_Empty"] = ratio_df["Empty"] / ratio_df["Sum"]
-ratio_df = ratio_df.drop(
-    cell_category_order + ["Sum", "Pass_Filter", "Fail_Filter", "Fail_Filter_noempty"],
-    1,
+ratio_df = ratio_df.assign(
+    Sum=ratio_df.sum(axis=1), Pass_Filter=ratio_df[cell_filter].sum(axis=1)
 )
-ratio_df = ratio_df.stack().to_frame().reset_index().rename(columns={0: "value"})
-
+fail_filter = [cat for cat in cell_category_order if cat not in cell_filter]
+fail_filter_noempty = [
+    cat for cat in cell_category_order if cat not in cell_filter if cat != "Empty"
+]
+ratio_df = ratio_df.assign(
+    Fail_Filter=ratio_df[fail_filter].sum(axis=1),
+    Fail_Filter_noempty=ratio_df[fail_filter_noempty].sum(axis=1),
+)
+ratio_df = ratio_df.assign(
+    Pass_Fail_withempty=ratio_df["Pass_Filter"] / ratio_df["Fail_Filter"],
+    Pass_Fail_0empty=ratio_df["Pass_Filter"] / ratio_df["Fail_Filter_noempty"],
+    Percent_Empty=ratio_df["Empty"] / ratio_df["Sum"],
+)
+ratio_df = (
+    ratio_df.drop(
+        cell_category_order
+        + ["Sum", "Pass_Filter", "Fail_Filter", "Fail_Filter_noempty"],
+        1,
+    )
+    .stack()
+    .to_frame()
+    .reset_index()
+    .rename(columns={0: "value"})
+)
 ratio_gg = (
     gg.ggplot(ratio_df, gg.aes(x="x_loc", y="y_loc"))
     + gg.geom_point(gg.aes(fill="value"), size=10)
@@ -157,7 +163,7 @@ ratio_gg = (
     + gg.scale_fill_cmap(name="magma")
 )
 
-output_file = pathlib.Path(output_figuresdir, "plate_layout_ratios_per_well.png")
+output_file = pathlib.Path(figures_output, "plate_layout_ratios_per_well.png")
 ratio_gg.save(output_file, dpi=300, verbose=False)
 
 # Create image dataframe
@@ -184,7 +190,7 @@ for site in sites:
 image_df = pd.concat(image_list, axis="rows").reset_index(drop=True)
 print("Done concatenating image files")
 
-# add in x, y coordinates for plotting
+# Add in x, y coordinates for plotting
 image_df["Site"] = image_df["Site"].astype(int)
 loc_df["Site"] = loc_df["Site"].astype(int)
 image_df = image_df.merge(loc_df, how="left", on="Site")
@@ -205,7 +211,7 @@ cells_finalthresh_gg = (
     + gg.scale_fill_cmap(name="magma")
 )
 output_file = pathlib.Path(
-    output_figuresdir, "plate_layout_Cells_FinalThreshold_per_well.png"
+    figures_output, "plate_layout_Cells_FinalThreshold_per_well.png"
 )
 cells_finalthresh_gg.save(output_file, dpi=300, verbose=False)
 
@@ -225,7 +231,7 @@ nuclei_finalthresh_gg = (
     + gg.scale_fill_cmap(name="magma")
 )
 output_file = pathlib.Path(
-    output_figuresdir, "plate_layout_Nuclei_FinalThreshold_per_well.png"
+    figures_output, "plate_layout_Nuclei_FinalThreshold_per_well.png"
 )
 nuclei_finalthresh_gg.save(output_file, dpi=300, verbose=False)
 
@@ -245,7 +251,7 @@ percent_confluent_gg = (
     + gg.scale_fill_cmap(name="magma")
 )
 output_file = pathlib.Path(
-    output_figuresdir, "plate_layout_PercentConfluent_per_well.png"
+    figures_output, "plate_layout_PercentConfluent_per_well.png"
 )
 percent_confluent_gg.save(output_file, dpi=300, verbose=False)
 
@@ -283,7 +289,7 @@ PLLS_gg = (
     + gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
 )
 
-output_file = pathlib.Path(output_figuresdir, "PLLS_per_well.png")
+output_file = pathlib.Path(figures_output, "PLLS_per_well.png")
 PLLS_gg.save(output_file, dpi=300, verbose=False)
 
 # Outputs list of sites that are saturated in any channel
@@ -335,7 +341,7 @@ cp_saturation_gg = (
     + gg.theme_bw()
     + gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
 )
-output_file = pathlib.Path(output_figuresdir, "cp_saturation.png")
+output_file = pathlib.Path(figures_output, "cp_saturation.png")
 cp_saturation_gg.save(output_file, dpi=300, verbose=False)
 
 # Plots saturation in Barcoding images
@@ -367,7 +373,7 @@ bc_saturation_gg = (
     + gg.theme_bw()
     + gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
 )
-output_file = pathlib.Path(output_figuresdir, "bc_saturation.png")
+output_file = pathlib.Path(figures_output, "bc_saturation.png")
 bc_saturation_gg.save(output_file, dpi=300, verbose=False)
 
 # Create list of questionable channel correlations (alignments)
