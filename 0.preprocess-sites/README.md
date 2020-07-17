@@ -30,4 +30,5 @@ This step compiles all the results from the spot and cell processing and outputs
 ## Step 4 - Image and Segmentation Quality Control
 
 This step outputs a series of QC metrics pertaining to the actual image acquisition and image segmentation quality.
-The QC metrics are visualized by site across wells per experiment.
+The QC metrics are visualized by site across wells per experiment. 
+It also outputs lists of sites that trigger QC flags for confluence, image saturation, and image alignment.
