@@ -65,7 +65,7 @@ for i in range(1, sites_per_image_grid_side + 1):
             reversed(range(1, (sites_per_image_grid_side + 1))),
         )
     )
-    final_order = final_order + build_seq
+    final_order += build_seq
 
 # Uses sites_list in case there are fewer analyzed sites than acquired sites
 sites_list = [*range(1, (sites_per_image_grid_side * sites_per_image_grid_side) + 1)]
