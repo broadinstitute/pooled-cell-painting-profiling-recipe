@@ -18,7 +18,7 @@ We typically form aggregate profiles for both gene- and guide-level perturbation
 
 ## Step 2 - Normalize
 
-Perform a normalization scheme for the provided data level.
+This step performs a normalization scheme for the provided data level.
 The data levels include single cell, genes, and guides.
 
 ## Step 3 - Feature Select
