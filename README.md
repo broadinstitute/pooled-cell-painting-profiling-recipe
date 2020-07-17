@@ -50,4 +50,4 @@ More usage instructions can be found in the template repo linked above.
 Briefly, the goal of the weld is to tightly couple the Pooled Cell Painting processed data to versioned code that performed the processing.
 This recipe is the versioned code and a GitHub submodule links the recipe by commit hash.
 
-The recipe will be interacted with via a series of configuration yaml files defined in the data repository.
+The recipe is interacted with via a series of configuration yaml files defined in the data repository.
