@@ -9,18 +9,18 @@ The `profiling_config.yaml` controls all the pertinent details for this module.
 
 ## Step 0 - Merge Single Cells
 
-Merge compartment data and metadata, filter cells and features, and output single cell morphology profiles.
+This step merges compartment data and metadata, filters cells and features, and outputs single cell morphology profiles.
 
 ## Step 1 - Aggregate
 
-Combine single cell data by averaging morphology features to form "aggregate" profiles.
+This step combines single cell data by averaging morphology features to form "aggregate" profiles.
 We typically form aggregate profiles for both gene- and guide-level perturbations.
 
 ## Step 2 - Normalize
 
-Perform a normalization scheme for the provided data level.
+This step performs a normalization scheme for the provided data level.
 The data levels include single cell, genes, and guides.
 
 ## Step 3 - Feature Select
 
-Perform a series of feature selection steps to isolate the most pertinent morphology features in the data.
+This step performs a series of feature selection steps to isolate the most pertinent morphology features in the data.
