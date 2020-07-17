@@ -19,7 +19,7 @@ The `Spots` ingredients represent in situ sequencing (ISS) results used for "cel
 Cell calling is the procedure that assigns a specific CRISPR barcode to an individual single cell.
 Because the experiment is "pooled", there are thousands of CRISPR barcodes present in a single well.
 
-These measurements for both data ingredients are currently made by CellProfiler software (customized Pooled Cell Painting plugins).
+These measurements for both data ingredients are currently made by CellProfiler software (using customized Pooled Cell Painting plugins).
 
 ## Recipe Steps
 
