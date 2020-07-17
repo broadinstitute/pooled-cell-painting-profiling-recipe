@@ -1,4 +1,4 @@
-# Pooled Cell Painting - Image-based Profiling Pipeline Recipe
+# Pooled Cell Painting - Image-based Profiling Pipeline Recipe :woman_cook: :man_cook:
 
 A step-by-step data processing pipeline for Pooled Cell Painting data.
 
@@ -27,8 +27,8 @@ All cookbooks also include specific instructions, or steps, for each recipe.
 
 Our recipe includes two modules:
 
-1. [Preprocessing](0.preprocess-sites/README.md)
-2. [Profile generation](1.generate-profiles/README.md)
+1. [Preprocessing](0.preprocess-sites/)
+2. [Profile generation](1.generate-profiles/)
 
 The output data are structured in a way that includes measurements from many individual "sites" across a single plate.
 Each site can be thought of as a single field of view that consists of many different images from the four Cell Painting channels, and four ISS channels across `n` cycles.
