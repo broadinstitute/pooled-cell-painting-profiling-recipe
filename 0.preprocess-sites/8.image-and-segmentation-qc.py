@@ -269,6 +269,7 @@ if len(confluent_df.index) > 0:
     confluent_df.to_csv(confluent_output_file)
 
 # Power Log Log Slope on Cell Painting images (proxy for focus)
+# Any point too high or too low may have focus issues
 PLLS_df_cols = ["Plate", "Well", "Site"]
 PLLS_cols = []
 for name in painting_image_names:
@@ -318,6 +319,10 @@ if len(sat_df.index) > 0:
     sat_df.to_csv(sat_output_file)
 
 # Plots saturation in Cell Painting images
+# x = std dev of intensity (to find images that have unusually bright spots)
+# y = % image that is saturated (to find images that are unusually bright)
+# Look at points off cluster where x > 1
+
 cp_sat_df_cols = ["Plate", "Well", "Site"]
 for name in painting_image_names:
     cp_sat_df_cols.append("ImageQuality_PercentMaximal_" + name)
@@ -345,6 +350,9 @@ output_file = pathlib.Path(figures_output, "cp_saturation.png")
 cp_saturation_gg.save(output_file, dpi=300, verbose=False)
 
 # Plots saturation in Barcoding images
+# x = std dev of intensity (to find images that have unusually bright spots)
+# y = % image that is saturated (to find images that are unusually bright)
+# Look at points off cluster where x > .2
 bc_sat_df_cols = ["Plate", "Well", "Site"]
 for x in range(1, (barcoding_cycles + 1)):
     for nt in nts:
