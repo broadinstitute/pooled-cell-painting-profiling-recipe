@@ -20,7 +20,7 @@ As well, we also output several summary text files to be visualized in a later s
 
 ## Step 2 - Process Cells
 
-This step will process all CellProfiler single cell features across all imaging sites.
+This step combines all CellProfiler single cell features measured in all compartments across all imaging sites.
 We output two text files including cell metadata and cell count summary.
 
 ## Step 3 - Visualize Summary
