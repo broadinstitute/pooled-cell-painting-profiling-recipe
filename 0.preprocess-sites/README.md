@@ -4,7 +4,7 @@ In this first module of the recipe, we perform a series of steps to prepare data
 The `preprocessing_config.yaml` controls all the pertinent details for this module.
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/broadinstitute/pooled-cp-profiling-recipe/master/0.preprocess-sites/media/preprocessing_workflow.png" width="500">
+<img src="https://raw.githubusercontent.com/broadinstitute/pooled-cell-painting-profiling-recipe/82eaf532e7a3ab145c4b821268c13c531b693dcb/0.preprocess-sites/media/preprocessing_workflow.png" width="500">
 </p>
 
 ## Step 0 - Prefilter Features
