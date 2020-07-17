@@ -13,7 +13,7 @@ This step merges compartment data and metadata, filters cells and features, and 
 
 ## Step 1 - Aggregate
 
-Combine single cell data by averaging morphology features to form "aggregate" profiles.
+This step combines single cell data by averaging morphology features to form "aggregate" profiles.
 We typically form aggregate profiles for both gene- and guide-level perturbations.
 
 ## Step 2 - Normalize
