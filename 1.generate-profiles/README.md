@@ -9,7 +9,7 @@ The `profiling_config.yaml` controls all the pertinent details for this module.
 
 ## Step 0 - Merge Single Cells
 
-Merge compartment data and metadata, filter cells and features, and output single cell morphology profiles.
+This step merges compartment data and metadata, filters cells and features, and outputs single cell morphology profiles.
 
 ## Step 1 - Aggregate
 
