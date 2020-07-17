@@ -23,4 +23,4 @@ The data levels include single cell, genes, and guides.
 
 ## Step 3 - Feature Select
 
-Perform a series of feature selection steps to isolate the most pertinent morphology features in the data.
+This step performs a series of feature selection steps to isolate the most pertinent morphology features in the data.
