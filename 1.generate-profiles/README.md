@@ -1,0 +1,26 @@
+# Generate Profiles
+
+In this second module of the recipe, we perform a series of steps to convert single cell data into morphology profiles.
+The `profiling_config.yaml` controls all the pertinent details for this module.
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/broadinstitute/pooled-cp-profiling-recipe/master/1.generate-profiles/media/profiling_workflow.png" width="500">
+</p>
+
+## Step 0 - Merge Single Cells
+
+Merge compartment data and metadata, filter cells and features, and output single cell morphology profiles.
+
+## Step 1 - Aggregate
+
+Combine single cell data by averaging morphology features to form "aggregate" profiles.
+We typically form aggregate profiles for both gene- and guide-level perturbations.
+
+## Step 2 - Normalize
+
+Perform a normalization scheme for the provided data level.
+The data levels include single cell, genes, and guides.
+
+## Step 3 - Feature Select
+
+Perform a series of feature selection steps to isolate the most pertinent morphology features in the data.
