@@ -16,7 +16,7 @@ This step flags all of these features for downstream removal.
 
 This step processes all in situ sequencing (ISS) spots, corresponding to CRISPR barcodes, across all imaging sites.
 It outputs several figures describing barcode quality, barcode counts, cell quality, and cell assignment counts.
-As well, we also output several summary text files to be visualized in a later step.
+It also outputs several summary text files to be visualized in a later step.
 
 ## Step 2 - Process Cells
 
