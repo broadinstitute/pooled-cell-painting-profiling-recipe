@@ -31,7 +31,7 @@ Our recipe includes two modules:
 2. [Profile generation](1.generate-profiles/)
 
 The output data are structured in a way that includes measurements from many individual "sites" across a single plate.
-Each site can be thought of as a single field of view that consists of many different images from the four Cell Painting channels, and four ISS channels across `n` cycles.
+Each site can be thought of as a single field of view that consists of many different images from the five Cell Painting channels, and four ISS channels across `n` cycles.
 The number of cycles is determined as part of experimental design and is typically selected to ensure zero collisions between CRISPR barcodes.
 
 The recipe steps first preprocess spots and cells, output quality control (QC) metrics, and perform filtering.
