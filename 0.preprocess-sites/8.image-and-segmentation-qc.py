@@ -3,8 +3,7 @@ import sys
 import pathlib
 import argparse
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotnine as gg
 
 sys.path.append(os.path.join("..", "scripts"))
 from config_utils import process_config_file
@@ -96,6 +95,9 @@ cell_count_totalcells_df = (
 )
 os.makedirs(figures_output, exist_ok=True)
 
+Plate = cell_count_df["Plate"].unique()
+Plate = Plate[0]
+
 by_well_gg = (
     gg.ggplot(cell_count_totalcells_df, gg.aes(x="x_loc", y="y_loc"))
     + gg.geom_point(gg.aes(fill="total_cell_count"), size=10)
@@ -103,6 +105,7 @@ by_well_gg = (
     + gg.facet_wrap("~Well")
     + gg.coord_fixed()
     + gg.theme_bw()
+    + gg.ggtitle(f"Total Cells/Well \n {Plate}")
     + gg.theme(
         axis_text=gg.element_blank(),
         axis_title=gg.element_blank(),
@@ -112,7 +115,6 @@ by_well_gg = (
 )
 output_file = pathlib.Path(figures_output, "plate_layout_cells_count_per_well.png")
 by_well_gg.save(output_file, dpi=300, verbose=False)
-by_well_gg
 
 # Plot cell category ratios per well
 ratio_df = pd.pivot_table(
@@ -146,15 +148,18 @@ ratio_df = (
     .stack()
     .to_frame()
     .reset_index()
-    .rename(columns={0: "value"})
+    .rename(columns={0: "Ratio"})
 )
+
 ratio_gg = (
     gg.ggplot(ratio_df, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill="value"), size=10)
-    + gg.geom_text(gg.aes(label="Site"), color="lightgrey")
+    + gg.geom_point(gg.aes(fill="Ratio"), size=5)
+    + gg.geom_text(gg.aes(label="Site"), size=4, color="lightgrey")
     + gg.facet_grid("Cell_Quality~Well", scales="free_y")
     + gg.coord_fixed()
     + gg.theme_bw()
+    + gg.ggtitle(f"Quality Ratio \n {Plate}")
+    + gg.coord_fixed()
     + gg.theme(
         axis_text=gg.element_blank(),
         axis_title=gg.element_blank(),
@@ -164,7 +169,13 @@ ratio_gg = (
 )
 
 output_file = pathlib.Path(figures_output, "plate_layout_ratios_per_well.png")
-ratio_gg.save(output_file, dpi=300, verbose=False)
+ratio_gg.save(
+    output_file,
+    dpi=300,
+    width=(len(ratio_df["Well"].unique()) + 2),
+    height=6,
+    verbose=False,
+)
 
 # Create image dataframe
 sites = [x for x in os.listdir(batch_dir) if x not in ignore_files]
@@ -203,12 +214,14 @@ cells_finalthresh_gg = (
     + gg.facet_wrap("~Well")
     + gg.coord_fixed()
     + gg.theme_bw()
+    + gg.ggtitle(f"Cell Thresholds \n {Plate}")
     + gg.theme(
         axis_text=gg.element_blank(),
         axis_title=gg.element_blank(),
         strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
     )
     + gg.scale_fill_cmap(name="magma")
+    + gg.labs(fill="Threshold")
 )
 output_file = pathlib.Path(
     figures_output, "plate_layout_Cells_FinalThreshold_per_well.png"
@@ -223,12 +236,14 @@ nuclei_finalthresh_gg = (
     + gg.facet_wrap("~Well")
     + gg.coord_fixed()
     + gg.theme_bw()
+    + gg.ggtitle(f"Nuclei Thresholds \n {Plate}")
     + gg.theme(
         axis_text=gg.element_blank(),
         axis_title=gg.element_blank(),
         strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
     )
     + gg.scale_fill_cmap(name="magma")
+    + gg.labs(fill="Threshold")
 )
 output_file = pathlib.Path(
     figures_output, "plate_layout_Nuclei_FinalThreshold_per_well.png"
@@ -243,16 +258,16 @@ percent_confluent_gg = (
     + gg.facet_wrap("~Well")
     + gg.coord_fixed()
     + gg.theme_bw()
+    + gg.ggtitle(f"Percent Confluent \n {Plate}")
     + gg.theme(
         axis_text=gg.element_blank(),
         axis_title=gg.element_blank(),
         strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
     )
     + gg.scale_fill_cmap(name="magma")
+    + gg.labs(fill="Percent")
 )
-output_file = pathlib.Path(
-    figures_output, "plate_layout_PercentConfluent_per_well.png"
-)
+output_file = pathlib.Path(figures_output, "plate_layout_PercentConfluent_per_well.png")
 percent_confluent_gg.save(output_file, dpi=300, verbose=False)
 
 # Create list of sites with confluent regions
@@ -282,16 +297,26 @@ PLLS_df = PLLS_df.melt(id_vars=["Plate", "Well", "Site"], var_name="Channel").re
 
 PLLS_gg = (
     gg.ggplot(PLLS_df, gg.aes(x="Site", y="value", label="Site"))
-    + gg.geom_point()
     + gg.coord_fixed(ratio=0.25)
-    + gg.geom_text(nudge_y=-0.025)
+    + gg.geom_text(size=6)
     + gg.facet_grid("Channel~Well", scales="free_y")
+    + gg.ggtitle(f"Image focus \n {Plate}")
     + gg.theme_bw()
-    + gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
+    + gg.ylab("Power log log slope")
+    + gg.theme(
+        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+        axis_text_y=gg.element_text(size=4),
+    )
 )
 
 output_file = pathlib.Path(figures_output, "PLLS_per_well.png")
-PLLS_gg.save(output_file, dpi=300, verbose=False)
+PLLS_gg.save(
+    output_file,
+    width=(len(PLLS_df["Well"].unique()) + 2),
+    height=8,
+    dpi=300,
+    verbose=False,
+)
 
 # Outputs list of sites that are saturated in any channel
 # Cell Painting images use >1% saturated, Barcoding images uses >.25% saturated
@@ -322,7 +347,6 @@ if len(sat_df.index) > 0:
 # x = std dev of intensity (to find images that have unusually bright spots)
 # y = % image that is saturated (to find images that are unusually bright)
 # Look at points off cluster where x > 1
-
 cp_sat_df_cols = ["Plate", "Well", "Site"]
 for name in painting_image_names:
     cp_sat_df_cols.append("ImageQuality_PercentMaximal_" + name)
@@ -337,17 +361,33 @@ cp_sat_df = pd.pivot_table(
 ).reset_index()
 cp_sat_df.columns = ["Plate", "Well", "Site", "Ch", "PercentMax", "StdIntensity"]
 
+cp_saturation_ymax = max(cp_sat_df.PercentMax)
+if cp_saturation_ymax < 1:
+    cp_saturation_ymax = 1
+
 cp_saturation_gg = (
     gg.ggplot(cp_sat_df, gg.aes(x="StdIntensity", y="PercentMax", label="Site"))
-    + gg.geom_point()
     + gg.coord_fixed(ratio=0.25)
-    + gg.geom_text()
+    + gg.geom_text(size=6)
+    + gg.ylim([0, cp_saturation_ymax])
     + gg.facet_wrap(["Ch", "Well"], nrow=len(painting_image_names), scales="free")
     + gg.theme_bw()
-    + gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
+    + gg.ggtitle("Cell Painting Image Saturation")
+    + gg.theme(
+        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+        strip_text=gg.element_text(size=7),
+        axis_text=gg.element_text(size=6),
+        subplots_adjust={"wspace": 0.2},
+    )
 )
 output_file = pathlib.Path(figures_output, "cp_saturation.png")
-cp_saturation_gg.save(output_file, dpi=300, verbose=False)
+cp_saturation_gg.save(
+    output_file,
+    dpi=300,
+    width=(len(cp_sat_df["Well"].unique()) + 2),
+    height=(len(cp_sat_df["Ch"].unique())),
+    verbose=False,
+)
 
 # Plots saturation in Barcoding images
 # x = std dev of intensity (to find images that have unusually bright spots)
@@ -372,17 +412,34 @@ bc_sat_df = pd.pivot_table(
 ).reset_index()
 bc_sat_df.columns = ["Plate", "Well", "Site", "Ch", "PercentMax", "StdIntensity"]
 
-bc_saturation_gg = (
-    gg.ggplot(bc_sat_df, gg.aes(x="StdIntensity", y="PercentMax", label="Site"))
-    + gg.geom_point()
-    + gg.coord_fixed(ratio=0.25)
-    + gg.geom_text()
-    + gg.facet_wrap(["Ch", "Well"], ncol=4, scales="free")
-    + gg.theme_bw()
-    + gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
-)
-output_file = pathlib.Path(figures_output, "bc_saturation.png")
-bc_saturation_gg.save(output_file, dpi=300, verbose=False)
+bc_saturation_ymax = max(bc_sat_df.PercentMax)
+if bc_saturation_ymax < 0.2:
+    bc_saturation_ymax = 0.2
+
+for well in bc_sat_df.Well.unique():
+    bc_saturation_gg = (
+        gg.ggplot(
+            bc_sat_df.query("Well == @well"),
+            gg.aes(x="StdIntensity", y="PercentMax", label="Site"),
+        )
+        + gg.coord_fixed(ratio=0.25)
+        + gg.geom_text(size=6)
+        + gg.facet_wrap("~Ch", ncol=4, scales="free")
+        + gg.ylim([0, bc_saturation_ymax])
+        + gg.theme_bw()
+        + gg.ggtitle(f"Barcoding Image Saturation (Well: {well})")
+        + gg.theme(
+            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+            strip_text=gg.element_text(size=7),
+            axis_text=gg.element_text(size=6),
+            subplots_adjust={"wspace": 0.7},
+        )
+    )
+
+    output_file = pathlib.Path(figures_output, f"bc_saturation_{well}.png")
+    bc_saturation_gg.save(
+        output_file, dpi=300, width=5, height=(barcoding_cycles + 2), verbose=False
+    )
 
 # Create list of questionable channel correlations (alignments)
 corr_df_cols = ["Plate", "Well", "Site", "site"]
