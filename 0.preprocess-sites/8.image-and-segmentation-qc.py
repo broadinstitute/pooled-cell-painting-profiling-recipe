@@ -151,11 +151,20 @@ ratio_df = (
     .rename(columns={0: "Ratio"})
 )
 
+quality_recode = {
+    "Pass_Fail_withempty": "Pass/Fail (with empty)",
+    "Pass_Fail_0empty": "Pass/Fail (without empty)",
+    "Percent_Empty": "Percent Empty",
+}
+ratio_df = ratio_df.assign(
+    cell_quality_recode=ratio_df.Cell_Quality.replace(quality_recode)
+)
+
 ratio_gg = (
     gg.ggplot(ratio_df, gg.aes(x="x_loc", y="y_loc"))
     + gg.geom_point(gg.aes(fill="Ratio"), size=5)
     + gg.geom_text(gg.aes(label="Site"), size=4, color="lightgrey")
-    + gg.facet_grid("Cell_Quality~Well", scales="free_y")
+    + gg.facet_grid("cell_quality_recode~Well", scales="free_y")
     + gg.coord_fixed()
     + gg.theme_bw()
     + gg.ggtitle(f"Quality Ratio \n {Plate}")
