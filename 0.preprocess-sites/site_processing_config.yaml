@@ -9,6 +9,7 @@ core:
   project_dir: /Users/gway/work/projects/
   output_dir: data
   categorize_cell_quality: simple
+  sites_per_image_grid_side: 10
   compartments:
     - Cells
     - Nuclei
@@ -86,3 +87,15 @@ summarize-cells:
   perform: true
   output_resultsdir: results
   output_figuresdir: figures
+---
+summarize-plate:
+  perform: true
+  correlation_threshold: .2
+  painting_image_names:
+    - Pre_ConA
+    - Pre_DAPI_Painting
+    - Pre_Mito
+    - Pre_Phalloidin
+    - Pre_WGA
+  barcoding_cycles: 10
+  barcoding_prefix: CorrCycle

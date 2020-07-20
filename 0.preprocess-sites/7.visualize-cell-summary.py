@@ -95,18 +95,22 @@ for site in sites:
     metadata_list.append(metadata_df)
 
 # Creates dataframe from cell quality list
-cell_count_df = pd.concat(cell_quality_list, axis="rows").reset_index(drop=True)
+cell_count_df = (
+    pd.concat(cell_quality_list, axis="rows")
+    .rename(columns={"site": "site_full"})
+    .reset_index(drop=True)
+)
 
 # Assigns the Cell_Quality column to the category datatype and sets categories
 cell_count_df.loc[:, "Cell_Quality"] = pd.Categorical(
     cell_count_df.Cell_Quality, categories=cell_category_order
 )
 
-# Assigns the Site column to the category datatype
-cell_count_df.loc[:, "site"] = pd.Categorical(
-    cell_count_df.site,
+# Assigns the site_full column to the category datatype
+cell_count_df.loc[:, "site_full"] = pd.Categorical(
+    cell_count_df.site_full,
     categories=(
-        cell_count_df.groupby("site")["cell_count"]
+        cell_count_df.groupby("site_full")["cell_count"]
         .sum()
         .sort_values(ascending=False)
         .index.tolist()
@@ -114,9 +118,9 @@ cell_count_df.loc[:, "site"] = pd.Categorical(
 )
 
 cell_count_df = cell_count_df.assign(
-    Plate=[x[0] for x in cell_count_df.site.str.split("-")],
-    Well=[x[1] for x in cell_count_df.site.str.split("-")],
-    Site=[x[2] for x in cell_count_df.site.str.split("-")],
+    Plate=[x[0] for x in cell_count_df.site_full.str.split("-")],
+    Well=[x[1] for x in cell_count_df.site_full.str.split("-")],
+    Site=[x[2] for x in cell_count_df.site_full.str.split("-")],
 )
 
 output_folder = pathlib.Path(output_resultsdir, "cells")
@@ -127,7 +131,7 @@ cell_count_df.to_csv(output_file, sep="\t", index=False)
 
 # Graph: Cell count with all wells in same graph
 cell_count_gg = (
-    gg.ggplot(cell_count_df, gg.aes(x="site", y="cell_count"))
+    gg.ggplot(cell_count_df, gg.aes(x="site_full", y="cell_count"))
     + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
     + gg.theme_bw()
     + gg.theme(axis_text_x=gg.element_text(rotation=90, size=5))
@@ -146,7 +150,7 @@ cell_count_gg.save(output_file, dpi=300, width=10, height=7, verbose=False)
 
 # Same graph as above, separated by Well.
 cell_count_gg_parsed = (
-    gg.ggplot(cell_count_df, gg.aes(x="site", y="cell_count"))
+    gg.ggplot(cell_count_df, gg.aes(x="site_full", y="cell_count"))
     + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
     + gg.theme_bw()
     + gg.theme(
