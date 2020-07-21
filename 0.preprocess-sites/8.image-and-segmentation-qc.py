@@ -111,6 +111,7 @@ by_well_gg = (
         axis_title=gg.element_blank(),
         strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
     )
+    + gg.labs(fill = "Cells")
     + gg.scale_fill_cmap(name="magma")
 )
 output_file = pathlib.Path(figures_output, "plate_layout_cells_count_per_well.png")
@@ -381,7 +382,7 @@ cp_saturation_gg = (
     + gg.ylim([0, cp_saturation_ymax])
     + gg.facet_wrap(["Ch", "Well"], nrow=len(painting_image_names), scales="free")
     + gg.theme_bw()
-    + gg.ggtitle("Cell Painting Image Saturation")
+    + gg.ggtitle(f"Cell Painting Image Saturation \n {Plate}")
     + gg.theme(
         strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
         strip_text=gg.element_text(size=7),
@@ -436,7 +437,7 @@ for well in bc_sat_df.Well.unique():
         + gg.facet_wrap("~Ch", ncol=4, scales="free")
         + gg.ylim([0, bc_saturation_ymax])
         + gg.theme_bw()
-        + gg.ggtitle(f"Barcoding Image Saturation (Well: {well})")
+        + gg.ggtitle(f"Barcoding Image Saturation (Well: {well}) \n {Plate}")
         + gg.theme(
             strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
             strip_text=gg.element_text(size=7),
