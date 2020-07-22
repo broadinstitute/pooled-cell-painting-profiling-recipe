@@ -30,11 +30,11 @@ config_file = args.config_file
 config = process_config_file(config_file)
 
 # Extract config arguments
-master_args = config["master_config"]
+main_args = config["main_config"]
 core_args = config["core"]
 single_cell_args = config["single_cell"]
 
-project = master_args["project_tag"]
+project = main_args["project_tag"]
 batch = core_args["batch"]
 batch_dir = core_args["batch_dir"]
 single_file_only = core_args["output_one_single_cell_file_only"]

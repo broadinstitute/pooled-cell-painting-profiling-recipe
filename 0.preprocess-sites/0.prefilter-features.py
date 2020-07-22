@@ -34,11 +34,11 @@ force = args.force
 config = process_config_file(config_file)
 
 # Set constants
-master_args = config["master_config"]
+main_args = config["main_config"]
 core_args = config["core"]
 prefilter_args = config["prefilter"]
 
-project = master_args["project_tag"]
+project = main_args["project_tag"]
 batch = core_args["batch"]
 compartments = core_args["compartments"]
 

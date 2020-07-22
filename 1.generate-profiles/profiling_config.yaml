@@ -1,5 +1,5 @@
 ---
-master_config:
+main_config:
   step: generate-profiles
   pipeline: Pooled Cell Painting
   project_tag: 2018_11_20_Periscope_Calico
