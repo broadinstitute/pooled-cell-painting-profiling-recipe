@@ -64,7 +64,6 @@ process-spots:
 process-cells:
   perform: true
   force_overwrite: true
-  prefilter-features: true
   output_basedir: data
   sort_col: Metadata_Cells_ObjectNumber
   merge_columns:
