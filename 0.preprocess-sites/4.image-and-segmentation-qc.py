@@ -106,7 +106,7 @@ by_well_gg = (
         axis_title=gg.element_blank(),
         strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
     )
-    + gg.labs(fill = "Cells")
+    + gg.labs(fill="Cells")
     + gg.scale_fill_cmap(name="magma")
 )
 output_file = pathlib.Path(figures_output, "plate_layout_cells_count_per_well.png")
