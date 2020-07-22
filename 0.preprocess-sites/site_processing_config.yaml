@@ -32,6 +32,7 @@ core:
 ---
 prefilter:
   perform: true
+  force_overwrite: false
   example_site: CP074A_A1-Site_1
   output_basedir: data
   flag_cols:

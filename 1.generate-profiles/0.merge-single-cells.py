@@ -26,7 +26,6 @@ parser.add_argument(
 )
 args = parser.parse_args()
 config_file = args.config_file
-force = args.force
 
 config = process_config_file(config_file)
 
@@ -58,7 +57,14 @@ paint_metadata_dir = single_cell_args["paint_metadata_dir"]
 merge_info = single_cell_args["merge_columns"]
 single_cell_output_dir = single_cell_args["single_cell_output_dir"]
 single_file_only_output_file = single_cell_args["single_file_only_output_file"]
+force = single_cell_args["force_overwrite"]
 
+# Forced overwrite can be achieved in one of two ways.
+# The command line overrides the config file, check here if it is provided
+if not force:
+    force = args.force
+
+# Check if single cell file already exists, and warn user about no effect
 if single_file_only:
     if single_file_only_output_file.exists():
         if not force:

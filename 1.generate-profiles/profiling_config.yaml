@@ -36,6 +36,7 @@ core:
 ---
 single_cell:
   perform: true
+  force_overwrite: false
   prefilter_features: true
   filter_cell_quality:
     - Perfect

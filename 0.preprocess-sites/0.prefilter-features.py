@@ -46,6 +46,21 @@ perform = prefilter_args["perform"]
 example_site_dir = prefilter_args["example_site_dir"]
 flag_cols = prefilter_args["flag_cols"]
 output_file = prefilter_args["prefilter_file"]
+force = single_cell_args["force_overwrite"]
+
+# Forced overwrite can be achieved in one of two ways.
+# The command line overrides the config file, check here if it is provided
+if not force:
+    force = args.force
+
+force_assert = """
+Stop, prefilter file already exists!
+Use --force to overwrite.
+Also check 'perform: true' is set in the config.
+(Note that 'perform: false' will still output a file lacking prefiltered features.)
+"""
+if output_file.exists():
+    assert force, force_assert
 
 # Create the directory
 output_file.parent.mkdir(exist_ok=True, parents=True)
@@ -56,14 +71,5 @@ if perform:
 else:
     features_df = load_features(core_args, example_dir)
     features_df = features_df.assign(prefilter_column=False)
-
-force_assert = """
-Warning, prefilter file already exists!
-Use --force to overwrite.
-First, check 'perform' in the config.
-Note that 'perform: false' will still output a file lacking prefiltered features.
-"""
-if output_file.exists():
-    assert force, force_assert
 
 features_df.to_csv(output_file, sep="\t", index=False)
