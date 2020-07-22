@@ -70,9 +70,6 @@ process-cells:
     linking_columns:
       cells: Metadata_Cytoplasm_Parent_Cells
       nuclei: Metadata_Cytoplasm_Parent_Nuclei
-    metadata_linking_columns:
-      - Metadata_Foci_site
-      - Metadata_Cells_ObjectNumber
   metadata_merge_columns:
     foci_cols:
       - Metadata_Foci_ImageNumber
