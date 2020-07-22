@@ -39,12 +39,7 @@ gene_cols = ["Metadata_Foci_" + col for col in gene_cols]
 spot_score_cols = spot_args["spot_score_cols"]
 spot_score_count_cols = ["Metadata_Foci_" + col + "_count" for col in spot_score_cols]
 spot_score_mean_cols = ["Metadata_Foci_" + col + "_mean" for col in spot_score_cols]
-
 input_basedir = cell_args["output_basedir"]
-metadata_foci_col = cell_args["metadata_merge_columns"]["cell_quality_col"]
-cell_cols = cell_args["metadata_merge_columns"]["cell_cols"]
-cell_quality_col = cell_args["metadata_merge_columns"]["cell_quality_col"]
-foci_site_col = cell_args["foci_site_col"]
 
 output_resultsdir = summ_cell_args["output_resultsdir"]
 output_resultsdir = pathlib.Path(output_resultsdir, batch)
@@ -62,37 +57,15 @@ cell_category_list = list(cell_category_dict.values())
 
 # Read and Merge Data
 cell_quality_list = []
-metadata_list = []
-metadata_col_list = (
-    ["Cell_Class"]
-    + cell_cols
-    + barcode_cols
-    + gene_cols
-    + spot_score_count_cols
-    + spot_score_mean_cols
-    + [cell_quality_col, foci_site_col]
-)
 
 input_dir = pathlib.Path(input_basedir, batch, "paint")
 sites = [x for x in os.listdir(input_dir) if x not in ignore_files]
 print(f"There are {len(sites)} sites.")
 
 for site in sites:
-
-    cell_count_file = pathlib.Path(input_dir, site, f"cell_counts_{site}.tsv")
-    metadata_file = pathlib.Path(input_dir, site, f"metadata_{site}.tsv.gz")
-
     # Aggregates cell quality by site into single list
+    cell_count_file = pathlib.Path(input_dir, site, f"cell_counts_{site}.tsv")
     cell_quality_list.append(pd.read_csv(cell_count_file, sep="\t"))
-
-    # Aggregates metadata by site into a single list
-    metadata_df = (
-        pd.read_csv(metadata_file, sep="\t")
-        .loc[:, metadata_col_list]
-        .reset_index(drop=True)
-    )
-
-    metadata_list.append(metadata_df)
 
 # Creates dataframe from cell quality list
 cell_count_df = (
