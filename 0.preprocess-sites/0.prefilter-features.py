@@ -46,7 +46,7 @@ perform = prefilter_args["perform"]
 example_site_dir = prefilter_args["example_site_dir"]
 flag_cols = prefilter_args["flag_cols"]
 output_file = prefilter_args["prefilter_file"]
-force = single_cell_args["force_overwrite"]
+force = prefilter_args["force_overwrite"]
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
