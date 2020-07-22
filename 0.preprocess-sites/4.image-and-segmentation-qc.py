@@ -8,16 +8,11 @@ import plotnine as gg
 sys.path.append(os.path.join("..", "scripts"))
 from config_utils import process_config_file
 from cell_quality_utils import CellQuality
+from arg_utils import parse_command_args
+from io_utils import check_if_write
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config_file",
-    help="configuration yaml file for preprocessing pipeline",
-    default="site_processing_config.yaml",
-)
-args = parser.parse_args()
+args = parse_command_args(config_file="site_processing_config.yaml")
 config_file = args.config_file
-
 config = process_config_file(config_file)
 
 # Defines the sections of the config file
@@ -115,7 +110,8 @@ by_well_gg = (
     + gg.scale_fill_cmap(name="magma")
 )
 output_file = pathlib.Path(figures_output, "plate_layout_cells_count_per_well.png")
-by_well_gg.save(output_file, dpi=300, verbose=False)
+if check_if_write(output_file, force, throw_warning=True):
+    by_well_gg.save(output_file, dpi=300, verbose=False)
 
 # Plot cell category ratios per well
 ratio_df = pd.pivot_table(
@@ -179,13 +175,14 @@ ratio_gg = (
 )
 
 output_file = pathlib.Path(figures_output, "plate_layout_ratios_per_well.png")
-ratio_gg.save(
-    output_file,
-    dpi=300,
-    width=(len(ratio_df["Well"].unique()) + 2),
-    height=6,
-    verbose=False,
-)
+if check_if_write(output_file, force, throw_warning=True):
+    ratio_gg.save(
+        output_file,
+        dpi=300,
+        width=(len(ratio_df["Well"].unique()) + 2),
+        height=6,
+        verbose=False,
+    )
 
 # Create image dataframe
 sites = [x for x in os.listdir(batch_dir) if x not in ignore_files]
@@ -236,7 +233,8 @@ cells_finalthresh_gg = (
 output_file = pathlib.Path(
     figures_output, "plate_layout_Cells_FinalThreshold_per_well.png"
 )
-cells_finalthresh_gg.save(output_file, dpi=300, verbose=False)
+if check_if_write(output_file, force, throw_warning=True):
+    cells_finalthresh_gg.save(output_file, dpi=300, verbose=False)
 
 # Plot final Nuclei thresholds per well
 nuclei_finalthresh_gg = (
@@ -258,7 +256,8 @@ nuclei_finalthresh_gg = (
 output_file = pathlib.Path(
     figures_output, "plate_layout_Nuclei_FinalThreshold_per_well.png"
 )
-nuclei_finalthresh_gg.save(output_file, dpi=300, verbose=False)
+if check_if_write(output_file, force, throw_warning=True):
+    nuclei_finalthresh_gg.save(output_file, dpi=300, verbose=False)
 
 # Plot percent Confluent regions per well
 percent_confluent_gg = (
@@ -278,7 +277,8 @@ percent_confluent_gg = (
     + gg.labs(fill="Percent")
 )
 output_file = pathlib.Path(figures_output, "plate_layout_PercentConfluent_per_well.png")
-percent_confluent_gg.save(output_file, dpi=300, verbose=False)
+if check_if_write(output_file, force, throw_warning=True):
+    percent_confluent_gg.save(output_file, dpi=300, verbose=False)
 
 # Create list of sites with confluent regions
 confluent_df = image_df.loc[image_df["Math_PercentConfluent"] > 0]
@@ -291,7 +291,8 @@ if len(confluent_df.index) > 0:
     confluent_output_file = pathlib.Path(
         results_output, "sites_with_confluent_regions.csv"
     )
-    confluent_df.to_csv(confluent_output_file)
+    if check_if_write(confluent_output_file, force, throw_warning=True):
+        confluent_df.to_csv(confluent_output_file)
 
 # Power Log Log Slope on Cell Painting images (proxy for focus)
 # Any point too high or too low may have focus issues
@@ -320,13 +321,14 @@ PLLS_gg = (
 )
 
 output_file = pathlib.Path(figures_output, "PLLS_per_well.png")
-PLLS_gg.save(
-    output_file,
-    width=(len(PLLS_df["Well"].unique()) + 2),
-    height=8,
-    dpi=300,
-    verbose=False,
-)
+if check_if_write(output_file, force, throw_warning=True):
+    PLLS_gg.save(
+        output_file,
+        width=(len(PLLS_df["Well"].unique()) + 2),
+        height=8,
+        dpi=300,
+        verbose=False,
+    )
 
 # Outputs list of sites that are saturated in any channel
 # Cell Painting images use >1% saturated, Barcoding images uses >.25% saturated
@@ -351,7 +353,8 @@ sat_df = cp_sat_df.append(bc_sat_df).drop_duplicates(subset="site")
 
 if len(sat_df.index) > 0:
     sat_output_file = pathlib.Path(results_output, "saturated_sites.csv")
-    sat_df.to_csv(sat_output_file)
+    if check_if_write(output_file, force, throw_warning=True):
+        sat_df.to_csv(sat_output_file)
 
 # Plots saturation in Cell Painting images
 # x = std dev of intensity (to find images that have unusually bright spots)
@@ -391,13 +394,14 @@ cp_saturation_gg = (
     )
 )
 output_file = pathlib.Path(figures_output, "cp_saturation.png")
-cp_saturation_gg.save(
-    output_file,
-    dpi=300,
-    width=(len(cp_sat_df["Well"].unique()) + 2),
-    height=(len(cp_sat_df["Ch"].unique())),
-    verbose=False,
-)
+if check_if_write(output_file, force, throw_warning=True):
+    cp_saturation_gg.save(
+        output_file,
+        dpi=300,
+        width=(len(cp_sat_df["Well"].unique()) + 2),
+        height=(len(cp_sat_df["Ch"].unique())),
+        verbose=False,
+    )
 
 # Plots saturation in Barcoding images
 # x = std dev of intensity (to find images that have unusually bright spots)
@@ -447,9 +451,10 @@ for well in bc_sat_df.Well.unique():
     )
 
     output_file = pathlib.Path(figures_output, f"bc_saturation_{well}.png")
-    bc_saturation_gg.save(
-        output_file, dpi=300, width=5, height=(barcoding_cycles + 2), verbose=False
-    )
+    if check_if_write(output_file, force, throw_warning=True):
+        bc_saturation_gg.save(
+            output_file, dpi=300, width=5, height=(barcoding_cycles + 2), verbose=False
+        )
 
 # Create list of questionable channel correlations (alignments)
 corr_df_cols = ["Plate", "Well", "Site", "site"]
@@ -470,4 +475,5 @@ for col in corr_cols:
 
 if len(image_corr_df.index) > 0:
     corr_output_file = pathlib.Path(results_output, "flagged_correlations.csv")
-    image_corr_df.to_csv(corr_output_file)
+    if check_if_write(corr_output_file, force, throw_warning=True):
+        image_corr_df.to_csv(corr_output_file)

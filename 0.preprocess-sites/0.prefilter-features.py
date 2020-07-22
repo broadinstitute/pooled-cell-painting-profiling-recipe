@@ -10,6 +10,7 @@ An additional round of feature selection will occur at a different stage.
 import os
 import sys
 import pathlib
+import warnings
 import argparse
 import numpy as np
 import pandas as pd
@@ -17,20 +18,11 @@ from scripts.site_processing_utils import prefilter_features
 
 sys.path.append(os.path.join("..", "scripts"))
 from config_utils import process_config_file
+from arg_utils import parse_command_args
+from io_utils import check_if_write
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config_file",
-    help="configuration yaml file for preprocessing pipeline",
-    default="site_processing_config.yaml",
-)
-parser.add_argument(
-    "--force", help="force overwriting of feature data", action="store_true"
-)
-args = parser.parse_args()
+args = parse_command_args(config_file="site_processing_config.yaml")
 config_file = args.config_file
-force = args.force
-
 config = process_config_file(config_file)
 
 # Set constants
@@ -53,14 +45,22 @@ force = prefilter_args["force_overwrite"]
 if not force:
     force = args.force
 
-force_assert = """
-Stop, prefilter file already exists!
-Use --force to overwrite.
+file_exist_warning = """
+Warning, prefilter file already exists! Not overwriting!
+Set 'force_overwrite: true' in config or use --force to overwrite.
 Also check 'perform: true' is set in the config.
 (Note that 'perform: false' will still output a file lacking prefiltered features.)
 """
+
+force_warning = """
+Warning, prefilter file already exists! Overwriting file. This may be intended.
+"""
+
 if output_file.exists():
-    assert force, force_assert
+    if not force:
+        warnings.warn(file_exist_warning)
+    else:
+        warnings.warn(force_warning)
 
 # Create the directory
 output_file.parent.mkdir(exist_ok=True, parents=True)
@@ -72,4 +72,5 @@ else:
     features_df = load_features(core_args, example_dir)
     features_df = features_df.assign(prefilter_column=False)
 
-features_df.to_csv(output_file, sep="\t", index=False)
+if check_if_write(output_file, force):
+    features_df.to_csv(output_file, sep="\t", index=False)

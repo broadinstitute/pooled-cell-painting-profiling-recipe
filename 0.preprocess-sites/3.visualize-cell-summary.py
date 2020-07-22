@@ -2,6 +2,7 @@ import os
 import sys
 import pathlib
 import argparse
+import warnings
 import pandas as pd
 import plotnine as gg
 import matplotlib.pyplot as plt
@@ -10,16 +11,11 @@ import seaborn as sns
 sys.path.append(os.path.join("..", "scripts"))
 from config_utils import process_config_file
 from cell_quality_utils import CellQuality
+from arg_utils import parse_command_args
+from io_utils import check_if_write
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config_file",
-    help="configuration yaml file for preprocessing pipeline",
-    default="site_processing_config.yaml",
-)
-args = parser.parse_args()
+args = parse_command_args(config_file="site_processing_config.yaml")
 config_file = args.config_file
-
 config = process_config_file(config_file)
 
 # Defines the sections of the config file
@@ -31,6 +27,7 @@ summ_cell_args = config["summarize-cells"]
 # Defines the variables set in the config file
 batch = core_args["batch"]
 quality_func = core_args["categorize_cell_quality"]
+ignore_files = core_args["ignore_files"]
 
 barcode_cols = spot_args["barcode_cols"]
 barcode_cols = ["Metadata_Foci_" + col for col in barcode_cols]
@@ -54,14 +51,19 @@ empty_cell_category = len(cell_category_dict) + 1
 cell_category_dict[empty_cell_category] = "Empty"
 cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"])
 cell_category_list = list(cell_category_dict.values())
+force = summ_cell_args["force_overwrite"]
 
-# Read and Merge Data
-cell_quality_list = []
+# Forced overwrite can be achieved in one of two ways.
+# The command line overrides the config file, check here if it is provided
+if not force:
+    force = args.force
 
 input_dir = pathlib.Path(input_basedir, batch, "paint")
 sites = [x for x in os.listdir(input_dir) if x not in ignore_files]
 print(f"There are {len(sites)} sites.")
 
+# Read and Merge Data
+cell_quality_list = []
 for site in sites:
     # Aggregates cell quality by site into single list
     cell_count_file = pathlib.Path(input_dir, site, f"cell_counts_{site}.tsv")
@@ -99,8 +101,8 @@ cell_count_df = cell_count_df.assign(
 output_folder = pathlib.Path(output_resultsdir, "cells")
 os.makedirs(output_folder, exist_ok=True)
 output_file = pathlib.Path(output_folder, "cell_count.tsv")
-cell_count_df.to_csv(output_file, sep="\t", index=False)
-
+if check_if_write(output_file, force, throw_warning=True):
+    cell_count_df.to_csv(output_file, sep="\t", index=False)
 
 # Graph: Cell count with all wells in same graph
 cell_count_gg = (
@@ -119,7 +121,8 @@ os.makedirs(output_figuresdir, exist_ok=True)
 output_file = pathlib.Path(
     output_figuresdir, "all_cellpainting_cellquality_across_sites.png"
 )
-cell_count_gg.save(output_file, dpi=300, width=10, height=7, verbose=False)
+if check_if_write(output_file, force, throw_warning=True):
+    cell_count_gg.save(output_file, dpi=300, width=10, height=7, verbose=False)
 
 # Same graph as above, separated by Well.
 cell_count_gg_parsed = (
@@ -141,7 +144,8 @@ cell_count_gg_parsed = (
 output_file = pathlib.Path(
     output_figuresdir, "all_cellpainting_cellquality_across_sites_by_well.png"
 )
-cell_count_gg_parsed.save(output_file, dpi=300, width=10, height=7, verbose=False)
+if check_if_write(output_file, force, throw_warning=True):
+    cell_count_gg_parsed.save(output_file, dpi=300, width=10, height=7, verbose=False)
 
 #  Total cells in each quality category
 all_count_df = pd.DataFrame(
@@ -149,7 +153,8 @@ all_count_df = pd.DataFrame(
 ).reset_index()
 output_folder = pathlib.Path(output_resultsdir, "cells")
 output_file = pathlib.Path(output_folder, "total_cell_count.tsv")
-all_count_df.to_csv(output_file, sep="\t", index=False)
+if check_if_write(output_file, force, throw_warning=True):
+    all_count_df.to_csv(output_file, sep="\t", index=False)
 
 # Graph: Total cells in each quality category
 all_cells = all_count_df.cell_count.sum()
@@ -168,9 +173,8 @@ total_cell_count_gg = (
 )
 
 output_file = pathlib.Path(output_figuresdir, "total_cell_count.png")
-total_cell_count_gg.save(output_file, dpi=300, width=5, height=6, verbose=False)
-
-total_cell_count_gg
+if check_if_write(output_file, force, throw_warning=True):
+    total_cell_count_gg.save(output_file, dpi=300, width=5, height=6, verbose=False)
 
 print(f"There are a total of {all_cells} cells in {batch}")
 
@@ -195,4 +199,7 @@ total_cell_well_count_gg = (
 )
 
 output_file = pathlib.Path(output_figuresdir, "total_cell_count_by_well.png")
-total_cell_well_count_gg.save(output_file, dpi=400, width=6, height=5, verbose=False)
+if check_if_write(output_file, force, throw_warning=True):
+    total_cell_well_count_gg.save(
+        output_file, dpi=400, width=6, height=5, verbose=False
+    )
