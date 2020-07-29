@@ -19,23 +19,19 @@ All sites are processed independently and results are saved in site-specific fol
 import os
 import sys
 import pathlib
+import warnings
 import argparse
 import pandas as pd
 
 sys.path.append(os.path.join("..", "scripts"))
 from config_utils import process_config_file
+from arg_utils import parse_command_args
 from cell_quality_utils import CellQuality
 from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
+from io_utils import check_if_write
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config_file",
-    help="configuration yaml file for preprocessing pipeline",
-    default="site_processing_config.yaml",
-)
-args = parser.parse_args()
+args = parse_command_args(config_file="site_processing_config.yaml")
 config_file = args.config_file
-
 config = process_config_file(config_file)
 
 # Defines the sections of the config file
@@ -66,6 +62,12 @@ metadata_merge_foci_cols = cell_args["metadata_merge_columns"]["foci_cols"]
 metadata_merge_cell_cols = cell_args["metadata_merge_columns"]["cell_cols"]
 metadata_cell_quality_col = cell_args["metadata_merge_columns"]["cell_quality_col"]
 foci_site_col = cell_args["foci_site_col"]
+force = cell_args["force_overwrite"]
+
+# Forced overwrite can be achieved in one of two ways.
+# The command line overrides the config file, check here if it is provided
+if not force:
+    force = args.force
 
 cell_quality = CellQuality(quality_func)
 cell_category_dict = cell_quality.define_cell_quality()
@@ -168,17 +170,27 @@ for site in sites:
     ), "Stop! You're counting cells more than once"
 
     # Create a summary of counts of each cell quality class
-    cell_count_df = pd.DataFrame(metadata_df.Cell_Class.value_counts())
-    cell_count_df.rename(columns={"Cell_Class": "cell_count"}).assign(site=site)
+    cell_count_df = (
+        pd.DataFrame(metadata_df.Cell_Class.value_counts())
+        .rename(columns={"Cell_Class": "cell_count"})
+        .assign(site=site)
+    )
 
     output_folder = pathlib.Path(output_basedir, batch, "paint", site)
+    if output_folder.exists():
+        if force:
+            warnings.warn("Output files likely exist, now overwriting...")
+        else:
+            warnings.warn("Output files likely exist. If they do, NOT overwriting...")
     os.makedirs(output_folder, exist_ok=True)
 
     meta_output_file = pathlib.Path(output_folder, f"metadata_{site}.tsv.gz")
     count_output_file = pathlib.Path(output_folder, f"cell_counts_{site}.tsv")
 
     # Save files
-    metadata_df.to_csv(meta_output_file, sep="\t", index=False)
-    cell_count_df.to_csv(count_output_file, sep="\t", index_label="Cell_Quality")
+    if check_if_write(meta_output_file, force):
+        metadata_df.to_csv(meta_output_file, sep="\t", index=False)
+    if check_if_write(count_output_file, force):
+        cell_count_df.to_csv(count_output_file, sep="\t", index_label="Cell_Quality")
 
 print("All sites complete.")
