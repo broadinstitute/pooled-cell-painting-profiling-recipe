@@ -5,7 +5,7 @@ master_config:
   project_tag: Periscope
 ---
 core:
-  batch: CP123
+  batch: BATCH01
   project_dir: /Users/gway/work/projects/
   output_dir: data
   categorize_cell_quality: simple
@@ -32,7 +32,7 @@ core:
 ---
 prefilter:
   perform: true
-  example_site: CP123_A1_1
+  example_site: PLATE01_A1_1
   output_basedir: data
   flag_cols:
     - Barcode
