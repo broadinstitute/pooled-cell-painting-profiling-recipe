@@ -317,10 +317,7 @@ for site in sites:
     }
 
     descriptive_results = pd.DataFrame(descriptive_results, index=[0]).assign(
-        site_full=site,
-        plate=plate,
-        well=well,
-        site=site_simple,
+        site_full=site, plate=plate, well=well, site=site_simple,
     )
 
     output_file = pathlib.Path(output_dir, "site_stats.tsv")

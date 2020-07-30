@@ -272,9 +272,7 @@ if check_if_write(output_file, force, throw_warning=True):
 confluent_cols = ["site", "Math_PercentConfluent"] + image_meta_col_list
 confluent_df = image_df.loc[image_df["Math_PercentConfluent"] > 0]
 confluent_df = (
-    confluent_df[confluent_cols]
-    .sort_values(by=["site"])
-    .reset_index(drop=True)
+    confluent_df[confluent_cols].sort_values(by=["site"]).reset_index(drop=True)
 )
 
 if len(confluent_df.index) > 0:
@@ -297,7 +295,9 @@ PLLS_df = PLLS_df.melt(id_vars=image_meta_col_list, var_name="channel").replace(
 )
 
 PLLS_gg = (
-    gg.ggplot(PLLS_df, gg.aes(x=image_cols['site'], y="value", label=image_cols['site']))
+    gg.ggplot(
+        PLLS_df, gg.aes(x=image_cols["site"], y="value", label=image_cols["site"])
+    )
     + gg.coord_fixed(ratio=0.25)
     + gg.geom_text(size=6)
     + gg.facet_grid(f"channel~{image_cols['well']}", scales="free_y")
@@ -314,7 +314,7 @@ output_file = pathlib.Path(figures_output, "PLLS_per_well.png")
 if check_if_write(output_file, force, throw_warning=True):
     PLLS_gg.save(
         output_file,
-        width=(len(PLLS_df[image_cols['well']].unique()) + 2),
+        width=(len(PLLS_df[image_cols["well"]].unique()) + 2),
         height=8,
         dpi=300,
         verbose=False,
@@ -369,11 +369,15 @@ if cp_saturation_ymax < 1:
     cp_saturation_ymax = 1
 
 cp_saturation_gg = (
-    gg.ggplot(cp_sat_df, gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]))
+    gg.ggplot(
+        cp_sat_df, gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"])
+    )
     + gg.coord_fixed(ratio=0.25)
     + gg.geom_text(size=6)
     + gg.ylim([0, cp_saturation_ymax])
-    + gg.facet_wrap(["Ch", image_cols["well"]], nrow=len(painting_image_names), scales="free")
+    + gg.facet_wrap(
+        ["Ch", image_cols["well"]], nrow=len(painting_image_names), scales="free"
+    )
     + gg.theme_bw()
     + gg.ggtitle(f"Cell Painting Image Saturation \n {plate}")
     + gg.theme(
@@ -423,7 +427,7 @@ if bc_saturation_ymax < 0.2:
 for well in bc_sat_df.loc[:, image_cols["well"]].squeeze().unique():
     bc_saturation_gg = (
         gg.ggplot(
-            bc_sat_df.loc[bc_sat_df.loc[:, image_cols["well"]] == well, ],
+            bc_sat_df.loc[bc_sat_df.loc[:, image_cols["well"]] == well,],
             gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
         )
         + gg.coord_fixed(ratio=0.25)
