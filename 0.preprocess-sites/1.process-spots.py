@@ -32,6 +32,7 @@ All sites are processed and the results are saved in site specific folders
 import os
 import sys
 import pathlib
+import warnings
 import argparse
 import pandas as pd
 import yaml
@@ -50,22 +51,19 @@ from scripts.spot_utils import (
 sys.path.append(os.path.join("..", "scripts"))
 from config_utils import process_config_file
 from cell_quality_utils import CellQuality
+from arg_utils import parse_command_args
+from io_utils import check_if_write
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config_file",
-    help="configuration yaml file for preprocessing pipeline",
-    default="site_processing_config.yaml",
-)
-args = parser.parse_args()
+args = parse_command_args(config_file="site_processing_config.yaml")
 config_file = args.config_file
-
 config = process_config_file(config_file)
 
+# Set constants
+main_args = config["main_config"]
 core_args = config["core"]
 spot_args = config["process-spots"]
 
-project = core_args["project"]
+project = main_args["project_tag"]
 batch = core_args["batch"]
 batch_dir = core_args["batch_dir"]
 quality_func = core_args["categorize_cell_quality"]
@@ -82,6 +80,12 @@ location_cols = spot_args["location_cols"]
 spot_score_cols = spot_args["spot_score_cols"]
 foci_cols = spot_args["foci_cols"]
 cell_filter = spot_args["cell_filter"]
+force = spot_args["force_overwrite"]
+
+# Forced overwrite can be achieved in one of two ways.
+# The command line overrides the config file, check here if it is provided
+if not force:
+    force = args.force
 
 barcode_foci_cols = id_cols + location_cols + spot_parent_cols
 all_foci_cols = list(
@@ -131,6 +135,12 @@ for site in sites:
         print(f"{site} data not aligned between foci files")
 
     output_dir = pathlib.Path(output_spotdir, site)
+    if output_dir.exists():
+        if force:
+            warnings.warn("Output files likely exist, now overwriting...")
+        else:
+            warnings.warn("Output files likely exist. If they do, NOT overwriting...")
+
     output_dir.mkdir(exist_ok=True, parents=True)
 
     # Merge spot data files
@@ -150,19 +160,22 @@ for site in sites:
 
     # Figure 1 - histogram of barcode counts per cell
     fig_file = pathlib.Path(output_dir, "num_spots_per_cell_histogram.png")
-    spot_counts_per_cell_histogram(cell_spot_df, spot_parent_cols, fig_file)
+    if check_if_write(fig_file, force):
+        spot_counts_per_cell_histogram(cell_spot_df, spot_parent_cols, fig_file)
 
     # Figure 2 - histogram of barcode scores per spot
     fig_file = pathlib.Path(output_dir, "barcode_scores_per_spot_histogram.png")
-    spot_score_histogram(cell_spot_df, spot_score_cols, fig_file)
+    if check_if_write(fig_file, force):
+        spot_score_histogram(cell_spot_df, spot_score_cols, fig_file)
 
     # Figure 3 - Joint plot of relationship of barcode counts per cell and mean score
     fig_file = pathlib.Path(
         output_dir, "per_cell_barcode_count_by_mean_score_jointplot.png"
     )
-    spot_count_score_jointplot(
-        cell_spot_df, spot_parent_cols[0], spot_score_cols[0], fig_file
-    )
+    if check_if_write(fig_file, force):
+        spot_count_score_jointplot(
+            cell_spot_df, spot_parent_cols[0], spot_score_cols[0], fig_file
+        )
 
     # Barcodes: Get counts of initial baseline calls
     crispr_barcode_gene_df = category_counts(
@@ -199,14 +212,18 @@ for site in sites:
 
     # Table 1 - Full Cell and Gene Category with Scores
     out_file = pathlib.Path(output_dir, "full_cell_category_scores_by_guide.tsv.gz")
-    crispr_barcode_gene_df.to_csv(out_file, sep="\t", index=False, compression="gzip")
+    if check_if_write(out_file, force):
+        crispr_barcode_gene_df.to_csv(
+            out_file, sep="\t", index=False, compression="gzip"
+        )
 
     # Table 2 - Full Cell and CRISPR Guide Quality Category with Scores
     num_unique_guides = len(
         crispr_barcode_gene_df.loc[:, barcode_cols].squeeze().unique()
     )
     out_file = pathlib.Path(output_dir, "full_cell_category_scores.tsv.gz")
-    cell_barcode_gene_df.to_csv(out_file, sep="\t", index=False, compression="gzip")
+    if check_if_write(out_file, force):
+        cell_barcode_gene_df.to_csv(out_file, sep="\t", index=False, compression="gzip")
 
     # Table 3 - Cell Category Summary
     cell_quality_summary_df = cell_quality.summarize_cell_quality_counts(
@@ -214,7 +231,8 @@ for site in sites:
     ).assign(ImageNumber=image_number, site=site)
 
     out_file = pathlib.Path(output_dir, "cell_category_summary_count.tsv")
-    cell_quality_summary_df.to_csv(out_file, sep="\t", index=False)
+    if check_if_write(out_file, force):
+        cell_quality_summary_df.to_csv(out_file, sep="\t", index=False)
 
     # Table 4 - Gene by cell category counts
     num_unique_genes = len(cell_barcode_gene_df.loc[:, gene_cols].squeeze().unique())
@@ -226,7 +244,8 @@ for site in sites:
     ).assign(ImageNumber=image_number, site=site)
 
     out_file = pathlib.Path(output_dir, "gene_by_cell_category_summary_count.tsv")
-    gene_category_count_df.to_csv(out_file, sep="\t", index=False)
+    if check_if_write(out_file, force):
+        gene_category_count_df.to_csv(out_file, sep="\t", index=False)
 
     # Table 5 - Guide by cell category counts
     guide_category_count_df = cell_quality.summarize_perturbation_quality_counts(
@@ -237,7 +256,8 @@ for site in sites:
     ).assign(ImageNumber=image_number, site=site)
 
     out_file = pathlib.Path(output_dir, "guide_by_cell_category_summary_count.tsv")
-    gene_category_count_df.to_csv(out_file, sep="\t", index=False)
+    if check_if_write(out_file, force):
+        gene_category_count_df.to_csv(out_file, sep="\t", index=False)
 
     passed_gene_df = (
         gene_category_count_df.query("Cell_Class in @cell_filter")
@@ -250,13 +270,13 @@ for site in sites:
 
     passed_gene_df.loc[:, gene_cols] = pd.Categorical(
         passed_gene_df.loc[:, gene_cols].squeeze(),
-        categories=passed_gene_df.loc[:, gene_cols].squeeze()
+        categories=passed_gene_df.loc[:, gene_cols].squeeze(),
     )
 
     # Number of non-targetting controls
     num_nt = passed_gene_df.query(
         f"{gene_cols[0]} in @control_barcodes"
-    ).Cell_Count_Per_Gene.values[0]
+    ).Cell_Count_Per_Gene.sum()
 
     # Table 6: Complete Site Summary
     descriptive_results = {
@@ -269,8 +289,10 @@ for site in sites:
         "number_nontarget_controls_good_cells": num_nt,
     }
 
-    output_file = pathlib.Path(output_dir, "site_stats.tsv")
     descriptive_results = pd.DataFrame(descriptive_results, index=[site])
-    descriptive_results.to_csv(output_file, sep="\t", index=True)
-    
+
+    output_file = pathlib.Path(output_dir, "site_stats.tsv")
+    if check_if_write(output_file, force):
+        descriptive_results.to_csv(output_file, sep="\t", index=True)
+
 print("All sites complete.")

@@ -4,7 +4,7 @@ In this first module of the recipe, we perform a series of steps to prepare data
 The `preprocessing_config.yaml` controls all the pertinent details for this module.
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/broadinstitute/pooled-cell-painting-profiling-recipe/82eaf532e7a3ab145c4b821268c13c531b693dcb/0.preprocess-sites/media/preprocessing_workflow.png" width="500">
+<img src="https://raw.githubusercontent.com/broadinstitute/pooled-cell-painting-profiling-recipe/068c7eae79f56a50732fdf173902dc596c95ce3f/0.preprocess-sites/media/preprocessing_workflow.png" width="500">
 </p>
 
 ## Step 0 - Prefilter Features
@@ -30,5 +30,5 @@ This step compiles all the results from the spot and cell processing and outputs
 ## Step 4 - Image and Segmentation Quality Control
 
 This step outputs a series of QC metrics pertaining to the actual image acquisition and image segmentation quality.
-The QC metrics are visualized by site across wells per experiment. 
+The QC metrics are visualized by site across wells per experiment.
 It also outputs lists of sites that trigger QC flags for confluence, image saturation, and image alignment.

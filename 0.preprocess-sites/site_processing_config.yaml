@@ -1,5 +1,5 @@
 ---
-master_config:
+main_config:
   step: preprocess-sites
   pipeline: Pooled Cell Painting
   project_tag: Periscope
@@ -32,6 +32,7 @@ core:
 ---
 prefilter:
   perform: true
+  force_overwrite: true
   example_site: PLATE01_A1_1
   output_basedir: data
   flag_cols:
@@ -42,6 +43,7 @@ prefilter:
 ---
 process-spots:
   perform: true
+  force_overwrite: true
   output_basedir: data
   barcode_cols:
     - Barcode_MatchedTo_Barcode
@@ -61,7 +63,7 @@ process-spots:
 ---
 process-cells:
   perform: true
-  prefilter-features: true
+  force_overwrite: true
   output_basedir: data
   sort_col: Metadata_Cells_ObjectNumber
   merge_columns:
@@ -82,11 +84,13 @@ process-cells:
 ---
 summarize-cells:
   perform: true
+  force_overwrite: true
   output_resultsdir: results
   output_figuresdir: figures
 ---
 summarize-plate:
   perform: true
+  force_overwrite: true
   correlation_threshold: .2
   painting_image_names:
     - ConA
