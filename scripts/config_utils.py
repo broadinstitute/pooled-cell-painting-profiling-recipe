@@ -51,6 +51,12 @@ def preprocess_sites_config(config):
         config["process-spots"]["output_basedir"], config["core"]["batch"], "spots"
     )
 
+    config["process-spots"]["image_file"] = pathlib.Path(
+        config["process-spots"]["output_basedir"],
+        config["core"]["batch"],
+        "image_metadata.tsv",
+    )
+
     # Build visualization information
     if config["core"]["categorize_cell_quality"] == "simple":
         config["summarize-cells"]["cell_category_order"] = [
