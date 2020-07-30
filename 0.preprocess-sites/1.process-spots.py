@@ -197,6 +197,7 @@ for site in sites:
     num_unique_guides = len(
         crispr_barcode_gene_df.loc[:, barcode_cols].squeeze().unique()
     )
+    num_unique_genes = len(crispr_barcode_gene_df.loc[:, gene_cols].squeeze().unique())
 
     # Table 1 - Full cell and CRISPR guide quality with scores
     out_file = pathlib.Path(
@@ -217,8 +218,6 @@ for site in sites:
         cell_quality_summary_df.to_csv(out_file, sep="\t", index=False)
 
     # Table 3 - Counting gene and guide by cell category
-    num_unique_genes = len(cell_barcode_gene_df.loc[:, gene_cols].squeeze().unique())
-
     gene_category_count_df = cell_quality.summarize_perturbation_quality_counts(
         quality_df=crispr_barcode_gene_df,
         parent_cols=spot_parent_cols,
