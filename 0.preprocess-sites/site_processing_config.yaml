@@ -2,7 +2,7 @@
 master_config:
   step: preprocess-sites
   pipeline: Pooled Cell Painting
-  project_tag: Periscope_Calico
+  project_tag: Periscope
 ---
 core:
   batch: CP123
