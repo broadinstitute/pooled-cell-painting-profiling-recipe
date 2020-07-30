@@ -2,10 +2,10 @@
 main_config:
   step: preprocess-sites
   pipeline: Pooled Cell Painting
-  project_tag: 2018_11_20_Periscope_Calico
+  project_tag: Periscope
 ---
 core:
-  batch: 20190919_6W_CP074A
+  batch: BATCH01
   project_dir: /Users/gway/work/projects/
   output_dir: data
   categorize_cell_quality: simple
@@ -33,7 +33,7 @@ core:
 prefilter:
   perform: true
   force_overwrite: true
-  example_site: CP074A_A1-Site_1
+  example_site: PLATE01_A1_1
   output_basedir: data
   flag_cols:
     - Barcode
@@ -72,9 +72,6 @@ process-cells:
     linking_columns:
       cells: Metadata_Cytoplasm_Parent_Cells
       nuclei: Metadata_Cytoplasm_Parent_Nuclei
-    metadata_linking_columns:
-      - Metadata_Foci_site
-      - Metadata_Cells_ObjectNumber
   metadata_merge_columns:
     foci_cols:
       - Metadata_Foci_ImageNumber
@@ -96,10 +93,10 @@ summarize-plate:
   force_overwrite: true
   correlation_threshold: .2
   painting_image_names:
-    - Pre_ConA
-    - Pre_DAPI_Painting
-    - Pre_Mito
-    - Pre_Phalloidin
-    - Pre_WGA
+    - ConA
+    - Hoechst
+    - Mito
+    - SYTO
+    - WGA
   barcoding_cycles: 10
   barcoding_prefix: CorrCycle
