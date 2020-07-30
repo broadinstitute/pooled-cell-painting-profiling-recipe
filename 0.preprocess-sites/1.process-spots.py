@@ -102,7 +102,7 @@ sites = [x.name for x in batch_dir.iterdir() if x.name not in ignore_files]
 num_sites = len(sites)
 
 for site in sites:
-    print(f"Now processing {site}...")
+    print(f"Now processing spots for {site}...")
 
     # Load spot data
     try:
@@ -239,14 +239,14 @@ for site in sites:
 
     cell_category_counts_df = guide_category_count_df.merge(
         gene_category_count_df, on=count_merge_cols, how="left"
-    ).assign(ImageNumber=image_number, site=site)
+    ).assign(ImageNumber=image_number, site=site).query("Cell_Class in @cell_filter")
 
     out_file = pathlib.Path(output_dir, "cell_perturbation_category_summary_counts.tsv")
     if check_if_write(out_file, force):
         cell_category_counts_df.to_csv(out_file, sep="\t", index=False)
 
     passed_gene_df = (
-        gene_category_count_df.query("Cell_Class in @cell_filter")
+        gene_category_count_df
         .groupby(gene_cols)["Cell_Count_Per_Gene"]
         .sum()
         .reset_index()
@@ -274,10 +274,12 @@ for site in sites:
         "number_nontarget_controls_good_cells": num_nt,
     }
 
-    descriptive_results = pd.DataFrame(descriptive_results, index=[site])
+    descriptive_results = pd.DataFrame(descriptive_results, index=[0]).assign(
+        site_full=site
+    )
 
     output_file = pathlib.Path(output_dir, "site_stats.tsv")
     if check_if_write(output_file, force):
-        descriptive_results.to_csv(output_file, sep="\t", index=True)
+        descriptive_results.to_csv(output_file, sep="\t", index=False)
 
 print("All sites complete.")
