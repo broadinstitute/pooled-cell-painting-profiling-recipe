@@ -261,7 +261,7 @@ for site in sites:
 
     # Number of non-targetting controls
     nt_gene_df = passed_gene_df.query(f"{gene_cols[0]} in @control_barcodes")
-    num_nt = nt_gene_df.Cell_Count_Per_Gene.values[0]
+    num_nt = nt_gene_df.Cell_Count_Per_Gene.sum()
 
     # Table 4: Complete Site Summary
     descriptive_results = {
