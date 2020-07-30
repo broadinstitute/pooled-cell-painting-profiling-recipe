@@ -106,7 +106,7 @@ for site in sites:
 
         # Load .tsv created in 1.process-spots
         foci_file = pathlib.Path(
-            foci_dir, site, "full_cell_category_scores_by_guide.tsv.gz"
+            foci_dir, site, "cell_id_barcode_alignment_scores_by_guide.tsv.gz"
         )
         try:
             foci_df = pd.read_csv(foci_file, sep="\t")
