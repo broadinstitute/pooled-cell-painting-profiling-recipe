@@ -234,30 +234,36 @@ for site in sites:
     if check_if_write(out_file, force):
         cell_quality_summary_df.to_csv(out_file, sep="\t", index=False)
 
-    # Table 4 - Gene by cell category counts
+    # Table 4 - Counting gene and guide by cell category
     num_unique_genes = len(cell_barcode_gene_df.loc[:, gene_cols].squeeze().unique())
 
     gene_category_count_df = cell_quality.summarize_perturbation_quality_counts(
         quality_df=crispr_barcode_gene_df,
         parent_cols=spot_parent_cols,
         group_cols=gene_cols,
-    ).assign(ImageNumber=image_number, site=site)
+    )
 
-    out_file = pathlib.Path(output_dir, "gene_by_cell_category_summary_count.tsv")
-    if check_if_write(out_file, force):
-        gene_category_count_df.to_csv(out_file, sep="\t", index=False)
-
-    # Table 5 - Guide by cell category counts
     guide_category_count_df = cell_quality.summarize_perturbation_quality_counts(
         quality_df=crispr_barcode_gene_df,
         parent_cols=spot_parent_cols,
         group_cols=gene_cols + barcode_cols,
         guide=True,
+    )
+
+    # Merge the gene and guide count files to make a single file for downstream viz
+    count_merge_cols = list(
+        set(gene_category_count_df.columns).intersection(
+            guide_category_count_df.columns
+        )
+    )
+
+    cell_category_counts = guide_category_count_df.merge(
+        gene_category_count_df, on=count_merge_cols, how="left"
     ).assign(ImageNumber=image_number, site=site)
 
-    out_file = pathlib.Path(output_dir, "guide_by_cell_category_summary_count.tsv")
+    out_file = pathlib.Path(output_dir, "cell_perturbation_category_summary_counts.tsv")
     if check_if_write(out_file, force):
-        gene_category_count_df.to_csv(out_file, sep="\t", index=False)
+        cell_category_counts.to_csv(out_file, sep="\t", index=False)
 
     passed_gene_df = (
         gene_category_count_df.query("Cell_Class in @cell_filter")
@@ -274,11 +280,10 @@ for site in sites:
     )
 
     # Number of non-targetting controls
-    num_nt = passed_gene_df.query(
-        f"{gene_cols[0]} in @control_barcodes"
-    ).Cell_Count_Per_Gene.sum()
+    nt_gene_df = passed_gene_df.query(f"{gene_cols[0]} in @control_barcodes")
+    num_nt = nt_gene_df.Cell_Count_Per_Gene.values[0]
 
-    # Table 6: Complete Site Summary
+    # Table 5: Complete Site Summary
     descriptive_results = {
         "image_number": image_number,
         "num_unassigned_spots": num_unassigned_spots,
