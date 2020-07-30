@@ -45,6 +45,10 @@ process-spots:
   perform: true
   force_overwrite: true
   output_basedir: data
+  image_cols:
+    well: "Metadata_Well"
+    site: "Metadata_Site"
+    plate: "Metadata_Plate"
   barcode_cols:
     - Barcode_MatchedTo_Barcode
   gene_cols:
