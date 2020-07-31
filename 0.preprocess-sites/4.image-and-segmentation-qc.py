@@ -201,201 +201,205 @@ image_df["site"] = image_df[image_cols["site"]].astype(int)
 loc_df["site"] = loc_df["site"].astype(int)
 image_df = image_df.merge(loc_df, how="left", on="site")
 
-# Plot final Cells thresholds per well
-cells_finalthresh_gg = (
-    gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill="Threshold_FinalThreshold_Cells"), size=10)
-    + gg.geom_text(gg.aes(label="site"), color="lightgrey")
-    + gg.facet_wrap(f"~{image_cols['well']}")
-    + gg.coord_fixed()
-    + gg.theme_bw()
-    + gg.ggtitle(f"Cell Thresholds \n {plate}")
-    + gg.theme(
-        axis_text=gg.element_blank(),
-        axis_title=gg.element_blank(),
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
-    )
-    + gg.scale_fill_cmap(name="magma")
-    + gg.labs(fill="Threshold")
-)
-output_file = pathlib.Path(
-    figures_output, "plate_layout_Cells_FinalThreshold_per_well.png"
-)
-if check_if_write(output_file, force, throw_warning=True):
-    cells_finalthresh_gg.save(output_file, dpi=300, verbose=False)
+# Plot final compartment thresholds per well
+threshold_col_prefix = "Threshold_FinalThreshold_"
+for threshhold_compartment in ["Cells", "Nuclei"]:
+    threshold_full_col = f"{threshold_col_prefix}{threshhold_compartment}"
 
-# Plot final Nuclei thresholds per well
-nuclei_finalthresh_gg = (
-    gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill="Threshold_FinalThreshold_Nuclei"), size=10)
-    + gg.geom_text(gg.aes(label="site"), color="lightgrey")
-    + gg.facet_wrap(f"~{image_cols['well']}")
-    + gg.coord_fixed()
-    + gg.theme_bw()
-    + gg.ggtitle(f"Nuclei Thresholds \n {plate}")
-    + gg.theme(
-        axis_text=gg.element_blank(),
-        axis_title=gg.element_blank(),
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
-    )
-    + gg.scale_fill_cmap(name="magma")
-    + gg.labs(fill="Threshold")
-)
-output_file = pathlib.Path(
-    figures_output, "plate_layout_Nuclei_FinalThreshold_per_well.png"
-)
-if check_if_write(output_file, force, throw_warning=True):
-    nuclei_finalthresh_gg.save(output_file, dpi=300, verbose=False)
+    if threshold_full_col not in image_df.columns:
+        continue
 
-# Plot percent Confluent regions per well
-percent_confluent_gg = (
-    gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill="Math_PercentConfluent"), size=10)
-    + gg.geom_text(gg.aes(label="site"), color="lightgrey")
-    + gg.facet_wrap(f"~{image_cols['well']}")
-    + gg.coord_fixed()
-    + gg.theme_bw()
-    + gg.ggtitle(f"Percent Confluent \n {plate}")
-    + gg.theme(
-        axis_text=gg.element_blank(),
-        axis_title=gg.element_blank(),
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+    compartment_finalthresh_gg = (
+        gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
+        + gg.geom_point(gg.aes(fill=f"{threshold_full_col}"), size=10)
+        + gg.geom_text(gg.aes(label="site"), color="lightgrey")
+        + gg.facet_wrap(f"~{image_cols['well']}")
+        + gg.coord_fixed()
+        + gg.theme_bw()
+        + gg.ggtitle(f"{threshhold_compartment} Thresholds \n {plate}")
+        + gg.theme(
+            axis_text=gg.element_blank(),
+            axis_title=gg.element_blank(),
+            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+        )
+        + gg.scale_fill_cmap(name="magma")
+        + gg.labs(fill="Threshold")
     )
-    + gg.scale_fill_cmap(name="magma")
-    + gg.labs(fill="Percent")
-)
-output_file = pathlib.Path(figures_output, "plate_layout_PercentConfluent_per_well.png")
-if check_if_write(output_file, force, throw_warning=True):
-    percent_confluent_gg.save(output_file, dpi=300, verbose=False)
+    output_file = pathlib.Path(
+        figures_output,
+        f"plate_layout_{threshhold_compartment}_FinalThreshold_per_well.png",
+    )
+    if check_if_write(output_file, force, throw_warning=True):
+        compartment_finalthresh_gg.save(output_file, dpi=300, verbose=False)
 
 # Create list of sites with confluent regions
-confluent_cols = ["site", "Math_PercentConfluent"] + image_meta_col_list
-confluent_df = image_df.loc[image_df["Math_PercentConfluent"] > 0]
-confluent_df = (
-    confluent_df[confluent_cols].sort_values(by=["site"]).reset_index(drop=True)
-)
-
-if len(confluent_df.index) > 0:
-    confluent_output_file = pathlib.Path(
-        results_output, "sites_with_confluent_regions.csv"
+confluent_col = "Math_PercentConfluent"
+if confluent_col in image_df.columns:
+    # Plot percent confluent regions per well
+    percent_confluent_gg = (
+        gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
+        + gg.geom_point(gg.aes(fill=confluent_col), size=10)
+        + gg.geom_text(gg.aes(label="site"), color="lightgrey")
+        + gg.facet_wrap(f"~{image_cols['well']}")
+        + gg.coord_fixed()
+        + gg.theme_bw()
+        + gg.ggtitle(f"Percent Confluent \n {plate}")
+        + gg.theme(
+            axis_text=gg.element_blank(),
+            axis_title=gg.element_blank(),
+            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+        )
+        + gg.scale_fill_cmap(name="magma")
+        + gg.labs(fill="Percent")
     )
-    if check_if_write(confluent_output_file, force, throw_warning=True):
-        confluent_df.to_csv(confluent_output_file)
+    output_file = pathlib.Path(
+        figures_output, "plate_layout_PercentConfluent_per_well.png"
+    )
+    if check_if_write(output_file, force, throw_warning=True):
+        percent_confluent_gg.save(output_file, dpi=300, verbose=False)
+
+    confluent_cols = ["site", confluent_col] + image_meta_col_list
+    confluent_df = image_df.loc[image_df[confluent_col] > 0]
+    confluent_df = (
+        confluent_df[confluent_cols].sort_values(by=["site"]).reset_index(drop=True)
+    )
+
+    if len(confluent_df.index) > 0:
+        confluent_output_file = pathlib.Path(
+            results_output, "sites_with_confluent_regions.csv"
+        )
+        if check_if_write(confluent_output_file, force, throw_warning=True):
+            confluent_df.to_csv(confluent_output_file)
 
 # Power Log Log Slope on Cell Painting images (proxy for focus)
 # Any point too high or too low may have focus issues
+pll_col_prefix = "ImageQuality_PowerLogLogSlope_"
 PLLS_df_cols = image_meta_col_list.copy()
 PLLS_cols = []
 for name in painting_image_names:
-    PLLS_df_cols.append("ImageQuality_PowerLogLogSlope_" + name)
-    PLLS_cols.append("ImageQuality_PowerLogLogSlope_" + name)
-PLLS_df = image_df.loc[:, PLLS_df_cols]
-PLLS_df = PLLS_df.melt(id_vars=image_meta_col_list, var_name="channel").replace(
-    {"ImageQuality_PowerLogLogSlope_": ""}, regex=True
-)
+    PLLS_df_cols.append(f"{pll_col_prefix}" + name)
+    PLLS_cols.append(f"{pll_col_prefix}" + name)
 
-PLLS_gg = (
-    gg.ggplot(
-        PLLS_df, gg.aes(x=image_cols["site"], y="value", label=image_cols["site"])
+if all(x in image_df.columns.tolist() for x in PLLS_df_cols):
+    PLLS_df = image_df.loc[:, PLLS_df_cols]
+    PLLS_df = PLLS_df.melt(id_vars=image_meta_col_list, var_name="channel").replace(
+        {pll_col_prefix: ""}, regex=True
     )
-    + gg.coord_fixed(ratio=0.25)
-    + gg.geom_text(size=6)
-    + gg.facet_grid(f"channel~{image_cols['well']}", scales="free_y")
-    + gg.ggtitle(f"Image focus \n {plate}")
-    + gg.theme_bw()
-    + gg.ylab("Power log log slope")
-    + gg.theme(
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
-        axis_text_y=gg.element_text(size=4),
-    )
-)
 
-output_file = pathlib.Path(figures_output, "PLLS_per_well.png")
-if check_if_write(output_file, force, throw_warning=True):
-    PLLS_gg.save(
-        output_file,
-        width=(len(PLLS_df[image_cols["well"]].unique()) + 2),
-        height=8,
-        dpi=300,
-        verbose=False,
+    PLLS_gg = (
+        gg.ggplot(
+            PLLS_df, gg.aes(x=image_cols["site"], y="value", label=image_cols["site"])
+        )
+        + gg.coord_fixed(ratio=0.25)
+        + gg.geom_text(size=6)
+        + gg.facet_grid(f"channel~{image_cols['well']}", scales="free_y")
+        + gg.ggtitle(f"Image focus \n {plate}")
+        + gg.theme_bw()
+        + gg.ylab("Power log log slope")
+        + gg.theme(
+            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+            axis_text_y=gg.element_text(size=4),
+        )
     )
+
+    output_file = pathlib.Path(figures_output, "PLLS_per_well.png")
+    if check_if_write(output_file, force, throw_warning=True):
+        PLLS_gg.save(
+            output_file,
+            width=(len(PLLS_df[image_cols["well"]].unique()) + 2),
+            height=8,
+            dpi=300,
+            verbose=False,
+        )
 
 # Outputs list of sites that are saturated in any channel
 # Cell Painting images use >1% saturated, Barcoding images uses >.25% saturated
+saturated_col_prefix = "ImageQuality_PercentMaximal_"
 cp_sat_cols = []
 bc_sat_cols = []
 nts = ["A", "C", "G", "T"]
+
 for name in painting_image_names:
-    cp_sat_cols.append("ImageQuality_PercentMaximal_" + name)
+    cp_sat_cols.append(f"{saturated_col_prefix}{name}")
+
 for x in range(1, (barcoding_cycles + 1)):
     for nt in nts:
-        bc_sat_cols.append(
-            "ImageQuality_PercentMaximal_" + barcoding_prefix + "%02d" % x + "_" + nt
-        )
-for col in cp_sat_cols:
-    cp_sat_df = image_df[image_df[col] > 1]
-for col in bc_sat_cols:
-    bc_sat_df = image_df[image_df[col] > 0.25]
-sat_df_cols = cp_sat_cols + bc_sat_cols
-sat_df_cols.append("site")
+        bc_sat_cols.append(f"{saturated_col_prefix}{barcoding_prefix}{x:02d}_{nt}")
 
-sat_df = cp_sat_df.append(bc_sat_df).drop_duplicates(subset="site")
+if all(x in image_df.columns.tolist() for x in cp_sat_cols):
+    for col in cp_sat_cols:
+        cp_sat_df = image_df[image_df[col] > 1]
 
-if len(sat_df.index) > 0:
-    sat_output_file = pathlib.Path(results_output, "saturated_sites.csv")
-    if check_if_write(output_file, force, throw_warning=True):
-        sat_df.to_csv(sat_output_file)
+    for col in cp_sat_cols:
+        cp_sat_df = image_df[image_df[col] > 1]
+    for col in bc_sat_cols:
+        bc_sat_df = image_df[image_df[col] > 0.25]
+    sat_df_cols = cp_sat_cols + bc_sat_cols
+    sat_df_cols.append("site")
+
+    sat_df = cp_sat_df.append(bc_sat_df).drop_duplicates(subset="site")
+
+    if len(sat_df.index) > 0:
+        sat_output_file = pathlib.Path(results_output, "saturated_sites.csv")
+        if check_if_write(output_file, force, throw_warning=True):
+            sat_df.to_csv(sat_output_file)
 
 # Plots saturation in Cell Painting images
 # x = std dev of intensity (to find images that have unusually bright spots)
 # y = % image that is saturated (to find images that are unusually bright)
 # Look at points off cluster where x > 1
+intensity_col_prefix = "ImageQuality_StdIntensity_"
 cp_sat_df_cols = image_meta_col_list.copy()
 for name in painting_image_names:
-    cp_sat_df_cols.append("ImageQuality_PercentMaximal_" + name)
-    cp_sat_df_cols.append("ImageQuality_StdIntensity_" + name)
-cp_sat_df = image_df.loc[:, cp_sat_df_cols]
+    cp_sat_df_cols.append(f"{saturated_col_prefix}{name}")
+    cp_sat_df_cols.append(f"{intensity_col_prefix}{name}")
 
-cp_sat_df = cp_sat_df.set_index(image_meta_col_list).stack().reset_index()
-cp_sat_df[["cat", "type", "Ch"]] = cp_sat_df["level_3"].str.split("_", n=2, expand=True)
-cp_sat_df = cp_sat_df.drop(["level_3", "cat"], 1)
-cp_sat_df = pd.pivot_table(
-    cp_sat_df, index=image_meta_col_list + ["Ch"], columns=["type"]
-).reset_index()
-cp_sat_df.columns = image_meta_col_list + ["Ch", "PercentMax", "StdIntensity"]
+if all(x in image_df.columns.tolist() for x in cp_sat_df_cols):
+    cp_sat_df = image_df.loc[:, cp_sat_df_cols]
 
-cp_saturation_ymax = max(cp_sat_df.PercentMax)
-if cp_saturation_ymax < 1:
-    cp_saturation_ymax = 1
+    cp_sat_df = cp_sat_df.set_index(image_meta_col_list).stack().reset_index()
+    cp_sat_df[["cat", "type", "Ch"]] = cp_sat_df["level_3"].str.split(
+        "_", n=2, expand=True
+    )
+    cp_sat_df = cp_sat_df.drop(["level_3", "cat"], 1)
+    cp_sat_df = pd.pivot_table(
+        cp_sat_df, index=image_meta_col_list + ["Ch"], columns=["type"]
+    ).reset_index()
+    cp_sat_df.columns = image_meta_col_list + ["Ch", "PercentMax", "StdIntensity"]
 
-cp_saturation_gg = (
-    gg.ggplot(
-        cp_sat_df, gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"])
+    cp_saturation_ymax = max(cp_sat_df.PercentMax)
+    if cp_saturation_ymax < 1:
+        cp_saturation_ymax = 1
+
+    cp_saturation_gg = (
+        gg.ggplot(
+            cp_sat_df,
+            gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
+        )
+        + gg.coord_fixed(ratio=0.25)
+        + gg.geom_text(size=6)
+        + gg.ylim([0, cp_saturation_ymax])
+        + gg.facet_wrap(
+            ["Ch", image_cols["well"]], nrow=len(painting_image_names), scales="free"
+        )
+        + gg.theme_bw()
+        + gg.ggtitle(f"Cell Painting Image Saturation \n {plate}")
+        + gg.theme(
+            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+            strip_text=gg.element_text(size=7),
+            axis_text=gg.element_text(size=6),
+            subplots_adjust={"wspace": 0.2},
+        )
     )
-    + gg.coord_fixed(ratio=0.25)
-    + gg.geom_text(size=6)
-    + gg.ylim([0, cp_saturation_ymax])
-    + gg.facet_wrap(
-        ["Ch", image_cols["well"]], nrow=len(painting_image_names), scales="free"
-    )
-    + gg.theme_bw()
-    + gg.ggtitle(f"Cell Painting Image Saturation \n {plate}")
-    + gg.theme(
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
-        strip_text=gg.element_text(size=7),
-        axis_text=gg.element_text(size=6),
-        subplots_adjust={"wspace": 0.2},
-    )
-)
-output_file = pathlib.Path(figures_output, "cp_saturation.png")
-if check_if_write(output_file, force, throw_warning=True):
-    cp_saturation_gg.save(
-        output_file,
-        dpi=300,
-        width=(len(cp_sat_df[image_cols["well"]].unique()) + 2),
-        height=(len(cp_sat_df["Ch"].unique())),
-        verbose=False,
-    )
+    output_file = pathlib.Path(figures_output, "cp_saturation.png")
+    if check_if_write(output_file, force, throw_warning=True):
+        cp_saturation_gg.save(
+            output_file,
+            dpi=300,
+            width=(len(cp_sat_df[image_cols["well"]].unique()) + 2),
+            height=(len(cp_sat_df["Ch"].unique())),
+            verbose=False,
+        )
 
 # Plots saturation in Barcoding images
 # x = std dev of intensity (to find images that have unusually bright spots)
@@ -404,48 +408,79 @@ if check_if_write(output_file, force, throw_warning=True):
 bc_sat_df_cols = image_meta_col_list.copy()
 for x in range(1, (barcoding_cycles + 1)):
     for nt in nts:
-        bc_sat_df_cols.append(
-            "ImageQuality_PercentMaximal_" + barcoding_prefix + "%02d" % x + "_" + nt
-        )
-        bc_sat_df_cols.append(
-            "ImageQuality_StdIntensity_" + barcoding_prefix + "%02d" % x + "_" + nt
-        )
-bc_sat_df = image_df.loc[:, bc_sat_df_cols]
+        bc_sat_df_cols.append(f"{saturated_col_prefix}{barcoding_prefix}{x:02d}_{nt}")
+        bc_sat_df_cols.append(f"{intensity_col_prefix}{barcoding_prefix}{x:02d}_{nt}")
 
-bc_sat_df = bc_sat_df.set_index(image_meta_col_list).stack().reset_index()
-bc_sat_df[["cat", "type", "Ch"]] = bc_sat_df["level_3"].str.split("_", n=2, expand=True)
-bc_sat_df = bc_sat_df.drop(["level_3", "cat"], 1)
-bc_sat_df = pd.pivot_table(
-    bc_sat_df, index=image_meta_col_list + ["Ch"], columns=["type"]
-).reset_index()
-bc_sat_df.columns = image_meta_col_list + ["Ch", "PercentMax", "StdIntensity"]
+if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
+    bc_sat_df = image_df.loc[:, bc_sat_df_cols]
 
-bc_saturation_ymax = max(bc_sat_df.PercentMax)
-if bc_saturation_ymax < 0.2:
-    bc_saturation_ymax = 0.2
+    bc_sat_df = bc_sat_df.set_index(image_meta_col_list).stack().reset_index()
+    bc_sat_df[["cat", "type", "Ch"]] = bc_sat_df["level_3"].str.split(
+        "_", n=2, expand=True
+    )
+    bc_sat_df = bc_sat_df.drop(["level_3", "cat"], 1)
+    bc_sat_df = pd.pivot_table(
+        bc_sat_df, index=image_meta_col_list + ["Ch"], columns=["type"]
+    ).reset_index()
+    bc_sat_df.columns = image_meta_col_list + ["Ch", "PercentMax", "StdIntensity"]
+    bc_saturation_ymax = max(bc_sat_df.PercentMax)
+    if bc_saturation_ymax < 0.2:
+        bc_saturation_ymax = 0.2
 
-for well in bc_sat_df.loc[:, image_cols["well"]].squeeze().unique():
-    bc_saturation_gg = (
-        gg.ggplot(
-            bc_sat_df.loc[bc_sat_df.loc[:, image_cols["well"]] == well,],
-            gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
+    for well in bc_sat_df.loc[:, image_cols["well"]].squeeze().unique():
+        bc_saturation_gg = (
+            gg.ggplot(
+                bc_sat_df.loc[bc_sat_df.loc[:, image_cols["well"]] == well, :],
+                gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
+            )
+            + gg.coord_fixed(ratio=0.25)
+            + gg.geom_text(size=6)
+            + gg.facet_wrap("~Ch", ncol=4, scales="free")
+            + gg.ylim([0, bc_saturation_ymax])
+            + gg.theme_bw()
+            + gg.ggtitle(f"Barcoding Image Saturation (Well: {well}) \n {plate}")
+            + gg.theme(
+                strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+                strip_text=gg.element_text(size=7),
+                axis_text=gg.element_text(size=6),
+                subplots_adjust={"wspace": 0.7},
+            )
         )
-        + gg.coord_fixed(ratio=0.25)
-        + gg.geom_text(size=6)
-        + gg.facet_wrap("~Ch", ncol=4, scales="free")
-        + gg.ylim([0, bc_saturation_ymax])
-        + gg.theme_bw()
-        + gg.ggtitle(f"Barcoding Image Saturation (Well: {well}) \n {plate}")
-        + gg.theme(
-            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
-            strip_text=gg.element_text(size=7),
-            axis_text=gg.element_text(size=6),
-            subplots_adjust={"wspace": 0.7},
+
+        output_file = pathlib.Path(figures_output, f"bc_saturation_{well}.png")
+        if check_if_write(output_file, force, throw_warning=True):
+            bc_saturation_gg.save(
+                output_file,
+                dpi=300,
+                width=5,
+                height=(barcoding_cycles + 2),
+                verbose=False,
+            )
+
+# Create list of questionable channel correlations (alignments)
+correlation_col_prefix = "Correlation_Correlation_"
+corr_base_cols = image_meta_col_list.copy() + ["site"]
+
+corr_qc_cols = [col for col in image_df.columns if correlation_col_prefix in col]
+
+if len(corr_qc_cols) > 0:
+    image_corr_df = image_df.loc[:, corr_qc_cols + corr_base_cols]
+
+    image_corr_list = []
+    for col in corr_qc_cols:
+        image_corr_list.append(
+            image_corr_df.loc[image_corr_df[col] < correlation_threshold]
         )
+
+    image_corr_df = (
+        pd.concat(image_corr_list).drop_duplicates(subset="site").reset_index()
     )
 
-    output_file = pathlib.Path(figures_output, f"bc_saturation_{well}.png")
-    if check_if_write(output_file, force, throw_warning=True):
-        bc_saturation_gg.save(
-            output_file, dpi=300, width=5, height=(barcoding_cycles + 2), verbose=False
-        )
+    for col in corr_qc_cols:
+        image_corr_df.loc[(image_corr_df[col] >= correlation_threshold), col] = "pass"
+
+    if len(image_corr_df.index) > 0:
+        corr_output_file = pathlib.Path(results_output, "flagged_correlations.csv")
+
+        if check_if_write(corr_output_file, force, throw_warning=True):
+            image_corr_df.to_csv(corr_output_file)
