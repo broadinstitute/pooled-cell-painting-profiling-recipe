@@ -403,7 +403,7 @@ if all(x in image_df.columns.tolist() for x in cp_sat_df_cols):
 # Plots saturation in Barcoding images
 # x = std dev of intensity (to find images that have unusually bright spots)
 # y = % image that is saturated (to find images that are unusually bright)
-# Look at points off cluster where x > .2
+# Look at points off cluster where y > .2
 bc_sat_df_cols = image_meta_col_list.copy()
 for x in range(1, (barcoding_cycles + 1)):
     for nt in nts:
