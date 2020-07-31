@@ -349,7 +349,7 @@ if len(sat_df.index) > 0:
 # Plots saturation in Cell Painting images
 # x = std dev of intensity (to find images that have unusually bright spots)
 # y = % image that is saturated (to find images that are unusually bright)
-# Look at points off cluster where x > 1
+# Look at points off cluster where y > 1
 cp_sat_df_cols = image_meta_col_list.copy()
 for name in painting_image_names:
     cp_sat_df_cols.append("ImageQuality_PercentMaximal_" + name)
