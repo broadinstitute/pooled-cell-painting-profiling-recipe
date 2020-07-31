@@ -347,7 +347,7 @@ if all(x in image_df.columns.tolist() for x in cp_sat_cols):
 # Plots saturation in Cell Painting images
 # x = std dev of intensity (to find images that have unusually bright spots)
 # y = % image that is saturated (to find images that are unusually bright)
-# Look at points off cluster where x > 1
+# Look at points off cluster where y > 1
 intensity_col_prefix = "ImageQuality_StdIntensity_"
 cp_sat_df_cols = image_meta_col_list.copy()
 for name in painting_image_names:
@@ -400,7 +400,6 @@ if all(x in image_df.columns.tolist() for x in cp_sat_df_cols):
             height=(len(cp_sat_df["Ch"].unique())),
             verbose=False,
         )
-
 # Plots saturation in Barcoding images
 # x = std dev of intensity (to find images that have unusually bright spots)
 # y = % image that is saturated (to find images that are unusually bright)
