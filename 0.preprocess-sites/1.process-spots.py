@@ -74,6 +74,8 @@ id_cols = core_args["id_cols"]
 spot_parent_cols = core_args["parent_cols"]["spots"]
 
 output_spotdir = spot_args["output_spotdir"]
+image_cols = spot_args["image_cols"]
+output_image_file = spot_args["image_file"]
 barcode_cols = spot_args["barcode_cols"]
 gene_cols = spot_args["gene_cols"]
 location_cols = spot_args["location_cols"]
@@ -101,8 +103,23 @@ cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"])
 sites = [x.name for x in batch_dir.iterdir() if x.name not in ignore_files]
 num_sites = len(sites)
 
+image_list = []
 for site in sites:
     print(f"Now processing spots for {site}...")
+
+    # Load image metadata per site
+    try:
+        image_file = pathlib.Path(batch_dir, site, "Image.csv")
+        image_df = pd.read_csv(image_file).assign(Metadata_Site_Full=site)
+        image_list.append(image_df)
+
+        # Obtain specific metadata info
+        well = image_df.loc[:, image_cols["well"]].squeeze()
+        plate = image_df.loc[:, image_cols["plate"]].squeeze()
+        site_simple = image_df.loc[:, image_cols["site"]].squeeze()
+    except FileNotFoundError:
+        print(f"{site} image metadata does not exist. Skipping...")
+        continue
 
     # Load spot data
     try:
@@ -151,10 +168,14 @@ for site in sites:
         how="inner",
     )
 
-    null_spot_df = complete_foci_df.query("Parent_Cells == 0")
-    cell_spot_df = complete_foci_df.query("Parent_Cells != 0")
+    null_spot_df = complete_foci_df.loc[
+        (complete_foci_df.loc[:, spot_parent_cols] == 0).squeeze(), :
+    ]
+    cell_spot_df = complete_foci_df.loc[
+        (complete_foci_df.loc[:, spot_parent_cols] != 0).squeeze(), :
+    ]
 
-    num_assigned_cells = len(cell_spot_df.Parent_Cells.unique())
+    num_assigned_cells = len(cell_spot_df.loc[:, spot_parent_cols].squeeze().unique())
     num_unassigned_spots = null_spot_df.shape[0]
     num_assigned_spots = cell_spot_df.shape[0]
 
@@ -192,7 +213,13 @@ for site in sites:
         count_df=crispr_barcode_gene_df,
         parent_cols=spot_parent_cols,
         score_col=spot_score_cols[0],
-    ).assign(ImageNumber=image_number, site=site)
+    ).assign(
+        ImageNumber=image_number,
+        site_full=site,
+        plate=plate,
+        well=well,
+        site=site_simple,
+    )
 
     num_unique_guides = len(
         crispr_barcode_gene_df.loc[:, barcode_cols].squeeze().unique()
@@ -211,7 +238,13 @@ for site in sites:
     # Table 2 - Cell Category Summary
     cell_quality_summary_df = cell_quality.summarize_cell_quality_counts(
         quality_df=crispr_barcode_gene_df, parent_cols=spot_parent_cols
-    ).assign(ImageNumber=image_number, site=site)
+    ).assign(
+        ImageNumber=image_number,
+        site_full=site,
+        plate=plate,
+        well=well,
+        site=site_simple,
+    )
 
     out_file = pathlib.Path(output_dir, "cell_category_summary_count.tsv")
     if check_if_write(out_file, force):
@@ -237,17 +270,26 @@ for site in sites:
         )
     )
 
-    cell_category_counts_df = guide_category_count_df.merge(
-        gene_category_count_df, on=count_merge_cols, how="left"
-    ).assign(ImageNumber=image_number, site=site).query("Cell_Class in @cell_filter")
+    cell_category_counts_df = (
+        guide_category_count_df.merge(
+            gene_category_count_df, on=count_merge_cols, how="left"
+        )
+        .assign(
+            ImageNumber=image_number,
+            site_full=site,
+            plate=plate,
+            well=well,
+            site=site_simple,
+        )
+        .query("Cell_Class in @cell_filter")
+    )
 
     out_file = pathlib.Path(output_dir, "cell_perturbation_category_summary_counts.tsv")
     if check_if_write(out_file, force):
         cell_category_counts_df.to_csv(out_file, sep="\t", index=False)
 
     passed_gene_df = (
-        gene_category_count_df
-        .groupby(gene_cols)["Cell_Count_Per_Gene"]
+        gene_category_count_df.groupby(gene_cols)["Cell_Count_Per_Gene"]
         .sum()
         .reset_index()
         .sort_values(by="Cell_Count_Per_Gene", ascending=False)
@@ -275,11 +317,13 @@ for site in sites:
     }
 
     descriptive_results = pd.DataFrame(descriptive_results, index=[0]).assign(
-        site_full=site
+        site_full=site, plate=plate, well=well, site=site_simple,
     )
 
     output_file = pathlib.Path(output_dir, "site_stats.tsv")
     if check_if_write(output_file, force):
         descriptive_results.to_csv(output_file, sep="\t", index=False)
 
+image_df = pd.concat(image_list, axis="rows").reset_index(drop=True)
+image_df.to_csv(output_image_file, sep="\t", index=False)
 print("All sites complete.")

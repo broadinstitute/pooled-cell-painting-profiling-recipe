@@ -54,6 +54,8 @@ prefilter_dir = prefilter_args["output_basedir"]
 prefilter_file = prefilter_args["prefilter_file"]
 
 foci_dir = spot_args["output_spotdir"]
+image_cols = spot_args["image_cols"]
+input_image_file = spot_args["image_file"]
 
 cell_sort_col = cell_args["sort_col"]
 output_basedir = cell_args["output_basedir"]
@@ -86,11 +88,28 @@ except FileNotFoundError:
         "Perform 0.prefilter-features.py prefilter before continuing...",
     )
 
-sites = [x for x in os.listdir(foci_dir) if x not in ignore_files]
+# Load image metadata summary file to extract out important metadata indicators
+# 1.process-spots.py must be run first
+try:
+    image_df = pd.read_csv(input_image_file, sep="\t")
+except FileNotFoundError:
+    raise FileNotFoundError(
+        "Error",
+        f"{input_image_file} not found. ",
+        "Perform 1.process.spots.py before continuing...",
+    )
 
+sites = [x for x in os.listdir(foci_dir) if x not in ignore_files]
 for site in sites:
+    # Extract out image metadata information for the specific site
+    image_subset_df = image_df.query("Metadata_Site_Full == @site")
+
+    well = image_subset_df.loc[:, image_cols["well"]].squeeze()
+    site_simple = image_subset_df.loc[:, image_cols["site"]].squeeze()
+    plate = image_subset_df.loc[:, image_cols["plate"]].squeeze()
+
     try:
-        print(f"Now processing {site}...")
+        print(f"Now processing cells for {site}...")
         compartment_dir = pathlib.Path(batch_dir, site)
 
         # Make the compartment_csvs dictionary used to merge dfs
@@ -173,7 +192,7 @@ for site in sites:
     cell_count_df = (
         pd.DataFrame(metadata_df.Cell_Class.value_counts())
         .rename(columns={"Cell_Class": "cell_count"})
-        .assign(site=site)
+        .assign(site_full=site, plate=plate, well=well, site=site_simple,)
     )
 
     output_folder = pathlib.Path(output_basedir, batch, "paint", site)
