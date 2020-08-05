@@ -337,19 +337,23 @@ if all(x in image_df.columns.tolist() for x in cp_sat_cols):
     for col in cp_sat_cols:
         temp = image_df[image_df[col] > 1]
         cp_sat_df = cp_sat_df.append(temp)
-    if len(cp_sat_df) !=  0:
-        cp_sat_df.loc[:,'Fails_CP_Sat'] = 'Fails'
+    if len(cp_sat_df) != 0:
+        cp_sat_df.loc[:, "Fails_CP_Sat"] = "Fails"
 
 # Create df of sites that fail BC saturation
 if all(x in image_df.columns.tolist() for x in bc_sat_cols):
     for col in bc_sat_cols:
         temp = image_df[image_df[col] > 0.25]
         bc_sat_df = bc_sat_df.append(temp)
-    if len(bc_sat_df) !=  0:
-        bc_sat_df.loc[:,'Fails_BC_Sat'] = 'Fails'
+    if len(bc_sat_df) != 0:
+        bc_sat_df.loc[:, "Fails_BC_Sat"] = "Fails"
 
 if len(cp_sat_df) > 0 and len(bc_sat_df) > 0:
-    sat_df = cp_sat_df.set_index("Metadata_Site_Full").combine_first(bc_sat_df.set_index("Metadata_Site_Full")).reset_index()
+    sat_df = (
+        cp_sat_df.set_index("Metadata_Site_Full")
+        .combine_first(bc_sat_df.set_index("Metadata_Site_Full"))
+        .reset_index()
+    )
 elif len(cp_sat_df) > 0:
     sat_df = cp_sat_df
 elif len(bc_sat_df) > 0:
@@ -358,8 +362,8 @@ elif len(bc_sat_df) > 0:
 if not sat_df.empty:
     sat_df_cols = cp_sat_cols + bc_sat_cols + addn_cols
     sat_df = sat_df.loc[:, sat_df_cols]
-    sat_df['Fails_CP_Sat'].fillna('Passes', inplace=True)
-    sat_df['Fails_BC_Sat'].fillna('Passes', inplace=True)
+    sat_df["Fails_CP_Sat"].fillna("Passes", inplace=True)
+    sat_df["Fails_BC_Sat"].fillna("Passes", inplace=True)
 
 # saturated_sites.csv does not save if empty
 if len(sat_df.index) > 0:
