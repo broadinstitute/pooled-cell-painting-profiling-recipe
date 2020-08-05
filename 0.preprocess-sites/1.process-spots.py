@@ -48,8 +48,11 @@ from scripts.spot_utils import (
     category_counts,
 )
 
-sys.path.append(os.path.join("..", "scripts"))
+sys.path.append("config")
 from config_utils import process_config_file
+
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from arg_utils import parse_command_args
 from io_utils import check_if_write

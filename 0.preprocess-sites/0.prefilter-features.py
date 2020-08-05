@@ -16,8 +16,11 @@ import numpy as np
 import pandas as pd
 from scripts.site_processing_utils import prefilter_features
 
-sys.path.append(os.path.join("..", "scripts"))
+sys.path.append("config")
 from config_utils import process_config_file
+
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
 from arg_utils import parse_command_args
 from io_utils import check_if_write
 

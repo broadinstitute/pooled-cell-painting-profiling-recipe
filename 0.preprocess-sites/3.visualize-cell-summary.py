@@ -8,8 +8,11 @@ import plotnine as gg
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-sys.path.append(os.path.join("..", "scripts"))
+sys.path.append("config")
 from config_utils import process_config_file
+
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from arg_utils import parse_command_args
 from io_utils import check_if_write
@@ -35,12 +38,13 @@ gene_cols = spot_args["gene_cols"]
 spot_score_cols = spot_args["spot_score_cols"]
 spot_score_count_cols = ["Metadata_Foci_" + col + "_count" for col in spot_score_cols]
 spot_score_mean_cols = ["Metadata_Foci_" + col + "_mean" for col in spot_score_cols]
-input_basedir = cell_args["output_basedir"]
+input_paintdir = cell_args["output_paintdir"]
+input_spotdir = cell_args["output_spotdir"]
 
-output_resultsdir = summ_cell_args["output_resultsdir"]
-output_resultsdir = pathlib.Path(output_resultsdir, batch)
-output_figuresdir = summ_cell_args["output_figuresdir"]
-output_figuresdir = pathlib.Path(output_figuresdir, batch)
+output_resultsdir = summ_cell_args["output_summary_resultsdir"]
+output_figuresdir = summ_cell_args["output_summary_figuresdir"]
+cell_count_output_file = summ_cell_args["cell_count_file"]
+total_cell_count_file = summ_cell_args["total_cell_count_file"]
 cell_category_order = summ_cell_args["cell_category_order"]
 cell_category_colors = summ_cell_args["cell_category_colors"]
 
@@ -57,10 +61,7 @@ force = summ_cell_args["force_overwrite"]
 if not force:
     force = args.force
 
-input_dir = pathlib.Path(input_basedir, batch, "paint")
-spot_input_dir = pathlib.Path(input_basedir, batch, "spots")
-
-sites = [x for x in os.listdir(input_dir) if x not in ignore_files]
+sites = [x.name for x in input_paintdir.iterdir() if x.name not in ignore_files]
 print(f"There are {len(sites)} sites.")
 
 # Read and Merge Data
@@ -69,7 +70,7 @@ site_stat_list = []
 pert_counts_list = []
 for site in sites:
     # Aggregates cell quality by site into single list
-    cell_count_file = pathlib.Path(input_dir, site, f"cell_counts_{site}.tsv")
+    cell_count_file = pathlib.Path(f"{input_paintdir}/{site}/cell_counts_{site}.tsv")
     cell_quality_list.append(pd.read_csv(cell_count_file, sep="\t"))
 
     # Aggregates site summary stats into a single list
@@ -101,11 +102,8 @@ cell_count_df.loc[:, "site_full"] = pd.Categorical(
     ),
 )
 
-output_folder = pathlib.Path(output_resultsdir, "cells")
-os.makedirs(output_folder, exist_ok=True)
-output_file = pathlib.Path(output_folder, "cell_count.tsv")
-if check_if_write(output_file, force, throw_warning=True):
-    cell_count_df.to_csv(output_file, sep="\t", index=False)
+if check_if_write(cell_count_output_file, force, throw_warning=True):
+    cell_count_df.to_csv(cell_count_output_file, sep="\t", index=False)
 
 # Graph: Cell count with all wells in same graph
 cell_count_gg = (
@@ -154,10 +152,8 @@ if check_if_write(output_file, force, throw_warning=True):
 all_count_df = pd.DataFrame(
     cell_count_df.groupby("Cell_Quality")["cell_count"].sum()
 ).reset_index()
-output_folder = pathlib.Path(output_resultsdir, "cells")
-output_file = pathlib.Path(output_folder, "total_cell_count.tsv")
-if check_if_write(output_file, force, throw_warning=True):
-    all_count_df.to_csv(output_file, sep="\t", index=False)
+if check_if_write(total_cell_count_file, force, throw_warning=True):
+    all_count_df.to_csv(total_cell_count_file, sep="\t", index=False)
 
 # Graph: Total cells in each quality category
 all_cells = all_count_df.cell_count.sum()
@@ -178,8 +174,6 @@ total_cell_count_gg = (
 output_file = pathlib.Path(output_figuresdir, "total_cell_count.png")
 if check_if_write(output_file, force, throw_warning=True):
     total_cell_count_gg.save(output_file, dpi=300, width=5, height=6, verbose=False)
-
-print(f"There are a total of {all_cells} cells in {batch}")
 
 # Total cell number by well
 all_well_count_df = pd.DataFrame(
@@ -293,3 +287,5 @@ guide_count_gg = (
 output_file = pathlib.Path(output_figuresdir, "perturbation_coverage.png")
 if check_if_write(output_file, force, throw_warning=True):
     guide_count_gg.save(output_file, dpi=300, width=7, height=20, verbose=False)
+
+print(f"There are a total of {all_cells} cells in {batch}")

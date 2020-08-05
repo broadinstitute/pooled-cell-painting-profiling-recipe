@@ -5,8 +5,11 @@ import argparse
 import pandas as pd
 import plotnine as gg
 
-sys.path.append(os.path.join("..", "scripts"))
+sys.path.append("config")
 from config_utils import process_config_file
+
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from arg_utils import parse_command_args
 from io_utils import check_if_write
@@ -32,9 +35,10 @@ cell_filter = spots_args["cell_filter"]
 image_cols = spots_args["image_cols"]
 input_image_file = spots_args["image_file"]
 
-summ_cells_results_basedir = summ_cell_args["output_resultsdir"]
-summ_cells_figures_basedir = summ_cell_args["output_figuresdir"]
+summ_cells_results_basedir = summ_cell_args["output_summary_resultsdir"]
+summ_cells_figures_basedir = summ_cell_args["output_summary_figuresdir"]
 cell_category_order = summ_cell_args["cell_category_order"]
+cell_count_file = summ_cell_args["cell_count_file"]
 
 correlation_threshold = summ_plate_args["correlation_threshold"]
 painting_image_names = summ_plate_args["painting_image_names"]
@@ -47,15 +51,7 @@ force = summ_plate_args["force_overwrite"]
 if not force:
     force = args.force
 
-cell_count_file = pathlib.Path(
-    summ_cells_results_basedir, batch, "cells", "cell_count.tsv"
-)
 cell_count_df = pd.read_csv(cell_count_file, sep="\t")
-
-figures_output = pathlib.Path(summ_cells_figures_basedir, batch)
-os.makedirs(figures_output, exist_ok=True)
-results_output = pathlib.Path(summ_cells_results_basedir, batch)
-os.makedirs(results_output, exist_ok=True)
 
 # Creates x, y coordinates for plotting per-plate views.
 # Assumes image numbering starts in upper left corner and proceeds down
@@ -96,6 +92,7 @@ cell_count_totalcells_df = (
     .mean()
     .reset_index()
 )
+os.makedirs(figures_output, exist_ok=True)
 
 plate = cell_count_df["plate"].unique()[0]
 
@@ -106,7 +103,7 @@ by_well_gg = (
     + gg.facet_wrap("~well")
     + gg.coord_fixed()
     + gg.theme_bw()
-    + gg.ggtitle(f"Total Cells/Well \n {plate}")
+    + gg.ggtitle(f"Total Cells/Well\n{plate}")
     + gg.theme(
         axis_text=gg.element_blank(),
         axis_title=gg.element_blank(),
@@ -172,7 +169,7 @@ ratio_gg = (
     + gg.facet_grid("cell_quality_recode~well", scales="free_y")
     + gg.coord_fixed()
     + gg.theme_bw()
-    + gg.ggtitle(f"Quality Ratio \n {plate}")
+    + gg.ggtitle(f"Quality Ratio\n{plate}")
     + gg.coord_fixed()
     + gg.theme(
         axis_text=gg.element_blank(),
