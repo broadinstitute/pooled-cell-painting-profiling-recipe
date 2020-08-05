@@ -7,7 +7,7 @@ main_config:
 core:
   batch: BATCH01
   project_dir: /Users/gway/work/projects/
-  output_dir: data
+  output_basedir: data/0.site-qc
   categorize_cell_quality: simple
   sites_per_image_grid_side: 10
   compartments:
@@ -34,7 +34,7 @@ prefilter:
   perform: true
   force_overwrite: true
   example_site: PLATE01_A1_1
-  output_basedir: data
+  output_dir: data
   flag_cols:
     - Barcode
     - Location
@@ -44,7 +44,7 @@ prefilter:
 process-spots:
   perform: true
   force_overwrite: true
-  output_basedir: data
+  output_dir: spots
   image_cols:
     well: "Metadata_Well"
     site: "Metadata_Site"
@@ -68,7 +68,7 @@ process-spots:
 process-cells:
   perform: true
   force_overwrite: true
-  output_basedir: data
+  output_dir: paint
   sort_col: Metadata_Cells_ObjectNumber
   merge_columns:
     image_column: ImageNumber
