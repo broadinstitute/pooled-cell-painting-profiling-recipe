@@ -128,13 +128,11 @@ def preprocess_sites_config(config):
 def generate_profiles_config(config, load_data=True):
     if load_data:
         config = load_config(config)
-    sites_config = preprocess_sites_config(config, load_data=False)
 
     input_batch_dir = make_input_batch_path(config, load_data=False)
     output_basedir = get_output_path(config, load_data=False, add_batch=True)
 
     config["core"]["batch_dir"] = input_batch_dir
-
     core = config["core"]
     batch = core["batch"]
     site_dir = core["site_dir"]
@@ -181,7 +179,7 @@ def generate_profiles_config(config, load_data=True):
 
     # Build paths to aggregate yaml document
     config["aggregate"]["aggregate_output_dir"] = pathlib.Path(
-        config["aggregate"]["output_dir"], batch
+        output_basedir, config["aggregate"]["output_dir"]
     )
 
     # Build aggregated output files
@@ -198,7 +196,7 @@ def generate_profiles_config(config, load_data=True):
 
     # Build paths to normalize yaml document
     config["normalize"]["normalize_output_dir"] = pathlib.Path(
-        config["normalize"]["output_dir"], batch
+        output_basedir, config["normalize"]["output_dir"]
     )
 
     # Build normalized output files
@@ -211,7 +209,7 @@ def generate_profiles_config(config, load_data=True):
 
     # Build paths to normalize yaml document
     config["feature_select"]["feature_select_output_dir"] = pathlib.Path(
-        config["feature_select"]["output_dir"], batch
+        output_basedir, config["feature_select"]["output_dir"]
     )
 
     # Build feature select output files
