@@ -10,8 +10,11 @@ import plotnine as gg
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-sys.path.append("../scripts")
+sys.path.append("config")
 from config_utils import process_config_file
+
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
 from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
 from cell_quality_utils import CellQuality
 
