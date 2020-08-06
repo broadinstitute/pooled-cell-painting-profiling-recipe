@@ -36,10 +36,11 @@ control_barcodes = core_args["control_barcodes"]
 barcode_cols = spot_args["barcode_cols"]
 gene_cols = spot_args["gene_cols"]
 spot_score_cols = spot_args["spot_score_cols"]
+input_spotdir = spot_args["output_spotdir"]
 spot_score_count_cols = ["Metadata_Foci_" + col + "_count" for col in spot_score_cols]
 spot_score_mean_cols = ["Metadata_Foci_" + col + "_mean" for col in spot_score_cols]
+
 input_paintdir = cell_args["output_paintdir"]
-input_spotdir = cell_args["output_spotdir"]
 
 output_resultsdir = summ_cell_args["output_summary_resultsdir"]
 output_figuresdir = summ_cell_args["output_summary_figuresdir"]
@@ -74,12 +75,12 @@ for site in sites:
     cell_quality_list.append(pd.read_csv(cell_count_file, sep="\t"))
 
     # Aggregates site summary stats into a single list
-    site_stat_file = pathlib.Path(spot_input_dir, site, f"site_stats.tsv")
+    site_stat_file = pathlib.Path(input_spotdir, site, f"site_stats.tsv")
     site_stat_list.append(pd.read_csv(site_stat_file, sep="\t"))
 
     # Aggregates perturbation counts by site into a single list
     pert_count_file = pathlib.Path(
-        spot_input_dir, site, f"cell_perturbation_category_summary_counts.tsv"
+        input_spotdir, site, f"cell_perturbation_category_summary_counts.tsv"
     )
     pert_counts_list.append(pd.read_csv(pert_count_file, sep="\t"))
 
