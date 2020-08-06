@@ -45,6 +45,7 @@ process-spots:
   perform: true
   force_overwrite: true
   output_dir: spots
+  image_output_dir: data
   image_cols:
     well: "Metadata_Well"
     site: "Metadata_Site"
