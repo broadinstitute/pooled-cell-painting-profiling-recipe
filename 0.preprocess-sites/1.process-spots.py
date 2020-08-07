@@ -113,13 +113,13 @@ for site in sites:
     # Load image metadata per site
     try:
         image_file = pathlib.Path(batch_dir, site, "Image.csv")
-        image_df = pd.read_csv(image_file).assign(Metadata_Site_Full=site)
+        image_df = pd.read_csv(image_file).assign(Metadata_site=site)
         image_list.append(image_df)
 
         # Obtain specific metadata info
         well = image_df.loc[:, image_cols["well"]].squeeze()
         plate = image_df.loc[:, image_cols["plate"]].squeeze()
-        site_simple = image_df.loc[:, image_cols["site"]].squeeze()
+        site_location = image_df.loc[:, image_cols["site"]].squeeze()
     except FileNotFoundError:
         print(f"{site} image metadata does not exist. Skipping...")
         continue
@@ -218,10 +218,10 @@ for site in sites:
         score_col=spot_score_cols[0],
     ).assign(
         ImageNumber=image_number,
-        site_full=site,
+        site=site,
         plate=plate,
         well=well,
-        site=site_simple,
+        site_location=site_location,
     )
 
     num_unique_guides = len(
@@ -243,10 +243,10 @@ for site in sites:
         quality_df=crispr_barcode_gene_df, parent_cols=spot_parent_cols
     ).assign(
         ImageNumber=image_number,
-        site_full=site,
+        site=site,
         plate=plate,
         well=well,
-        site=site_simple,
+        site_location=site_location,
     )
 
     out_file = pathlib.Path(output_dir, "cell_category_summary_count.tsv")
@@ -279,10 +279,10 @@ for site in sites:
         )
         .assign(
             ImageNumber=image_number,
-            site_full=site,
+            site=site,
             plate=plate,
             well=well,
-            site=site_simple,
+            site_location=site_location,
         )
         .query("Cell_Class in @cell_filter")
     )
@@ -320,7 +320,11 @@ for site in sites:
     }
 
     descriptive_results = pd.DataFrame(descriptive_results, index=[0]).assign(
-        site_full=site, plate=plate, well=well, site=site_simple,
+        ImageNumber=image_number,
+        site=site,
+        plate=plate,
+        well=well,
+        site_location=site_location,
     )
 
     output_file = pathlib.Path(output_dir, "site_stats.tsv")

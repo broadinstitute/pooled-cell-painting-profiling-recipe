@@ -92,11 +92,11 @@ cell_count_df.loc[:, "Cell_Quality"] = pd.Categorical(
     cell_count_df.Cell_Quality, categories=cell_category_order
 )
 
-# Assigns the site_full column to the category datatype
-cell_count_df.loc[:, "site_full"] = pd.Categorical(
-    cell_count_df.site_full,
+# Assigns the site column to the category datatype
+cell_count_df.loc[:, "site"] = pd.Categorical(
+    cell_count_df.site,
     categories=(
-        cell_count_df.groupby("site_full")["cell_count"]
+        cell_count_df.groupby("site")["cell_count"]
         .sum()
         .sort_values(ascending=False)
         .index.tolist()
@@ -108,7 +108,7 @@ if check_if_write(cell_count_output_file, force, throw_warning=True):
 
 # Graph: Cell count with all wells in same graph
 cell_count_gg = (
-    gg.ggplot(cell_count_df, gg.aes(x="site_full", y="cell_count"))
+    gg.ggplot(cell_count_df, gg.aes(x="site", y="cell_count"))
     + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
     + gg.theme_bw()
     + gg.theme(axis_text_x=gg.element_text(rotation=90, size=5))
@@ -128,7 +128,7 @@ if check_if_write(output_file, force, throw_warning=True):
 
 # Same graph as above, separated by well.
 cell_count_gg_parsed = (
-    gg.ggplot(cell_count_df, gg.aes(x="site_full", y="cell_count"))
+    gg.ggplot(cell_count_df, gg.aes(x="site", y="cell_count"))
     + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
     + gg.theme_bw()
     + gg.theme(
@@ -206,17 +206,17 @@ if check_if_write(output_file, force, throw_warning=True):
 site_stat_df = pd.concat(site_stat_list, axis="rows").reset_index(drop=True)
 
 num_unique_pert_df = site_stat_df.melt(
-    id_vars=["site_full", "image_number"],
+    id_vars=["site", "image_number"],
     value_vars=["num_unique_genes", "num_unique_guides"],
     value_name="pert_count",
     var_name="pert_class",
 )
 
-# Assigns the site_full column to the category datatype
-num_unique_pert_df.loc[:, "site_full"] = pd.Categorical(
-    num_unique_pert_df.site_full,
+# Assigns the site column to the category datatype
+num_unique_pert_df.loc[:, "site"] = pd.Categorical(
+    num_unique_pert_df.site,
     categories=(
-        site_stat_df.groupby("site_full")["num_assigned_cells"]
+        site_stat_df.groupby("site")["num_assigned_cells"]
         .sum()
         .sort_values(ascending=False)
         .index.tolist()
@@ -224,7 +224,7 @@ num_unique_pert_df.loc[:, "site_full"] = pd.Categorical(
 )
 
 unique_pert_count_gg = (
-    gg.ggplot(num_unique_pert_df, gg.aes(x="site_full", y="pert_count"))
+    gg.ggplot(num_unique_pert_df, gg.aes(x="site", y="pert_count"))
     + gg.geom_bar(gg.aes(fill="pert_class"), stat="identity")
     + gg.theme_bw()
     + gg.theme(axis_text_x=gg.element_text(rotation=90, size=5))
@@ -240,16 +240,14 @@ if check_if_write(output_file, force, throw_warning=True):
     unique_pert_count_gg.save(output_file, dpi=300, width=10, height=7, verbose=False)
 
 # Process overall perturbation counts per batch
+pert_count_df = pd.concat(pert_counts_list, axis="rows").reset_index()
+
 pert_count_df = (
-    pd.concat(pert_counts_list, axis="rows")
-    .reset_index()
-    .rename(columns={"site": "site_full"})
-)
-pert_count_df = pert_count_df.loc[
-    ~pert_count_df.loc[:, gene_cols].isin(control_barcodes).squeeze(),
-].reset_index(drop=True)
-pert_count_df = (
-    pert_count_df.groupby(gene_cols + barcode_cols)["Cell_Count_Per_Guide"]
+    pert_count_df.loc[
+        ~pert_count_df.loc[:, gene_cols].isin(control_barcodes).squeeze(),
+    ]
+    .reset_index(drop=True)
+    .groupby(gene_cols + barcode_cols)["Cell_Count_Per_Guide"]
     .sum()
     .reset_index()
 )
@@ -263,7 +261,7 @@ id_group_df.columns = ["barcode_id"]
 
 pert_count_df = pert_count_df.merge(id_group_df, left_index=True, right_index=True)
 
-# Assigns the site_full column to the category datatype
+# Assigns a category datatype
 pert_count_df.loc[:, gene_cols] = pd.Categorical(
     pert_count_df.loc[:, gene_cols].squeeze(),
     categories=(

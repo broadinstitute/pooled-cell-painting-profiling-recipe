@@ -105,10 +105,10 @@ sites = [x for x in os.listdir(foci_dir) if x not in ignore_files]
 
 for site in sites:
     # Extract out image metadata information for the specific site
-    image_subset_df = image_df.query("Metadata_Site_Full == @site")
+    image_subset_df = image_df.query("Metadata_site == @site")
 
     well = image_subset_df.loc[:, image_cols["well"]].squeeze()
-    site_simple = image_subset_df.loc[:, image_cols["site"]].squeeze()
+    site_location = image_subset_df.loc[:, image_cols["site"]].squeeze()
     plate = image_subset_df.loc[:, image_cols["plate"]].squeeze()
 
     try:
@@ -195,7 +195,7 @@ for site in sites:
     cell_count_df = (
         pd.DataFrame(metadata_df.Cell_Class.value_counts())
         .rename(columns={"Cell_Class": "cell_count"})
-        .assign(site_full=site, plate=plate, well=well, site=site_simple,)
+        .assign(site=site, plate=plate, well=well, site_location=site_location,)
     )
 
     output_folder = pathlib.Path(output_paintdir, site)
