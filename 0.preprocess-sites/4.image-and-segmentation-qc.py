@@ -35,8 +35,8 @@ cell_filter = spots_args["cell_filter"]
 image_cols = spots_args["image_cols"]
 input_image_file = spots_args["image_file"]
 
-figures_output_dir = summ_cell_args["output_summary_figuresdir"]
-results_output_dir = summ_cell_args["output_summary_resultsdir"]
+figures_output = summ_cell_args["output_summary_figuresdir"]
+results_output = summ_cell_args["output_summary_resultsdir"]
 cell_category_order = summ_cell_args["cell_category_order"]
 cell_count_file = summ_cell_args["cell_count_file"]
 
@@ -46,8 +46,6 @@ barcoding_cycles = summ_plate_args["barcoding_cycles"]
 barcoding_prefix = summ_plate_args["barcoding_prefix"]
 force = summ_plate_args["force_overwrite"]
 
-os.makedirs(figures_output_dir, exist_ok=True)
-os.makedirs(results_output_dir, exist_ok=True)
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
 if not force:
@@ -69,38 +67,38 @@ for i in range(1, sites_per_image_grid_side + 1):
 
 # Uses sites_list in case there are fewer analyzed sites than acquired sites
 sites_list = [*range(1, (sites_per_image_grid_side * sites_per_image_grid_side) + 1)]
-loc_df = (
-    pd.DataFrame(final_order)
-    .rename(columns={0: "x_loc", 1: "y_loc"})
-    .assign(site=sites_list)
-)
+loc_df = pd.DataFrame(final_order).rename(columns={0: "x_loc", 1: "y_loc"})
+loc_df.loc[:, image_cols["site"]] = sites_list
 
 # Create total_cell_count
 cell_count_bysite_df = (
-    cell_count_df.groupby("site_full")["cell_count"]
+    cell_count_df.groupby(image_cols["site"])["cell_count"]
     .sum()
     .reset_index()
     .rename(columns={"cell_count": "total_cell_count"})
 )
 
 # Add total_cell_count to cell_count_df and add in x, y coordinates for plotting
-cell_count_df = cell_count_df.merge(cell_count_bysite_df, on="site_full").merge(
-    loc_df, on="site"
+cell_count_df = cell_count_df.merge(cell_count_bysite_df, on=image_cols["site"]).merge(
+    loc_df, on=image_cols["site"]
 )
 
 # Plot total number of cells per well
 cell_count_totalcells_df = (
-    cell_count_df.groupby(["x_loc", "y_loc", "well", "site"])["total_cell_count"]
+    cell_count_df.groupby(["x_loc", "y_loc", "well", image_cols["site"]])[
+        "total_cell_count"
+    ]
     .mean()
     .reset_index()
 )
+os.makedirs(figures_output, exist_ok=True)
 
 plate = cell_count_df["plate"].unique()[0]
 
 by_well_gg = (
     gg.ggplot(cell_count_totalcells_df, gg.aes(x="x_loc", y="y_loc"))
     + gg.geom_point(gg.aes(fill="total_cell_count"), size=10)
-    + gg.geom_text(gg.aes(label="site"), color="lightgrey")
+    + gg.geom_text(gg.aes(label="site_location"), color="lightgrey")
     + gg.facet_wrap("~well")
     + gg.coord_fixed()
     + gg.theme_bw()
@@ -114,7 +112,7 @@ by_well_gg = (
     + gg.scale_fill_cmap(name="magma")
 )
 
-output_file = pathlib.Path(figures_output_dir, "plate_layout_cells_count_per_well.png")
+output_file = pathlib.Path(figures_output, "plate_layout_cells_count_per_well.png")
 if check_if_write(output_file, force, throw_warning=True):
     by_well_gg.save(output_file, dpi=300, verbose=False)
 
@@ -122,7 +120,7 @@ if check_if_write(output_file, force, throw_warning=True):
 ratio_df = pd.pivot_table(
     cell_count_df,
     values="cell_count",
-    index=["site_full", "plate", "well", "site", "x_loc", "y_loc"],
+    index=["site", "plate", "well", "site_location", "x_loc", "y_loc"],
     columns=["Cell_Quality"],
 )
 ratio_df = ratio_df.assign(
@@ -165,7 +163,7 @@ ratio_df = ratio_df.assign(
 ratio_gg = (
     gg.ggplot(ratio_df, gg.aes(x="x_loc", y="y_loc"))
     + gg.geom_point(gg.aes(fill="Ratio"), size=5)
-    + gg.geom_text(gg.aes(label="site"), size=4, color="lightgrey")
+    + gg.geom_text(gg.aes(label="site_location"), size=4, color="lightgrey")
     + gg.facet_grid("cell_quality_recode~well", scales="free_y")
     + gg.coord_fixed()
     + gg.theme_bw()
@@ -179,7 +177,7 @@ ratio_gg = (
     + gg.scale_fill_cmap(name="magma")
 )
 
-output_file = pathlib.Path(figures_output_dir, "plate_layout_ratios_per_well.png")
+output_file = pathlib.Path(figures_output, "plate_layout_ratios_per_well.png")
 if check_if_write(output_file, force, throw_warning=True):
     ratio_gg.save(
         output_file,
@@ -194,9 +192,9 @@ image_df = pd.read_csv(input_image_file, sep="\t")
 image_meta_col_list = list(image_cols.values())
 
 # Add in x, y coordinates for plotting
-image_df["site"] = image_df[image_cols["site"]].astype(int)
-loc_df["site"] = loc_df["site"].astype(int)
-image_df = image_df.merge(loc_df, how="left", on="site")
+image_df[image_cols["site"]] = image_df[image_cols["site"]].astype(int)
+loc_df[image_cols["site"]] = loc_df[image_cols["site"]].astype(int)
+image_df = image_df.merge(loc_df, how="left", on=image_cols["site"])
 
 # Plot final compartment thresholds per well
 threshold_col_prefix = "Threshold_FinalThreshold_"
@@ -209,7 +207,7 @@ for threshhold_compartment in ["Cells", "Nuclei"]:
     compartment_finalthresh_gg = (
         gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
         + gg.geom_point(gg.aes(fill=f"{threshold_full_col}"), size=10)
-        + gg.geom_text(gg.aes(label="site"), color="lightgrey")
+        + gg.geom_text(gg.aes(label="site_location"), color="lightgrey")
         + gg.facet_wrap(f"~{image_cols['well']}")
         + gg.coord_fixed()
         + gg.theme_bw()
@@ -223,7 +221,7 @@ for threshhold_compartment in ["Cells", "Nuclei"]:
         + gg.labs(fill="Threshold")
     )
     output_file = pathlib.Path(
-        figures_output_dir,
+        figures_output,
         f"plate_layout_{threshhold_compartment}_FinalThreshold_per_well.png",
     )
     if check_if_write(output_file, force, throw_warning=True):
@@ -236,7 +234,7 @@ if confluent_col in image_df.columns:
     percent_confluent_gg = (
         gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
         + gg.geom_point(gg.aes(fill=confluent_col), size=10)
-        + gg.geom_text(gg.aes(label="site"), color="lightgrey")
+        + gg.geom_text(gg.aes(label="site_location"), color="lightgrey")
         + gg.facet_wrap(f"~{image_cols['well']}")
         + gg.coord_fixed()
         + gg.theme_bw()
@@ -250,20 +248,22 @@ if confluent_col in image_df.columns:
         + gg.labs(fill="Percent")
     )
     output_file = pathlib.Path(
-        figures_output_dir, "plate_layout_PercentConfluent_per_well.png"
+        figures_output, "plate_layout_PercentConfluent_per_well.png"
     )
     if check_if_write(output_file, force, throw_warning=True):
         percent_confluent_gg.save(output_file, dpi=300, verbose=False)
 
-    confluent_cols = ["site", confluent_col] + image_meta_col_list
+    confluent_cols = ["site_location", confluent_col] + image_meta_col_list
     confluent_df = image_df.loc[image_df[confluent_col] > 0]
     confluent_df = (
-        confluent_df[confluent_cols].sort_values(by=["site"]).reset_index(drop=True)
+        confluent_df[confluent_cols]
+        .sort_values(by=["site_location"])
+        .reset_index(drop=True)
     )
 
     if len(confluent_df.index) > 0:
         confluent_output_file = pathlib.Path(
-            results_output_dir, "sites_with_confluent_regions.csv"
+            results_output, "sites_with_confluent_regions.csv"
         )
         if check_if_write(confluent_output_file, force, throw_warning=True):
             confluent_df.to_csv(confluent_output_file)
@@ -299,7 +299,7 @@ if all(x in image_df.columns.tolist() for x in PLLS_df_cols):
         )
     )
 
-    output_file = pathlib.Path(figures_output_dir, "PLLS_per_well.png")
+    output_file = pathlib.Path(figures_output, "PLLS_per_well.png")
     if check_if_write(output_file, force, throw_warning=True):
         PLLS_gg.save(
             output_file,
@@ -337,7 +337,7 @@ if all(x in image_df.columns.tolist() for x in cp_sat_cols):
     sat_df = cp_sat_df.append(bc_sat_df).drop_duplicates(subset="site")
 
     if len(sat_df.index) > 0:
-        sat_output_file = pathlib.Path(results_output_dir, "saturated_sites.csv")
+        sat_output_file = pathlib.Path(results_output, "saturated_sites.csv")
         if check_if_write(output_file, force, throw_warning=True):
             sat_df.to_csv(sat_output_file)
 
@@ -388,7 +388,7 @@ if all(x in image_df.columns.tolist() for x in cp_sat_df_cols):
             subplots_adjust={"wspace": 0.2},
         )
     )
-    output_file = pathlib.Path(figures_output_dir, "cp_saturation.png")
+    output_file = pathlib.Path(figures_output, "cp_saturation.png")
     if check_if_write(output_file, force, throw_warning=True):
         cp_saturation_gg.save(
             output_file,
@@ -443,7 +443,7 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
             )
         )
 
-        output_file = pathlib.Path(figures_output_dir, f"bc_saturation_{well}.png")
+        output_file = pathlib.Path(figures_output, f"bc_saturation_{well}.png")
         if check_if_write(output_file, force, throw_warning=True):
             bc_saturation_gg.save(
                 output_file,
@@ -455,7 +455,7 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
 
 # Create list of questionable channel correlations (alignments)
 correlation_col_prefix = "Correlation_Correlation_"
-corr_base_cols = image_meta_col_list.copy() + ["site"]
+corr_base_cols = image_meta_col_list.copy() + ["site_location"]
 
 corr_qc_cols = [col for col in image_df.columns if correlation_col_prefix in col]
 
@@ -469,14 +469,14 @@ if len(corr_qc_cols) > 0:
         )
 
     image_corr_df = (
-        pd.concat(image_corr_list).drop_duplicates(subset="site").reset_index()
+        pd.concat(image_corr_list).drop_duplicates(subset="site_location").reset_index()
     )
 
     for col in corr_qc_cols:
         image_corr_df.loc[(image_corr_df[col] >= correlation_threshold), col] = "pass"
 
     if len(image_corr_df.index) > 0:
-        corr_output_file = pathlib.Path(results_output_dir, "flagged_correlations.csv")
+        corr_output_file = pathlib.Path(results_output, "flagged_correlations.csv")
 
         if check_if_write(corr_output_file, force, throw_warning=True):
             image_corr_df.to_csv(corr_output_file)
