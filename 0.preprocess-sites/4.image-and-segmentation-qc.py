@@ -5,8 +5,11 @@ import argparse
 import pandas as pd
 import plotnine as gg
 
-sys.path.append(os.path.join("..", "scripts"))
+sys.path.append("config")
 from config_utils import process_config_file
+
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from arg_utils import parse_command_args
 from io_utils import check_if_write
@@ -32,9 +35,10 @@ cell_filter = spots_args["cell_filter"]
 image_cols = spots_args["image_cols"]
 input_image_file = spots_args["image_file"]
 
-summ_cells_results_basedir = summ_cell_args["output_resultsdir"]
-summ_cells_figures_basedir = summ_cell_args["output_figuresdir"]
+figures_output = summ_cell_args["output_summary_figuresdir"]
+results_output = summ_cell_args["output_summary_resultsdir"]
 cell_category_order = summ_cell_args["cell_category_order"]
+cell_count_file = summ_cell_args["cell_count_file"]
 
 correlation_threshold = summ_plate_args["correlation_threshold"]
 painting_image_names = summ_plate_args["painting_image_names"]
@@ -47,15 +51,7 @@ force = summ_plate_args["force_overwrite"]
 if not force:
     force = args.force
 
-cell_count_file = pathlib.Path(
-    summ_cells_results_basedir, batch, "cells", "cell_count.tsv"
-)
 cell_count_df = pd.read_csv(cell_count_file, sep="\t")
-
-figures_output = pathlib.Path(summ_cells_figures_basedir, batch)
-os.makedirs(figures_output, exist_ok=True)
-results_output = pathlib.Path(summ_cells_results_basedir, batch)
-os.makedirs(results_output, exist_ok=True)
 
 # Creates x, y coordinates for plotting per-plate views.
 # Assumes image numbering starts in upper left corner and proceeds down
@@ -74,39 +70,42 @@ sites_list = [*range(1, (sites_per_image_grid_side * sites_per_image_grid_side) 
 loc_df = (
     pd.DataFrame(final_order)
     .rename(columns={0: "x_loc", 1: "y_loc"})
-    .assign(site=sites_list)
+    .assign(site_location=sites_list)
 )
 
 # Create total_cell_count
 cell_count_bysite_df = (
-    cell_count_df.groupby("site_full")["cell_count"]
+    cell_count_df.groupby("site")["cell_count"]
     .sum()
     .reset_index()
     .rename(columns={"cell_count": "total_cell_count"})
 )
 
 # Add total_cell_count to cell_count_df and add in x, y coordinates for plotting
-cell_count_df = cell_count_df.merge(cell_count_bysite_df, on="site_full").merge(
-    loc_df, on="site"
+cell_count_df = cell_count_df.merge(cell_count_bysite_df, on="site").merge(
+    loc_df, on="site_location"
 )
 
 # Plot total number of cells per well
 cell_count_totalcells_df = (
-    cell_count_df.groupby(["x_loc", "y_loc", "well", "site"])["total_cell_count"]
+    cell_count_df.groupby(["x_loc", "y_loc", "well", "site_location", "site"])[
+        "total_cell_count"
+    ]
     .mean()
     .reset_index()
 )
 
 plate = cell_count_df["plate"].unique()[0]
 
+os.makedirs(figures_output, exist_ok=True)
 by_well_gg = (
     gg.ggplot(cell_count_totalcells_df, gg.aes(x="x_loc", y="y_loc"))
     + gg.geom_point(gg.aes(fill="total_cell_count"), size=10)
-    + gg.geom_text(gg.aes(label="site"), color="lightgrey")
+    + gg.geom_text(gg.aes(label="site_location"), color="lightgrey")
     + gg.facet_wrap("~well")
     + gg.coord_fixed()
     + gg.theme_bw()
-    + gg.ggtitle(f"Total Cells/Well \n {plate}")
+    + gg.ggtitle(f"Total Cells/Well\n{plate}")
     + gg.theme(
         axis_text=gg.element_blank(),
         axis_title=gg.element_blank(),
@@ -116,7 +115,6 @@ by_well_gg = (
     + gg.scale_fill_cmap(name="magma")
 )
 
-os.makedirs(figures_output, exist_ok=True)
 output_file = pathlib.Path(figures_output, "plate_layout_cells_count_per_well.png")
 if check_if_write(output_file, force, throw_warning=True):
     by_well_gg.save(output_file, dpi=300, verbose=False)
@@ -125,7 +123,7 @@ if check_if_write(output_file, force, throw_warning=True):
 ratio_df = pd.pivot_table(
     cell_count_df,
     values="cell_count",
-    index=["site_full", "plate", "well", "site", "x_loc", "y_loc"],
+    index=["site", "plate", "well", "site_location", "x_loc", "y_loc"],
     columns=["Cell_Quality"],
 )
 ratio_df = ratio_df.assign(
@@ -168,11 +166,11 @@ ratio_df = ratio_df.assign(
 ratio_gg = (
     gg.ggplot(ratio_df, gg.aes(x="x_loc", y="y_loc"))
     + gg.geom_point(gg.aes(fill="Ratio"), size=5)
-    + gg.geom_text(gg.aes(label="site"), size=4, color="lightgrey")
+    + gg.geom_text(gg.aes(label="site_location"), size=4, color="lightgrey")
     + gg.facet_grid("cell_quality_recode~well", scales="free_y")
     + gg.coord_fixed()
     + gg.theme_bw()
-    + gg.ggtitle(f"Quality Ratio \n {plate}")
+    + gg.ggtitle(f"Quality Ratio\n{plate}")
     + gg.coord_fixed()
     + gg.theme(
         axis_text=gg.element_blank(),
@@ -197,9 +195,10 @@ image_df = pd.read_csv(input_image_file, sep="\t")
 image_meta_col_list = list(image_cols.values())
 
 # Add in x, y coordinates for plotting
-image_df["site"] = image_df[image_cols["site"]].astype(int)
-loc_df["site"] = loc_df["site"].astype(int)
-image_df = image_df.merge(loc_df, how="left", on="site")
+image_df[image_cols["site"]] = image_df[image_cols["site"]].astype(int)
+image_df = image_df.merge(
+    loc_df, how="left", left_on=image_cols["site"], right_on="site_location"
+)
 
 # Plot final compartment thresholds per well
 threshold_col_prefix = "Threshold_FinalThreshold_"
@@ -212,7 +211,7 @@ for threshhold_compartment in ["Cells", "Nuclei"]:
     compartment_finalthresh_gg = (
         gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
         + gg.geom_point(gg.aes(fill=f"{threshold_full_col}"), size=10)
-        + gg.geom_text(gg.aes(label="site"), color="lightgrey")
+        + gg.geom_text(gg.aes(label="site_location"), color="lightgrey")
         + gg.facet_wrap(f"~{image_cols['well']}")
         + gg.coord_fixed()
         + gg.theme_bw()
@@ -239,7 +238,7 @@ if confluent_col in image_df.columns:
     percent_confluent_gg = (
         gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
         + gg.geom_point(gg.aes(fill=confluent_col), size=10)
-        + gg.geom_text(gg.aes(label="site"), color="lightgrey")
+        + gg.geom_text(gg.aes(label="site_location"), color="lightgrey")
         + gg.facet_wrap(f"~{image_cols['well']}")
         + gg.coord_fixed()
         + gg.theme_bw()
@@ -258,10 +257,12 @@ if confluent_col in image_df.columns:
     if check_if_write(output_file, force, throw_warning=True):
         percent_confluent_gg.save(output_file, dpi=300, verbose=False)
 
-    confluent_cols = ["site", confluent_col] + image_meta_col_list
+    confluent_cols = ["site_location", confluent_col] + image_meta_col_list
     confluent_df = image_df.loc[image_df[confluent_col] > 0]
     confluent_df = (
-        confluent_df[confluent_cols].sort_values(by=["site"]).reset_index(drop=True)
+        confluent_df[confluent_cols]
+        .sort_values(by=["site_location"])
+        .reset_index(drop=True)
     )
 
     if len(confluent_df.index) > 0:
@@ -489,7 +490,7 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
 
 # Create list of questionable channel correlations (alignments)
 correlation_col_prefix = "Correlation_Correlation_"
-corr_base_cols = image_meta_col_list.copy() + ["site"]
+corr_base_cols = image_meta_col_list.copy() + ["site_location"]
 
 corr_qc_cols = [col for col in image_df.columns if correlation_col_prefix in col]
 
@@ -503,7 +504,7 @@ if len(corr_qc_cols) > 0:
         )
 
     image_corr_df = (
-        pd.concat(image_corr_list).drop_duplicates(subset="site").reset_index()
+        pd.concat(image_corr_list).drop_duplicates(subset="site_location").reset_index()
     )
 
     for col in corr_qc_cols:

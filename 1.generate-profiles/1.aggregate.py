@@ -8,7 +8,7 @@ import pandas as pd
 from pycytominer import aggregate
 from pycytominer.cyto_utils import output
 
-sys.path.append("../scripts")
+sys.path.append("config")
 from config_utils import process_config_file
 
 parser = argparse.ArgumentParser()

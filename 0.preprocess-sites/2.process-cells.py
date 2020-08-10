@@ -23,8 +23,11 @@ import warnings
 import argparse
 import pandas as pd
 
-sys.path.append(os.path.join("..", "scripts"))
+sys.path.append("config")
 from config_utils import process_config_file
+
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
 from arg_utils import parse_command_args
 from cell_quality_utils import CellQuality
 from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
@@ -36,9 +39,9 @@ config = process_config_file(config_file)
 
 # Defines the sections of the config file
 core_args = config["core"]
-cell_args = config["process-cells"]
 prefilter_args = config["prefilter"]
 spot_args = config["process-spots"]
+cell_args = config["process-cells"]
 
 # Defines the variables set in the config file
 batch = core_args["batch"]
@@ -50,7 +53,6 @@ id_cols = core_args["id_cols"]
 compartments = core_args["compartments"]
 parent_cols = core_args["parent_cols"]
 
-prefilter_dir = prefilter_args["output_basedir"]
 prefilter_file = prefilter_args["prefilter_file"]
 
 foci_dir = spot_args["output_spotdir"]
@@ -58,7 +60,7 @@ image_cols = spot_args["image_cols"]
 input_image_file = spot_args["image_file"]
 
 cell_sort_col = cell_args["sort_col"]
-output_basedir = cell_args["output_basedir"]
+output_paintdir = cell_args["output_paintdir"]
 merge_info = cell_args["merge_columns"]
 metadata_merge_foci_cols = cell_args["metadata_merge_columns"]["foci_cols"]
 metadata_merge_cell_cols = cell_args["metadata_merge_columns"]["cell_cols"]
@@ -100,12 +102,13 @@ except FileNotFoundError:
     )
 
 sites = [x for x in os.listdir(foci_dir) if x not in ignore_files]
+
 for site in sites:
     # Extract out image metadata information for the specific site
-    image_subset_df = image_df.query("Metadata_Site_Full == @site")
+    image_subset_df = image_df.query("Metadata_site == @site")
 
     well = image_subset_df.loc[:, image_cols["well"]].squeeze()
-    site_simple = image_subset_df.loc[:, image_cols["site"]].squeeze()
+    site_location = image_subset_df.loc[:, image_cols["site"]].squeeze()
     plate = image_subset_df.loc[:, image_cols["plate"]].squeeze()
 
     try:
@@ -132,7 +135,7 @@ for site in sites:
         except FileNotFoundError:
             print(
                 """Run 1.process-spots before continuing. \n
-                  If it has been run, check that output_basedir is set correctly in
+                  If it has been run, check that output_paintdir is set correctly in
                   the process-spots section of the config"""
             )
 
@@ -192,10 +195,10 @@ for site in sites:
     cell_count_df = (
         pd.DataFrame(metadata_df.Cell_Class.value_counts())
         .rename(columns={"Cell_Class": "cell_count"})
-        .assign(site_full=site, plate=plate, well=well, site=site_simple,)
+        .assign(site=site, plate=plate, well=well, site_location=site_location,)
     )
 
-    output_folder = pathlib.Path(output_basedir, batch, "paint", site)
+    output_folder = pathlib.Path(output_paintdir, site)
     if output_folder.exists():
         if force:
             warnings.warn("Output files likely exist, now overwriting...")

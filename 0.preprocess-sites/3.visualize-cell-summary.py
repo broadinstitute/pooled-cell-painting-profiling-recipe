@@ -8,8 +8,11 @@ import plotnine as gg
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-sys.path.append(os.path.join("..", "scripts"))
+sys.path.append("config")
 from config_utils import process_config_file
+
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from arg_utils import parse_command_args
 from io_utils import check_if_write
@@ -33,14 +36,16 @@ control_barcodes = core_args["control_barcodes"]
 barcode_cols = spot_args["barcode_cols"]
 gene_cols = spot_args["gene_cols"]
 spot_score_cols = spot_args["spot_score_cols"]
+input_spotdir = spot_args["output_spotdir"]
 spot_score_count_cols = ["Metadata_Foci_" + col + "_count" for col in spot_score_cols]
 spot_score_mean_cols = ["Metadata_Foci_" + col + "_mean" for col in spot_score_cols]
-input_basedir = cell_args["output_basedir"]
 
-output_resultsdir = summ_cell_args["output_resultsdir"]
-output_resultsdir = pathlib.Path(output_resultsdir, batch)
-output_figuresdir = summ_cell_args["output_figuresdir"]
-output_figuresdir = pathlib.Path(output_figuresdir, batch)
+input_paintdir = cell_args["output_paintdir"]
+
+output_resultsdir = summ_cell_args["output_summary_resultsdir"]
+output_figuresdir = summ_cell_args["output_summary_figuresdir"]
+cell_count_output_file = summ_cell_args["cell_count_file"]
+total_cell_count_file = summ_cell_args["total_cell_count_file"]
 cell_category_order = summ_cell_args["cell_category_order"]
 cell_category_colors = summ_cell_args["cell_category_colors"]
 
@@ -57,10 +62,7 @@ force = summ_cell_args["force_overwrite"]
 if not force:
     force = args.force
 
-input_dir = pathlib.Path(input_basedir, batch, "paint")
-spot_input_dir = pathlib.Path(input_basedir, batch, "spots")
-
-sites = [x for x in os.listdir(input_dir) if x not in ignore_files]
+sites = [x.name for x in input_paintdir.iterdir() if x.name not in ignore_files]
 print(f"There are {len(sites)} sites.")
 
 # Read and Merge Data
@@ -69,16 +71,16 @@ site_stat_list = []
 pert_counts_list = []
 for site in sites:
     # Aggregates cell quality by site into single list
-    cell_count_file = pathlib.Path(input_dir, site, f"cell_counts_{site}.tsv")
+    cell_count_file = pathlib.Path(f"{input_paintdir}/{site}/cell_counts_{site}.tsv")
     cell_quality_list.append(pd.read_csv(cell_count_file, sep="\t"))
 
     # Aggregates site summary stats into a single list
-    site_stat_file = pathlib.Path(spot_input_dir, site, f"site_stats.tsv")
+    site_stat_file = pathlib.Path(input_spotdir, site, f"site_stats.tsv")
     site_stat_list.append(pd.read_csv(site_stat_file, sep="\t"))
 
     # Aggregates perturbation counts by site into a single list
     pert_count_file = pathlib.Path(
-        spot_input_dir, site, f"cell_perturbation_category_summary_counts.tsv"
+        input_spotdir, site, f"cell_perturbation_category_summary_counts.tsv"
     )
     pert_counts_list.append(pd.read_csv(pert_count_file, sep="\t"))
 
@@ -90,26 +92,23 @@ cell_count_df.loc[:, "Cell_Quality"] = pd.Categorical(
     cell_count_df.Cell_Quality, categories=cell_category_order
 )
 
-# Assigns the site_full column to the category datatype
-cell_count_df.loc[:, "site_full"] = pd.Categorical(
-    cell_count_df.site_full,
+# Assigns the site column to the category datatype
+cell_count_df.loc[:, "site"] = pd.Categorical(
+    cell_count_df.site,
     categories=(
-        cell_count_df.groupby("site_full")["cell_count"]
+        cell_count_df.groupby("site")["cell_count"]
         .sum()
         .sort_values(ascending=False)
         .index.tolist()
     ),
 )
 
-output_folder = pathlib.Path(output_resultsdir, "cells")
-os.makedirs(output_folder, exist_ok=True)
-output_file = pathlib.Path(output_folder, "cell_count.tsv")
-if check_if_write(output_file, force, throw_warning=True):
-    cell_count_df.to_csv(output_file, sep="\t", index=False)
+if check_if_write(cell_count_output_file, force, throw_warning=True):
+    cell_count_df.to_csv(cell_count_output_file, sep="\t", index=False)
 
 # Graph: Cell count with all wells in same graph
 cell_count_gg = (
-    gg.ggplot(cell_count_df, gg.aes(x="site_full", y="cell_count"))
+    gg.ggplot(cell_count_df, gg.aes(x="site", y="cell_count"))
     + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
     + gg.theme_bw()
     + gg.theme(axis_text_x=gg.element_text(rotation=90, size=5))
@@ -129,7 +128,7 @@ if check_if_write(output_file, force, throw_warning=True):
 
 # Same graph as above, separated by well.
 cell_count_gg_parsed = (
-    gg.ggplot(cell_count_df, gg.aes(x="site_full", y="cell_count"))
+    gg.ggplot(cell_count_df, gg.aes(x="site", y="cell_count"))
     + gg.geom_bar(gg.aes(fill="Cell_Quality"), stat="identity")
     + gg.theme_bw()
     + gg.theme(
@@ -154,10 +153,8 @@ if check_if_write(output_file, force, throw_warning=True):
 all_count_df = pd.DataFrame(
     cell_count_df.groupby("Cell_Quality")["cell_count"].sum()
 ).reset_index()
-output_folder = pathlib.Path(output_resultsdir, "cells")
-output_file = pathlib.Path(output_folder, "total_cell_count.tsv")
-if check_if_write(output_file, force, throw_warning=True):
-    all_count_df.to_csv(output_file, sep="\t", index=False)
+if check_if_write(total_cell_count_file, force, throw_warning=True):
+    all_count_df.to_csv(total_cell_count_file, sep="\t", index=False)
 
 # Graph: Total cells in each quality category
 all_cells = all_count_df.cell_count.sum()
@@ -178,8 +175,6 @@ total_cell_count_gg = (
 output_file = pathlib.Path(output_figuresdir, "total_cell_count.png")
 if check_if_write(output_file, force, throw_warning=True):
     total_cell_count_gg.save(output_file, dpi=300, width=5, height=6, verbose=False)
-
-print(f"There are a total of {all_cells} cells in {batch}")
 
 # Total cell number by well
 all_well_count_df = pd.DataFrame(
@@ -211,17 +206,17 @@ if check_if_write(output_file, force, throw_warning=True):
 site_stat_df = pd.concat(site_stat_list, axis="rows").reset_index(drop=True)
 
 num_unique_pert_df = site_stat_df.melt(
-    id_vars=["site_full", "image_number"],
+    id_vars=["site", "image_number"],
     value_vars=["num_unique_genes", "num_unique_guides"],
     value_name="pert_count",
     var_name="pert_class",
 )
 
-# Assigns the site_full column to the category datatype
-num_unique_pert_df.loc[:, "site_full"] = pd.Categorical(
-    num_unique_pert_df.site_full,
+# Assigns the site column to the category datatype
+num_unique_pert_df.loc[:, "site"] = pd.Categorical(
+    num_unique_pert_df.site,
     categories=(
-        site_stat_df.groupby("site_full")["num_assigned_cells"]
+        site_stat_df.groupby("site")["num_assigned_cells"]
         .sum()
         .sort_values(ascending=False)
         .index.tolist()
@@ -229,7 +224,7 @@ num_unique_pert_df.loc[:, "site_full"] = pd.Categorical(
 )
 
 unique_pert_count_gg = (
-    gg.ggplot(num_unique_pert_df, gg.aes(x="site_full", y="pert_count"))
+    gg.ggplot(num_unique_pert_df, gg.aes(x="site", y="pert_count"))
     + gg.geom_bar(gg.aes(fill="pert_class"), stat="identity")
     + gg.theme_bw()
     + gg.theme(axis_text_x=gg.element_text(rotation=90, size=5))
@@ -245,16 +240,14 @@ if check_if_write(output_file, force, throw_warning=True):
     unique_pert_count_gg.save(output_file, dpi=300, width=10, height=7, verbose=False)
 
 # Process overall perturbation counts per batch
+pert_count_df = pd.concat(pert_counts_list, axis="rows").reset_index()
+
 pert_count_df = (
-    pd.concat(pert_counts_list, axis="rows")
-    .reset_index()
-    .rename(columns={"site": "site_full"})
-)
-pert_count_df = pert_count_df.loc[
-    ~pert_count_df.loc[:, gene_cols].isin(control_barcodes).squeeze(),
-].reset_index(drop=True)
-pert_count_df = (
-    pert_count_df.groupby(gene_cols + barcode_cols)["Cell_Count_Per_Guide"]
+    pert_count_df.loc[
+        ~pert_count_df.loc[:, gene_cols].isin(control_barcodes).squeeze(),
+    ]
+    .reset_index(drop=True)
+    .groupby(gene_cols + barcode_cols)["Cell_Count_Per_Guide"]
     .sum()
     .reset_index()
 )
@@ -268,7 +261,7 @@ id_group_df.columns = ["barcode_id"]
 
 pert_count_df = pert_count_df.merge(id_group_df, left_index=True, right_index=True)
 
-# Assigns the site_full column to the category datatype
+# Assigns a category datatype
 pert_count_df.loc[:, gene_cols] = pd.Categorical(
     pert_count_df.loc[:, gene_cols].squeeze(),
     categories=(
@@ -293,3 +286,5 @@ guide_count_gg = (
 output_file = pathlib.Path(output_figuresdir, "perturbation_coverage.png")
 if check_if_write(output_file, force, throw_warning=True):
     guide_count_gg.save(output_file, dpi=300, width=7, height=20, verbose=False)
+
+print(f"There are a total of {all_cells} cells in {batch}")

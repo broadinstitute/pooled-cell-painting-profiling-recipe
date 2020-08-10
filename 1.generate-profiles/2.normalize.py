@@ -7,7 +7,7 @@ import pandas as pd
 
 from pycytominer import normalize
 
-sys.path.append("../scripts")
+sys.path.append("config")
 from config_utils import process_config_file
 
 parser = argparse.ArgumentParser()

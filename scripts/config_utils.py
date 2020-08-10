@@ -16,85 +16,142 @@ def get_step(config):
     return data["main_config"]["step"]
 
 
-def make_batch_path(config, load_data=True):
+def get_output_path(config, load_data=True, mkdir=False, add_batch=False):
+    if load_data:
+        config = load_config(config)
+
+    core = config["core"]
+    output_basedir = pathlib.Path(core["output_basedir"])
+    if add_batch:
+        output_basedir = pathlib.Path(output_basedir / core["batch"])
+    if mkdir:
+        output_basedir.mkdir(exist_ok=True)
+    return output_basedir
+
+
+def make_input_batch_path(config, load_data=True):
     if load_data:
         config = load_config(config)
     main = config["main_config"]
     core = config["core"]
-    batch_dir = pathlib.Path(
+    input_batch_dir = pathlib.Path(
         core["project_dir"],
         main["project_tag"],
         "workspace",
         "analysis",
         core["batch"],
     )
-    return batch_dir
+    return input_batch_dir
 
 
 def preprocess_sites_config(config):
     config = load_config(config)
-    batch_dir = make_batch_path(config, load_data=False)
-    config["core"]["batch_dir"] = batch_dir
+    input_batch_dir = make_input_batch_path(config, load_data=False)
+    output_basedir = get_output_path(config, load_data=False, add_batch=True)
+
+    config["core"]["batch_dir"] = input_batch_dir
 
     # Build paths in the prefilter yaml document
     config["prefilter"]["prefilter_file"] = pathlib.Path(
-        config["prefilter"]["output_basedir"],
-        config["core"]["batch"],
-        "feature_prefilter.tsv",
+        output_basedir, config["prefilter"]["output_dir"], "feature_prefilter.tsv",
     )
+
     config["prefilter"]["example_site_dir"] = pathlib.Path(
-        batch_dir, config["prefilter"]["example_site"]
+        input_batch_dir, config["prefilter"]["example_site"]
     )
 
     # Build paths in the process-spots yaml document
     config["process-spots"]["output_spotdir"] = pathlib.Path(
-        config["process-spots"]["output_basedir"], config["core"]["batch"], "spots"
+        output_basedir, config["process-spots"]["output_dir"],
     )
 
     config["process-spots"]["image_file"] = pathlib.Path(
-        config["process-spots"]["output_basedir"],
-        config["core"]["batch"],
-        "image_metadata.tsv",
+        output_basedir, config["process-spots"]["image_output_dir"], "image_metadata.tsv",
+    )
+
+    config["process-cells"]["output_paintdir"] = pathlib.Path(
+        output_basedir, config["process-cells"]["output_dir"],
+    )
+
+    config["summarize-cells"]["output_summary_resultsdir"] = pathlib.Path(
+        output_basedir, config["summarize-cells"]["output_resultsdir"],
+    )
+
+    config["summarize-cells"]["output_summary_figuresdir"] = pathlib.Path(
+        output_basedir, config["summarize-cells"]["output_figuresdir"],
+    )
+
+    config["summarize-cells"]["cell_count_file"] = pathlib.Path(
+        config["summarize-cells"]["output_summary_resultsdir"], "cell_count.tsv"
+    )
+    config["summarize-cells"]["total_cell_count_file"] = pathlib.Path(
+        config["summarize-cells"]["output_summary_resultsdir"], "total_cell_count.tsv"
     )
 
     # Build visualization information
     if config["core"]["categorize_cell_quality"] == "simple":
         config["summarize-cells"]["cell_category_order"] = [
-            "Perfect", "Great", "Imperfect", "Bad", "Empty"
+            "Perfect",
+            "Great",
+            "Imperfect",
+            "Bad",
+            "Empty",
         ]
         config["summarize-cells"]["cell_category_colors"] = [
-            "#DB5F57", "#91DB57", "#57D3DB", "#A157DB", "#776244",
+            "#DB5F57",
+            "#91DB57",
+            "#57D3DB",
+            "#A157DB",
+            "#776244",
         ]
     elif config["core"]["categorize_cell_quality"] == "simple_plus":
         config["summarize-cells"]["cell_category_order"] = [
-            "Perfect", "Great", "Imperfect-High", "Imperfect-Low", "Bad", "Empty"
+            "Perfect",
+            "Great",
+            "Imperfect-High",
+            "Imperfect-Low",
+            "Bad",
+            "Empty",
         ]
         config["summarize-cells"]["cell_category_colors"] = [
-            "#DB5F57", "#91DB57", "#57D3DB", "#556FD4", "#A157DB", "#776244",
+            "#DB5F57",
+            "#91DB57",
+            "#57D3DB",
+            "#556FD4",
+            "#A157DB",
+            "#776244",
         ]
 
     return config
 
 
-def generate_profiles_config(config):
-    config = load_config(config)
-    batch_dir = make_batch_path(config, load_data=False)
-    config["core"]["batch_dir"] = batch_dir
-    batch = config["core"]["batch"]
-    site_dir = config["core"]["site_dir"]
-    ignore_files = config["core"]["ignore_files"]
+def generate_profiles_config(config, load_data=True):
+    if load_data:
+        config = load_config(config)
+
+    input_batch_dir = make_input_batch_path(config, load_data=False)
+    output_basedir = get_output_path(config, load_data=False, add_batch=True)
+
+    config["core"]["batch_dir"] = input_batch_dir
+    core = config["core"]
+    batch = core["batch"]
+    site_dir = core["site_dir"]
+    ignore_files = core["ignore_files"]
 
     # Build paths to single cell yaml document of the profiling pipeline
     config["single_cell"]["prefilter_file"] = pathlib.Path(
-        site_dir, batch, "feature_prefilter.tsv"
+        core["site_dir"], batch, core["prefilter_dir"], "feature_prefilter.tsv",
     )
 
-    config["single_cell"]["spot_metadata_dir"] = pathlib.Path(site_dir, batch, "spots")
-
-    config["single_cell"]["paint_metadata_dir"] = pathlib.Path(site_dir, batch, "paint")
-
     config["single_cell"]["single_cell_output_dir"] = pathlib.Path(
-        config["single_cell"]["output_basedir"], batch
+        output_basedir, config["single_cell"]["output_dir"]
+    )
+
+    config["single_cell"]["spot_metadata_dir"] = pathlib.Path(
+        core["site_dir"], batch, core["spot_dir"]
+    )
+    config["single_cell"]["paint_metadata_dir"] = pathlib.Path(
+        core["site_dir"], batch, core["paint_dir"]
     )
 
     # This file is only used if single_file_only flag is used in 0.merge-single-cells.py
@@ -122,7 +179,7 @@ def generate_profiles_config(config):
 
     # Build paths to aggregate yaml document
     config["aggregate"]["aggregate_output_dir"] = pathlib.Path(
-        config["aggregate"]["output_basedir"], batch
+        output_basedir, config["aggregate"]["output_dir"]
     )
 
     # Build aggregated output files
@@ -139,7 +196,7 @@ def generate_profiles_config(config):
 
     # Build paths to normalize yaml document
     config["normalize"]["normalize_output_dir"] = pathlib.Path(
-        config["normalize"]["output_basedir"], batch
+        output_basedir, config["normalize"]["output_dir"]
     )
 
     # Build normalized output files
@@ -152,13 +209,15 @@ def generate_profiles_config(config):
 
     # Build paths to normalize yaml document
     config["feature_select"]["feature_select_output_dir"] = pathlib.Path(
-        config["feature_select"]["output_basedir"], batch
+        output_basedir, config["feature_select"]["output_dir"]
     )
 
     # Build feature select output files
     config["feature_select"]["feature_select_output_files"] = {}
     for feature_select_level in config["feature_select"]["levels"]:
-        config["feature_select"]["feature_select_output_files"][feature_select_level] = pathlib.Path(
+        config["feature_select"]["feature_select_output_files"][
+            feature_select_level
+        ] = pathlib.Path(
             config["feature_select"]["feature_select_output_dir"],
             f"{batch}_{feature_select_level}_normalized_feature_select.csv.gz",
         )
