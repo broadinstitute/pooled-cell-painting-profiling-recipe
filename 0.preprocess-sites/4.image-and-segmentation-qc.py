@@ -67,34 +67,37 @@ for i in range(1, sites_per_image_grid_side + 1):
 
 # Uses sites_list in case there are fewer analyzed sites than acquired sites
 sites_list = [*range(1, (sites_per_image_grid_side * sites_per_image_grid_side) + 1)]
-loc_df = pd.DataFrame(final_order).rename(columns={0: "x_loc", 1: "y_loc"})
-loc_df.loc[:, image_cols["site"]] = sites_list
+loc_df = (
+    pd.DataFrame(final_order)
+    .rename(columns={0: "x_loc", 1: "y_loc"})
+    .assign(site_location=sites_list)
+)
 
 # Create total_cell_count
 cell_count_bysite_df = (
-    cell_count_df.groupby(image_cols["site"])["cell_count"]
+    cell_count_df.groupby("site")["cell_count"]
     .sum()
     .reset_index()
     .rename(columns={"cell_count": "total_cell_count"})
 )
 
 # Add total_cell_count to cell_count_df and add in x, y coordinates for plotting
-cell_count_df = cell_count_df.merge(cell_count_bysite_df, on=image_cols["site"]).merge(
-    loc_df, on=image_cols["site"]
+cell_count_df = cell_count_df.merge(cell_count_bysite_df, on="site").merge(
+    loc_df, on="site_location"
 )
 
 # Plot total number of cells per well
 cell_count_totalcells_df = (
-    cell_count_df.groupby(["x_loc", "y_loc", "well", image_cols["site"]])[
+    cell_count_df.groupby(["x_loc", "y_loc", "well", "site_location", "site"])[
         "total_cell_count"
     ]
     .mean()
     .reset_index()
 )
-os.makedirs(figures_output, exist_ok=True)
 
 plate = cell_count_df["plate"].unique()[0]
 
+os.makedirs(figures_output, exist_ok=True)
 by_well_gg = (
     gg.ggplot(cell_count_totalcells_df, gg.aes(x="x_loc", y="y_loc"))
     + gg.geom_point(gg.aes(fill="total_cell_count"), size=10)
@@ -193,8 +196,9 @@ image_meta_col_list = list(image_cols.values())
 
 # Add in x, y coordinates for plotting
 image_df[image_cols["site"]] = image_df[image_cols["site"]].astype(int)
-loc_df[image_cols["site"]] = loc_df[image_cols["site"]].astype(int)
-image_df = image_df.merge(loc_df, how="left", on=image_cols["site"])
+image_df = image_df.merge(
+    loc_df, how="left", left_on=image_cols["site"], right_on="site_location"
+)
 
 # Plot final compartment thresholds per well
 threshold_col_prefix = "Threshold_FinalThreshold_"
