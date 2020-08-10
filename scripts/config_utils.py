@@ -66,7 +66,9 @@ def preprocess_sites_config(config):
     )
 
     config["process-spots"]["image_file"] = pathlib.Path(
-        output_basedir, config["process-spots"]["image_output_dir"], "image_metadata.tsv",
+        output_basedir,
+        config["process-spots"]["image_output_dir"],
+        "image_metadata.tsv",
     )
 
     config["process-cells"]["output_paintdir"] = pathlib.Path(
