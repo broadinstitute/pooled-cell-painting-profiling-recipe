@@ -17,6 +17,7 @@ recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
 from cell_quality_utils import CellQuality
+from profile_utils import sanitize_gene_col
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -36,6 +37,7 @@ config = process_config_file(config_file)
 main_args = config["main_config"]
 core_args = config["core"]
 single_cell_args = config["single_cell"]
+aggregate_args = config["aggregate"]
 
 project = main_args["project_tag"]
 batch = core_args["batch"]
@@ -43,10 +45,10 @@ batch_dir = core_args["batch_dir"]
 single_file_only = core_args["output_one_single_cell_file_only"]
 compartments = core_args["compartments"]
 parent_col_info = core_args["parent_cols"]
-id_cols = core_args["id_cols"]
 ignore_files = core_args["ignore_files"]
 float_format = core_args["float_format"]
 compression = core_args["compression"]
+control_barcodes = core_args["control_barcodes"]
 
 id_cols = core_args["id_cols"]
 spot_parent_cols = core_args["parent_cols"]["spots"]
@@ -54,6 +56,7 @@ spot_parent_cols = core_args["parent_cols"]["spots"]
 prefilter_features = single_cell_args["prefilter_features"]
 prefilter_file = single_cell_args["prefilter_file"]
 filter_cell_quality = single_cell_args["filter_cell_quality"]
+sanitize_genes = single_cell_args["sanitize_gene_col"]
 cell_quality_col = single_cell_args["cell_quality_column"]
 spot_batch_dir = single_cell_args["spot_metadata_dir"]
 paint_metadata_dir = single_cell_args["paint_metadata_dir"]
@@ -61,6 +64,8 @@ merge_info = single_cell_args["merge_columns"]
 single_cell_output_dir = single_cell_args["single_cell_output_dir"]
 single_file_only_output_file = single_cell_args["single_file_only_output_file"]
 force = single_cell_args["force_overwrite"]
+
+gene_col = aggregate_args["levels"]["gene"]
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
@@ -116,6 +121,9 @@ for site in sites:
     metadata_df = pd.read_csv(metadata_file, sep="\t").query(
         f"{cell_quality_col} in @filter_cell_quality"
     )
+
+    if sanitize_genes:
+        metadata_df = sanitize_gene_col(metadata_df, gene_col, control_barcodes)
 
     # Load csv files for prespecified compartments
     compartment_csvs = {}
