@@ -9,35 +9,36 @@ from pycytominer import aggregate
 from pycytominer.cyto_utils import output
 
 sys.path.append("config")
-from config_utils import process_config_file
+from utils import parse_command_args, process_configuration
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config_file",
-    help="configuration yaml file for the profiling pipeline",
-    default="profiling_config.yaml",
+args = parse_command_args()
+
+plate_id = args.plate_id
+options_config_file = args.options_config_file
+experiment_config_file = args.experiment_config_file
+
+config = process_configuration(
+    plate_id,
+    options_config=options_config_file,
+    experiment_config=experiment_config_file,
 )
-args = parser.parse_args()
-config_file = args.config_file
-
-config = process_config_file(config_file)
 
 # Extract config arguments
-core_args = config["core"]
-batch = core_args["batch"]
-ignore_files = core_args["ignore_files"]
-float_format = core_args["float_format"]
-compression = core_args["compression"]
+ignore_files = config["options"]["core"]["ignore_files"]
+float_format = config["options"]["core"]["float_format"]
+compression = config["options"]["core"]["compression"]
 
-single_cell_args = config["single_cell"]
-single_cell_output_dir = single_cell_args["single_cell_output_dir"]
-single_cell_file = single_cell_args["single_file_only_output_file"]
-single_cell_site_files = single_cell_args["site_files"]
+single_cell_output_dir = config["directories"]["profile"]["single_cell"]
+aggregate_output_dir = config["directories"]["profile"]["profiles"]
 
-aggregate_args = config["aggregate"]
-aggregate_from_single_file = core_args["output_one_single_cell_file_only"]
-aggregate_output_dir = aggregate_args["aggregate_output_dir"]
-aggregate_output_files = aggregate_args["aggregate_output_files"]
+single_cell_file = config["files"]["single_file_only_output_file"]
+single_cell_site_files = config["files"]["single_cell_site_files"]
+aggregate_output_files = config["files"]["aggregate_files"]
+
+sc_config = config["options"]["profile"]["single_cell"]
+aggregate_from_single_file = sc_config["output_one_single_cell_file_only"]
+
+aggregate_args = config["options"]["profile"]["aggregate"]
 aggregate_operation = aggregate_args["operation"]
 aggregate_features = aggregate_args["features"]
 aggregate_levels = aggregate_args["levels"]
