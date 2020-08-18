@@ -32,12 +32,13 @@ experiment_config_file = args.experiment_config_file
 config = process_configuration(
     plate_id,
     options_config=options_config_file,
-    experiment_config=experiment_config_file
-    )
+    experiment_config=experiment_config_file,
+)
 
 # Set constants
 experiment_args = config["experiment"]
 prefilter_args = config["options"]["preprocess"]["prefilter"]
+core_option_args = config["options"]["core"]
 force = prefilter_args["force_overwrite"]
 perform = prefilter_args["perform"]
 flag_cols = prefilter_args["flag_cols"]
@@ -71,9 +72,9 @@ if prefilter_file.exists():
 
 # Perform prefiltering and output file
 if perform:
-    features_df = prefilter_features(experiment_args, example_site_dir, flag_cols)
+    features_df = prefilter_features(core_option_args, example_site_dir, flag_cols)
 else:
-    features_df = load_features(experiment_args, example_site_dir)
+    features_df = load_features(core_option_args, example_site_dir)
     features_df = features_df.assign(prefilter_column=False)
 
 if check_if_write(prefilter_file, force):
