@@ -490,7 +490,7 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
 
 # Create list of questionable channel correlations (alignments)
 correlation_col_prefix = "Correlation_Correlation_"
-corr_base_cols = image_meta_col_list.copy() + ["site_location"]
+corr_base_cols = image_meta_col_list.copy() + ["site"]
 
 corr_qc_cols = [col for col in image_df.columns if correlation_col_prefix in col]
 
@@ -504,14 +504,48 @@ if len(corr_qc_cols) > 0:
         )
 
     image_corr_df = (
-        pd.concat(image_corr_list).drop_duplicates(subset="site_location").reset_index()
+        pd.concat(image_corr_list).drop_duplicates(subset="site").reset_index()
+    )
+
+    image_corr_df["min_corr_value"] = (
+        image_corr_df[corr_qc_cols].astype(float).max(skipna=True, axis=1)
     )
 
     for col in corr_qc_cols:
         image_corr_df.loc[(image_corr_df[col] >= correlation_threshold), col] = "pass"
+
+    for col in corr_qc_cols:
+        if len(image_corr_df[col].unique()) == 1:
+            image_corr_df = image_corr_df.drop(col, axis=1)
 
     if len(image_corr_df.index) > 0:
         corr_output_file = pathlib.Path(results_output, "flagged_correlations.csv")
 
         if check_if_write(corr_output_file, force, throw_warning=True):
             image_corr_df.to_csv(corr_output_file)
+
+# By-well visualization of sites with poor correlations
+if len(corr_qc_cols) > 0:
+    image_corr_df = image_corr_df.merge(loc_df, on="site")
+
+    corr_by_well_gg = (
+        gg.ggplot(image_corr_df, gg.aes(x="x_loc", y="y_loc"))
+        + gg.geom_point(gg.aes(fill="min_corr_value"), size=10)
+        + gg.geom_text(gg.aes(label="site"), color="lightgrey")
+        + gg.facet_wrap("~Metadata_Well")
+        + gg.coord_fixed()
+        + gg.theme_bw()
+        + gg.ggtitle(f"Failed Correlations \n {plate}")
+        + gg.theme(
+            axis_text=gg.element_blank(),
+            axis_title=gg.element_blank(),
+            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+        )
+        + gg.labs(fill="Minimum correlation in image set")
+        + gg.scale_fill_cmap(name="magma")
+    )
+
+    os.makedirs(figures_output, exist_ok=True)
+    output_file = pathlib.Path(figures_output, "plate_layout_min_correlation.png")
+    if check_if_write(output_file, force, throw_warning=True):
+        corr_by_well_gg.save(output_file, dpi=300, verbose=False)
