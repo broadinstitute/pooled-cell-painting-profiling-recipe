@@ -49,43 +49,46 @@ from scripts.spot_utils import (
 )
 
 sys.path.append("config")
-from config_utils import process_config_file
+from utils import parse_command_args, process_configuration
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
-from arg_utils import parse_command_args
 from io_utils import check_if_write
 
-args = parse_command_args(config_file="site_processing_config.yaml")
-config_file = args.config_file
-config = process_config_file(config_file)
+args = parse_command_args()
+
+plate_id = args.plate_id
+options_config_file = args.options_config_file
+experiment_config_file = args.experiment_config_file
+
+config = process_configuration(
+    plate_id,
+    options_config=options_config_file,
+    experiment_config=experiment_config_file,
+)
 
 # Set constants
-main_args = config["main_config"]
-core_args = config["core"]
-spot_args = config["process-spots"]
+cell_filter = config["experiment"]["cell_filter"]
+quality_func = config["experiment"]["categorize_cell_quality"]
+control_barcodes = config["experiment"]["control_barcode_ids"]
 
-project = main_args["project_tag"]
-batch = core_args["batch"]
-batch_dir = core_args["batch_dir"]
-quality_func = core_args["categorize_cell_quality"]
-control_barcodes = core_args["control_barcodes"]
-ignore_files = core_args["ignore_files"]
+id_cols = config["options"]["core"]["cell_id_cols"]
+spot_parent_cols = config["options"]["core"]["cell_match_cols"]["spots"]
+ignore_files = config["options"]["core"]["ignore_files"]
 
-id_cols = core_args["id_cols"]
-spot_parent_cols = core_args["parent_cols"]["spots"]
+output_image_file = config["files"]["image_file"]
+output_spotdir = config["directories"]["preprocess"]["spots"]
+input_platedir = config["directories"]["input_data_dir"]
 
-output_spotdir = spot_args["output_spotdir"]
-image_cols = spot_args["image_cols"]
-output_image_file = spot_args["image_file"]
-barcode_cols = spot_args["barcode_cols"]
-gene_cols = spot_args["gene_cols"]
-location_cols = spot_args["location_cols"]
-spot_score_cols = spot_args["spot_score_cols"]
-foci_cols = spot_args["foci_cols"]
-cell_filter = spot_args["cell_filter"]
-force = spot_args["force_overwrite"]
+spot_config = config["options"]["preprocess"]["process-spots"]
+image_cols = spot_config["image_cols"]
+barcode_cols = spot_config["barcode_cols"]
+gene_cols = spot_config["gene_cols"]
+location_cols = spot_config["location_cols"]
+spot_score_cols = spot_config["spot_score_cols"]
+foci_cols = spot_config["foci_cols"]
+force = spot_config["force_overwrite"]
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
@@ -103,7 +106,7 @@ cell_quality = CellQuality(quality_func)
 cell_category_dict = cell_quality.define_cell_quality()
 cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"])
 
-sites = [x.name for x in batch_dir.iterdir() if x.name not in ignore_files]
+sites = [x.name for x in input_platedir.iterdir() if x.name not in ignore_files]
 num_sites = len(sites)
 
 image_list = []
@@ -112,7 +115,7 @@ for site in sites:
 
     # Load image metadata per site
     try:
-        image_file = pathlib.Path(batch_dir, site, "Image.csv")
+        image_file = pathlib.Path(input_platedir, site, "Image.csv")
         image_df = pd.read_csv(image_file).assign(Metadata_site=site)
         image_list.append(image_df)
 
@@ -126,10 +129,10 @@ for site in sites:
 
     # Load spot data
     try:
-        barcode_file = pathlib.Path(batch_dir, site, "BarcodeFoci.csv")
+        barcode_file = pathlib.Path(input_platedir, site, "BarcodeFoci.csv")
         barcodefoci_df = pd.read_csv(barcode_file)
 
-        foci_file = pathlib.Path(batch_dir, site, "Foci.csv")
+        foci_file = pathlib.Path(input_platedir, site, "Foci.csv")
         foci_df = pd.read_csv(foci_file)
     except FileNotFoundError:
         print(f"{site} data not found")

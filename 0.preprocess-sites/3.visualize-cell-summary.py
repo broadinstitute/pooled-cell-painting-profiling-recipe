@@ -9,53 +9,57 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 sys.path.append("config")
-from config_utils import process_config_file
+from utils import parse_command_args, process_configuration
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
-from arg_utils import parse_command_args
 from io_utils import check_if_write
 
-args = parse_command_args(config_file="site_processing_config.yaml")
-config_file = args.config_file
-config = process_config_file(config_file)
+args = parse_command_args()
 
-# Defines the sections of the config file
-core_args = config["core"]
-spot_args = config["process-spots"]
-cell_args = config["process-cells"]
-summ_cell_args = config["summarize-cells"]
+plate_id = args.plate_id
+options_config_file = args.options_config_file
+experiment_config_file = args.experiment_config_file
 
-# Defines the variables set in the config file
-batch = core_args["batch"]
-quality_func = core_args["categorize_cell_quality"]
-ignore_files = core_args["ignore_files"]
-control_barcodes = core_args["control_barcodes"]
+config = process_configuration(
+    plate_id,
+    options_config=options_config_file,
+    experiment_config=experiment_config_file,
+)
 
-barcode_cols = spot_args["barcode_cols"]
-gene_cols = spot_args["gene_cols"]
-spot_score_cols = spot_args["spot_score_cols"]
-input_spotdir = spot_args["output_spotdir"]
+# Define variables set in the config file
+quality_func = config["experiment"]["categorize_cell_quality"]
+control_barcodes = config["experiment"]["control_barcode_ids"]
+cell_category_order = config["experiment"]["cell_category_order"]
+cell_category_colors = config["experiment"]["cell_category_colors"]
+
+ignore_files = config["options"]["core"]["ignore_files"]
+
+spot_config = config["options"]["preprocess"]["process-spots"]
+barcode_cols = spot_config["barcode_cols"]
+gene_cols = spot_config["gene_cols"]
+spot_score_cols = spot_config["spot_score_cols"]
 spot_score_count_cols = ["Metadata_Foci_" + col + "_count" for col in spot_score_cols]
 spot_score_mean_cols = ["Metadata_Foci_" + col + "_mean" for col in spot_score_cols]
 
-input_paintdir = cell_args["output_paintdir"]
+input_spotdir = config["directories"]["preprocess"]["spots"]
+input_paintdir = config["directories"]["preprocess"]["paint"]
+output_resultsdir = config["directories"]["preprocess"]["results"]
+output_figuresdir = config["directories"]["preprocess"]["figures"]
 
-output_resultsdir = summ_cell_args["output_summary_resultsdir"]
-output_figuresdir = summ_cell_args["output_summary_figuresdir"]
-cell_count_output_file = summ_cell_args["cell_count_file"]
-total_cell_count_file = summ_cell_args["total_cell_count_file"]
-cell_category_order = summ_cell_args["cell_category_order"]
-cell_category_colors = summ_cell_args["cell_category_colors"]
+cell_count_output_file = config["files"]["cell_count_file"]
+total_cell_count_file = config["files"]["total_cell_count_file"]
 
+force = config["options"]["preprocess"]["summarize-cells"]["force_overwrite"]
+
+# Perform the pipeline
 cell_quality = CellQuality(quality_func)
 cell_category_dict = cell_quality.define_cell_quality()
 empty_cell_category = len(cell_category_dict) + 1
 cell_category_dict[empty_cell_category] = "Empty"
 cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"])
 cell_category_list = list(cell_category_dict.values())
-force = summ_cell_args["force_overwrite"]
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
@@ -63,7 +67,7 @@ if not force:
     force = args.force
 
 sites = [x.name for x in input_paintdir.iterdir() if x.name not in ignore_files]
-print(f"There are {len(sites)} sites.")
+print(f"Summarizing {len(sites)} sites in plate: {plate_id}.")
 
 # Read and Merge Data
 cell_quality_list = []
@@ -287,4 +291,4 @@ output_file = pathlib.Path(output_figuresdir, "perturbation_coverage.png")
 if check_if_write(output_file, force, throw_warning=True):
     guide_count_gg.save(output_file, dpi=300, width=7, height=20, verbose=False)
 
-print(f"There are a total of {all_cells} cells in {batch}")
+print(f"There are a total of {all_cells} cells in {plate_id}")

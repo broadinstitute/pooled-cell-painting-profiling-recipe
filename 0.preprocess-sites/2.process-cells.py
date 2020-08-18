@@ -11,7 +11,7 @@ The metadata include:
 2. Metadata Information per Cell
 
 All sites are processed independently and results are saved in site-specific folders
-(in <OUTPUT_BASEDIR>/<BATCH>/paint set in site_processing_config)
+(in <OUTPUT_BASEDIR>/<PLATE_ID>/paint set in site_processing_config)
 
 1.process-spots must be run before running this script.
 """
@@ -24,49 +24,51 @@ import argparse
 import pandas as pd
 
 sys.path.append("config")
-from config_utils import process_config_file
+from utils import parse_command_args, process_configuration
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
-from arg_utils import parse_command_args
 from cell_quality_utils import CellQuality
 from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
 from io_utils import check_if_write
 
-args = parse_command_args(config_file="site_processing_config.yaml")
-config_file = args.config_file
-config = process_config_file(config_file)
+args = parse_command_args()
 
-# Defines the sections of the config file
-core_args = config["core"]
-prefilter_args = config["prefilter"]
-spot_args = config["process-spots"]
-cell_args = config["process-cells"]
+plate_id = args.plate_id
+options_config_file = args.options_config_file
+experiment_config_file = args.experiment_config_file
 
-# Defines the variables set in the config file
-batch = core_args["batch"]
-batch_dir = core_args["batch_dir"]
-project_dir = core_args["project_dir"]
-quality_func = core_args["categorize_cell_quality"]
-ignore_files = core_args["ignore_files"]
-id_cols = core_args["id_cols"]
-compartments = core_args["compartments"]
-parent_cols = core_args["parent_cols"]
+config = process_configuration(
+    plate_id,
+    options_config=options_config_file,
+    experiment_config=experiment_config_file,
+)
 
-prefilter_file = prefilter_args["prefilter_file"]
+# Define variables set in the config file
+quality_func = config["experiment"]["categorize_cell_quality"]
 
-foci_dir = spot_args["output_spotdir"]
-image_cols = spot_args["image_cols"]
-input_image_file = spot_args["image_file"]
+ignore_files = config["options"]["core"]["ignore_files"]
+id_cols = config["options"]["core"]["cell_id_cols"]
+compartments = config["options"]["core"]["compartments"]
+parent_cols = config["options"]["core"]["cell_match_cols"]
 
-cell_sort_col = cell_args["sort_col"]
-output_paintdir = cell_args["output_paintdir"]
-merge_info = cell_args["merge_columns"]
-metadata_merge_foci_cols = cell_args["metadata_merge_columns"]["foci_cols"]
-metadata_merge_cell_cols = cell_args["metadata_merge_columns"]["cell_cols"]
-metadata_cell_quality_col = cell_args["metadata_merge_columns"]["cell_quality_col"]
-foci_site_col = cell_args["foci_site_col"]
-force = cell_args["force_overwrite"]
+prefilter_file = config["files"]["prefilter_file"]
+input_image_file = config["files"]["image_file"]
+
+input_platedir = config["directories"]["input_data_dir"]
+foci_dir = config["directories"]["preprocess"]["spots"]
+output_paintdir = config["directories"]["preprocess"]["paint"]
+
+image_cols = config["options"]["preprocess"]["process-spots"]["image_cols"]
+
+cell_config = config["options"]["preprocess"]["process-cells"]
+cell_sort_col = cell_config["sort_col"]
+merge_info = cell_config["merge_columns"]
+foci_site_col = cell_config["foci_site_col"]
+force = cell_config["force_overwrite"]
+metadata_merge_foci_cols = cell_config["metadata_merge_columns"]["foci_cols"]
+metadata_merge_cell_cols = cell_config["metadata_merge_columns"]["cell_cols"]
+metadata_cell_quality_col = cell_config["metadata_merge_columns"]["cell_quality_col"]
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
@@ -113,7 +115,7 @@ for site in sites:
 
     try:
         print(f"Now processing cells for {site}...")
-        compartment_dir = pathlib.Path(batch_dir, site)
+        compartment_dir = pathlib.Path(input_platedir, site)
 
         # Make the compartment_csvs dictionary used to merge dfs
         compartment_csvs = {}
