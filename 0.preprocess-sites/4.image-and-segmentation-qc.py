@@ -208,8 +208,10 @@ for threshhold_compartment in ["Cells", "Nuclei"]:
     if threshold_full_col not in image_df.columns:
         continue
 
+    image_df_subset = image_df.dropna(subset=[threshold_full_col])
+
     compartment_finalthresh_gg = (
-        gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
+        gg.ggplot(image_df_subset, gg.aes(x="x_loc", y="y_loc"))
         + gg.geom_point(gg.aes(fill=f"{threshold_full_col}"), size=10)
         + gg.geom_text(gg.aes(label="site_location"), color="lightgrey")
         + gg.facet_wrap(f"~{image_cols['well']}")
@@ -235,8 +237,10 @@ for threshhold_compartment in ["Cells", "Nuclei"]:
 confluent_col = "Math_PercentConfluent"
 if confluent_col in image_df.columns:
     # Plot percent confluent regions per well
+    image_df_subset = image_df.dropna(subset=[confluent_col])
+
     percent_confluent_gg = (
-        gg.ggplot(image_df, gg.aes(x="x_loc", y="y_loc"))
+        gg.ggplot(image_df_subset, gg.aes(x="x_loc", y="y_loc"))
         + gg.geom_point(gg.aes(fill=confluent_col), size=10)
         + gg.geom_text(gg.aes(label="site_location"), color="lightgrey")
         + gg.facet_wrap(f"~{image_cols['well']}")
