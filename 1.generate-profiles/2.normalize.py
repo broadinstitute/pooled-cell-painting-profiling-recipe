@@ -48,8 +48,10 @@ for data_level in normalize_levels:
 
     print(f"Now normalizing {data_level}...with operation: {normalize_method}")
 
-    normalize_df = normalize(
-        profiles=file_to_normalize,
+    df = pd.read_csv(file_to_normalize)
+
+    normalize(
+        profiles=df,
         features=normalize_these_features,
         samples=normalize_by_samples,
         method=normalize_method,

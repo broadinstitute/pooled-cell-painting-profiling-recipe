@@ -35,7 +35,7 @@ singlecell_from_single_file = sc_config["output_one_single_cell_file_only"]
 feature_select_args = config["options"]["profile"]["feature_select"]
 feature_select_operations = feature_select_args["operations"]
 feature_select_levels = feature_select_args["levels"]
-feature_select_drop_samples = feature_select_args["drop_samples"]
+feature_select_drop_samples = feature_select_args["use_samples"]
 feature_select_features = feature_select_args["features"]
 feature_select_nacutoff = feature_select_args["na_cutoff"]
 feature_select_corr_threshold = feature_select_args["corr_threshold"]
@@ -55,8 +55,10 @@ for data_level in feature_select_levels:
         f"Now performing feature selection for {data_level}...with operations: {feature_select_operations}"
     )
 
+    df = pd.read_csv(input_file)
+
     feature_select(
-        profiles=input_file,
+        profiles=df,
         features=feature_select_features,
         samples=feature_select_drop_samples,
         operation=feature_select_operations,
