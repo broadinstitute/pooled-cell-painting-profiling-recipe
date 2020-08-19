@@ -32,10 +32,10 @@ config = process_configuration(
 )
 
 # Extract config arguments
-filter_cell_quality = config["experiment"]["cell_filter"]
 control_barcodes = config["experiment"]["control_barcode_ids"]
 
 compartments = config["options"]["core"]["compartments"]
+cell_filter = config["options"]["core"]["cell_quality"]["cell_filter"]
 float_format = config["options"]["core"]["float_format"]
 compression = config["options"]["core"]["compression"]
 ignore_files = config["options"]["core"]["ignore_files"]
@@ -112,7 +112,7 @@ for site in sites:
     # Load cell metadata after cell quality determined in 0.preprocess-sites
     metadata_file = pathlib.Path(site_metadata_dir, f"metadata_{site}.tsv.gz")
     metadata_df = pd.read_csv(metadata_file, sep="\t").query(
-        f"{cell_quality_col} in @filter_cell_quality"
+        f"{cell_quality_col} in @cell_filter"
     )
 
     if sanitize_genes:

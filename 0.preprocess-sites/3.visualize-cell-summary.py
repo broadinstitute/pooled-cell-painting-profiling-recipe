@@ -29,12 +29,15 @@ config = process_configuration(
 )
 
 # Define variables set in the config file
-quality_func = config["experiment"]["categorize_cell_quality"]
 control_barcodes = config["experiment"]["control_barcode_ids"]
-cell_category_order = config["experiment"]["cell_category_order"]
-cell_category_colors = config["experiment"]["cell_category_colors"]
 
 ignore_files = config["options"]["core"]["ignore_files"]
+cell_filter = config["options"]["core"]["cell_quality"]["cell_filter"]
+quality_func = config["options"]["core"]["cell_quality"]["categorize_cell_quality"]
+quality_col = config["options"]["core"]["cell_quality"]["cell_quality_column"]
+quality_idx = config["options"]["core"]["cell_quality"]["cell_quality_index"]
+cell_category_order = config["options"]["core"]["cell_quality"]["cell_category_order"]
+cell_category_colors = config["options"]["core"]["cell_quality"]["cell_category_colors"]
 
 spot_config = config["options"]["preprocess"]["process-spots"]
 barcode_cols = spot_config["barcode_cols"]
@@ -54,11 +57,13 @@ total_cell_count_file = config["files"]["total_cell_count_file"]
 force = config["options"]["preprocess"]["summarize-cells"]["force_overwrite"]
 
 # Perform the pipeline
-cell_quality = CellQuality(quality_func)
+cell_quality = CellQuality(
+    quality_func, category_class_name=quality_col, category_col_index=quality_idx
+)
 cell_category_dict = cell_quality.define_cell_quality()
 empty_cell_category = len(cell_category_dict) + 1
 cell_category_dict[empty_cell_category] = "Empty"
-cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"])
+cell_category_df = pd.DataFrame(cell_category_dict, index=[quality_col])
 cell_category_list = list(cell_category_dict.values())
 
 # Forced overwrite can be achieved in one of two ways.
@@ -275,6 +280,12 @@ pert_count_df.loc[:, gene_cols] = pd.Categorical(
         .index.tolist()
     ),
 )
+
+output_file = pathlib.Path(
+    output_resultsdir, "all_cellpainting_unique_perturbations_coverage.tsv"
+)
+if check_if_write(output_file, force, throw_warning=True):
+    pert_count_df.to_csv(index=False, sep="\t")
 
 guide_count_gg = (
     gg.ggplot(pert_count_df, gg.aes(x=gene_cols[0], y="Cell_Count_Per_Guide"))

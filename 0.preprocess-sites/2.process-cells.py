@@ -45,12 +45,13 @@ config = process_configuration(
 )
 
 # Define variables set in the config file
-quality_func = config["experiment"]["categorize_cell_quality"]
-
 ignore_files = config["options"]["core"]["ignore_files"]
 id_cols = config["options"]["core"]["cell_id_cols"]
 compartments = config["options"]["core"]["compartments"]
 parent_cols = config["options"]["core"]["cell_match_cols"]
+quality_func = config["options"]["core"]["cell_quality"]["categorize_cell_quality"]
+quality_col = config["options"]["core"]["cell_quality"]["cell_quality_column"]
+quality_idx = config["options"]["core"]["cell_quality"]["cell_quality_index"]
 
 prefilter_file = config["files"]["prefilter_file"]
 input_image_file = config["files"]["image_file"]
@@ -68,18 +69,19 @@ foci_site_col = cell_config["foci_site_col"]
 force = cell_config["force_overwrite"]
 metadata_merge_foci_cols = cell_config["metadata_merge_columns"]["foci_cols"]
 metadata_merge_cell_cols = cell_config["metadata_merge_columns"]["cell_cols"]
-metadata_cell_quality_col = cell_config["metadata_merge_columns"]["cell_quality_col"]
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
 if not force:
     force = args.force
 
-cell_quality = CellQuality(quality_func)
+cell_quality = CellQuality(
+    quality_func, category_class_name=quality_col, category_col_index=quality_idx
+)
 cell_category_dict = cell_quality.define_cell_quality()
 empty_cell_category = len(cell_category_dict) + 1
 cell_category_dict[empty_cell_category] = "Empty"
-cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"]).transpose()
+cell_category_df = pd.DataFrame(cell_category_dict, index=[quality_col]).transpose()
 
 # Enables feature filtering by loading the Cell Painting feature file.
 # 0.prefilter-features.py must be run first
@@ -169,9 +171,9 @@ for site in sites:
     ].drop_duplicates()
 
     # Adds a cell quality category to previously uncategorized cells
-    metadata_df.loc[:, metadata_cell_quality_col] = metadata_df.loc[
-        :, metadata_cell_quality_col
-    ].fillna(empty_cell_category)
+    metadata_df.loc[:, quality_idx] = metadata_df.loc[:, quality_idx].fillna(
+        empty_cell_category
+    )
 
     # Adds the site to the metadata_foci_site column to previously uncategorized cells
     metadata_df[foci_site_col] = metadata_df[foci_site_col].fillna(site)
@@ -179,13 +181,10 @@ for site in sites:
     # Add the cell quality metadata to the df
     metadata_df = (
         metadata_df.merge(
-            cell_category_df,
-            left_on=metadata_cell_quality_col,
-            right_index=True,
-            how="left",
+            cell_category_df, left_on=quality_idx, right_index=True, how="left",
         )
         .sort_values(by=cell_sort_col)
-        .drop_duplicates(subset=[cell_sort_col, "Cell_Class"])
+        .drop_duplicates(subset=[cell_sort_col, quality_idx])
         .reset_index(drop=True)
     )
 
@@ -195,8 +194,8 @@ for site in sites:
 
     # Create a summary of counts of each cell quality class
     cell_count_df = (
-        pd.DataFrame(metadata_df.Cell_Class.value_counts())
-        .rename(columns={"Cell_Class": "cell_count"})
+        pd.DataFrame(metadata_df.loc[:, quality_col].value_counts())
+        .rename(columns={quality_col: "cell_count"})
         .assign(site=site, plate=plate, well=well, site_location=site_location,)
     )
 

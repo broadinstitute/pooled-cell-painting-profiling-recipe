@@ -69,13 +69,15 @@ config = process_configuration(
 )
 
 # Set constants
-cell_filter = config["experiment"]["cell_filter"]
-quality_func = config["experiment"]["categorize_cell_quality"]
 control_barcodes = config["experiment"]["control_barcode_ids"]
 
 id_cols = config["options"]["core"]["cell_id_cols"]
 spot_parent_cols = config["options"]["core"]["cell_match_cols"]["spots"]
 ignore_files = config["options"]["core"]["ignore_files"]
+cell_filter = config["options"]["core"]["cell_quality"]["cell_filter"]
+quality_func = config["options"]["core"]["cell_quality"]["categorize_cell_quality"]
+quality_col = config["options"]["core"]["cell_quality"]["cell_quality_column"]
+quality_idx = config["options"]["core"]["cell_quality"]["cell_quality_index"]
 
 output_image_file = config["files"]["image_file"]
 output_spotdir = config["directories"]["preprocess"]["spots"]
@@ -102,9 +104,11 @@ all_foci_cols = list(
     )
 )
 
-cell_quality = CellQuality(quality_func)
+cell_quality = CellQuality(
+    quality_func, category_class_name=quality_col, category_col_index=quality_idx
+)
 cell_category_dict = cell_quality.define_cell_quality()
-cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"])
+cell_category_df = pd.DataFrame(cell_category_dict, index=[quality_col])
 
 sites = [x.name for x in input_platedir.iterdir() if x.name not in ignore_files]
 num_sites = len(sites)
@@ -163,7 +167,6 @@ for site in sites:
             warnings.warn("Output files likely exist, now overwriting...")
         else:
             warnings.warn("Output files likely exist. If they do, NOT overwriting...")
-
     output_dir.mkdir(exist_ok=True, parents=True)
 
     # Merge spot data files
@@ -287,7 +290,7 @@ for site in sites:
             well=well,
             site_location=site_location,
         )
-        .query("Cell_Class in @cell_filter")
+        .query(f"{quality_col} in @cell_filter")
     )
 
     out_file = pathlib.Path(output_dir, "cell_perturbation_category_summary_counts.tsv")
