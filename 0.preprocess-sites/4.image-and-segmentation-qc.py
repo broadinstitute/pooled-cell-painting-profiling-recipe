@@ -536,11 +536,11 @@ if len(corr_qc_cols) > 0:
     corr_by_well_gg = (
         gg.ggplot(image_corr_df, gg.aes(x="x_loc", y="y_loc"))
         + gg.geom_point(gg.aes(fill="min_corr_value"), size=10)
-        + gg.geom_text(gg.aes(label="site"), color="lightgrey")
+        + gg.geom_text(gg.aes(label="site_location"), color="lightgrey")
         + gg.facet_wrap("~Metadata_Well")
         + gg.coord_fixed()
         + gg.theme_bw()
-        + gg.ggtitle(f"Failed Correlations \n {plate}")
+        + gg.ggtitle(f"Failed Pairwise Image Correlations \n {plate}")
         + gg.theme(
             axis_text=gg.element_blank(),
             axis_title=gg.element_blank(),
