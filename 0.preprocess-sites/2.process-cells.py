@@ -142,6 +142,7 @@ for site in sites:
                   If it has been run, check that output_paintdir is set correctly in
                   the process-spots section of the config"""
             )
+            continue
 
         # Relabel columns in foci_df to start with Metadata_Foci_
         foci_df.columns = [
@@ -150,7 +151,7 @@ for site in sites:
         ]
 
     except FileNotFoundError:
-        print(f"{site} data not found")
+        print(f"Compartment data for {site} not found")
         continue
 
     # Merge compartment csvs. Each row is a separate cell.

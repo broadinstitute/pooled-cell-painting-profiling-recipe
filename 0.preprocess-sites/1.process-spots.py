@@ -161,6 +161,7 @@ for site in sites:
         )
     except AssertionError:
         print(f"{site} data not aligned between foci files")
+        continue
 
     output_dir = pathlib.Path(output_spotdir, site)
     if output_dir.exists():
