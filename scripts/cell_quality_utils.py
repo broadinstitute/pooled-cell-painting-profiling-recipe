@@ -40,12 +40,14 @@ class CellQuality:
         method,
         avg_col="mean",
         count_col="count",
-        category_col_name="Cell_Quality",
+        category_col_index="Metadata_Foci_Cell_Quality_Index",
+        category_class_name="Metadata_Foci_Cell_Category",
     ):
         self.method = method
         self.avg_col = avg_col
         self.count_col = count_col
-        self.category_col_name = category_col_name
+        self.category_col_index = category_col_index
+        self.category_class_name = category_class_name
 
         if self.method == "simple":
             self.categorize = simple_categorize
@@ -54,26 +56,23 @@ class CellQuality:
 
         category_dict = self.define_cell_quality()
         self.category_df = (
-            pd.DataFrame(category_dict, index=["Cell_Class"])
+            pd.DataFrame(category_dict, index=[self.category_class_name])
             .transpose()
             .reset_index()
-            .rename({"index": self.category_col_name}, axis="columns")
+            .rename({"index": self.category_col_index}, axis="columns")
         )
 
     def define_cell_quality(self):
         return get_cell_quality_dict(method=self.method)
 
-    def assign_cell_quality(
-        self, count_df, parent_cols, score_col, quality_col_name="Cell_Quality"
-    ):
-        self.quality_col = quality_col_name
+    def assign_cell_quality(self, count_df, parent_cols, score_col):
 
         quality_estimate_df = (
             pd.DataFrame(
                 count_df.groupby(parent_cols).apply(
                     lambda x: self.categorize(x, score_col=score_col)
                 ),
-                columns=[self.quality_col],
+                columns=[self.category_col_index],
             )
             .reset_index()
             .merge(count_df, on=parent_cols)
@@ -82,18 +81,21 @@ class CellQuality:
         return quality_estimate_df
 
     def summarize_cell_quality_counts(self, quality_df, parent_cols):
-        dup_cols = parent_cols + [self.quality_col]
+        dup_cols = parent_cols + [self.category_col_index]
 
         quality_count_df = (
             quality_df.drop_duplicates(dup_cols)
-            .loc[:, self.quality_col]
+            .loc[:, self.category_col_index]
             .value_counts()
             .reset_index()
             .rename(
-                {self.category_col_name: "Cell_Count", "index": self.category_col_name},
+                {
+                    self.category_col_index: "Cell_Count",
+                    "index": self.category_col_index,
+                },
                 axis="columns",
             )
-            .merge(self.category_df, on=self.category_col_name)
+            .merge(self.category_df, on=self.category_col_index)
         )
 
         return quality_count_df
@@ -102,7 +104,7 @@ class CellQuality:
         self, quality_df, parent_cols, group_cols, guide=False
     ):
 
-        category_group_cols = group_cols + [self.category_col_name]
+        category_group_cols = group_cols + [self.category_col_index]
         category_group_cols = list(set(category_group_cols))
 
         if guide:
@@ -115,7 +117,7 @@ class CellQuality:
             .count()
             .reset_index()
             .rename({parent_cols[0]: f"Cell_Count_Per_{level}"}, axis="columns")
-            .merge(self.category_df, on=self.category_col_name, how="left")
+            .merge(self.category_df, on=self.category_col_index, how="left")
         )
 
         return summary_df
