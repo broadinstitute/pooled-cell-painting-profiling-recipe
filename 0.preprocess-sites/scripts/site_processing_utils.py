@@ -27,10 +27,10 @@ def recode_cols(df, core, compartment):
     df.columns = [f"{compartment}_{x}" for x in df.columns]
 
     rename_dict = {}
-    recode_cols = [f"{compartment}_{x}" for x in core["id_cols"]]
-    if compartment.lower() in core["parent_cols"]:
+    recode_cols = [f"{compartment}_{x}" for x in core["cell_id_cols"]]
+    if compartment.lower() in core["cell_match_cols"]:
         recode_cols += [
-            f"{compartment}_{x}" for x in core["parent_cols"][compartment.lower()]
+            f"{compartment}_{x}" for x in core["cell_match_cols"][compartment.lower()]
         ]
 
     for recode_col in recode_cols:

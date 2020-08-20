@@ -8,36 +8,35 @@ import pandas as pd
 from pycytominer import normalize
 
 sys.path.append("config")
-from config_utils import process_config_file
+from utils import parse_command_args, process_configuration
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config_file",
-    help="configuration yaml file for the profiling pipeline",
-    default="profiling_config.yaml",
+args = parse_command_args()
+
+plate_id = args.plate_id
+options_config_file = args.options_config_file
+experiment_config_file = args.experiment_config_file
+
+config = process_configuration(
+    plate_id,
+    options_config=options_config_file,
+    experiment_config=experiment_config_file,
 )
-args = parser.parse_args()
-config_file = args.config_file
-
-config = process_config_file(config_file)
 
 # Extract config arguments
-core_args = config["core"]
-batch = core_args["batch"]
-aggregate_args = config["aggregate"]
-normalize_args = config["normalize"]
+float_format = config["options"]["core"]["float_format"]
+compression = config["options"]["core"]["compression"]
 
-ignore_files = core_args["ignore_files"]
-float_format = core_args["float_format"]
-compression = core_args["compression"]
+normalize_input_files = config["files"]["aggregate_files"]
+normalize_output_files = config["files"]["normalize_files"]
 
-normalize_singlecell_from_single_file = core_args["output_one_single_cell_file_only"]
+sc_config = config["options"]["profile"]["single_cell"]
+normalize_singlecell_from_single_file = sc_config["output_one_single_cell_file_only"]
+
+normalize_args = config["options"]["profile"]["normalize"]
 normalize_levels = normalize_args["levels"]
 normalize_by_samples = normalize_args["by_samples"]
 normalize_these_features = normalize_args["features"]
 normalize_method = normalize_args["method"]
-normalize_input_files = aggregate_args["aggregate_output_files"]
-normalize_output_files = normalize_args["normalize_output_files"]
 
 for data_level in normalize_levels:
     if data_level == "single_cell":
@@ -49,8 +48,10 @@ for data_level in normalize_levels:
 
     print(f"Now normalizing {data_level}...with operation: {normalize_method}")
 
-    normalize_df = normalize(
-        profiles=file_to_normalize,
+    df = pd.read_csv(file_to_normalize)
+
+    normalize(
+        profiles=df,
         features=normalize_these_features,
         samples=normalize_by_samples,
         method=normalize_method,

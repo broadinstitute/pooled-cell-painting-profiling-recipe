@@ -11,7 +11,7 @@ The metadata include:
 2. Metadata Information per Cell
 
 All sites are processed independently and results are saved in site-specific folders
-(in <OUTPUT_BASEDIR>/<BATCH>/paint set in site_processing_config)
+(in <OUTPUT_BASEDIR>/<PLATE_ID>/paint set in site_processing_config)
 
 1.process-spots must be run before running this script.
 """
@@ -24,60 +24,64 @@ import argparse
 import pandas as pd
 
 sys.path.append("config")
-from config_utils import process_config_file
+from utils import parse_command_args, process_configuration
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
-from arg_utils import parse_command_args
 from cell_quality_utils import CellQuality
 from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
 from io_utils import check_if_write
 
-args = parse_command_args(config_file="site_processing_config.yaml")
-config_file = args.config_file
-config = process_config_file(config_file)
+args = parse_command_args()
 
-# Defines the sections of the config file
-core_args = config["core"]
-prefilter_args = config["prefilter"]
-spot_args = config["process-spots"]
-cell_args = config["process-cells"]
+plate_id = args.plate_id
+options_config_file = args.options_config_file
+experiment_config_file = args.experiment_config_file
 
-# Defines the variables set in the config file
-batch = core_args["batch"]
-batch_dir = core_args["batch_dir"]
-project_dir = core_args["project_dir"]
-quality_func = core_args["categorize_cell_quality"]
-ignore_files = core_args["ignore_files"]
-id_cols = core_args["id_cols"]
-compartments = core_args["compartments"]
-parent_cols = core_args["parent_cols"]
+config = process_configuration(
+    plate_id,
+    options_config=options_config_file,
+    experiment_config=experiment_config_file,
+)
 
-prefilter_file = prefilter_args["prefilter_file"]
+# Define variables set in the config file
+ignore_files = config["options"]["core"]["ignore_files"]
+id_cols = config["options"]["core"]["cell_id_cols"]
+compartments = config["options"]["core"]["compartments"]
+parent_cols = config["options"]["core"]["cell_match_cols"]
+quality_func = config["options"]["core"]["cell_quality"]["categorize_cell_quality"]
+quality_col = config["options"]["core"]["cell_quality"]["cell_quality_column"]
+quality_idx = config["options"]["core"]["cell_quality"]["cell_quality_index"]
 
-foci_dir = spot_args["output_spotdir"]
-image_cols = spot_args["image_cols"]
-input_image_file = spot_args["image_file"]
+prefilter_file = config["files"]["prefilter_file"]
+input_image_file = config["files"]["image_file"]
 
-cell_sort_col = cell_args["sort_col"]
-output_paintdir = cell_args["output_paintdir"]
-merge_info = cell_args["merge_columns"]
-metadata_merge_foci_cols = cell_args["metadata_merge_columns"]["foci_cols"]
-metadata_merge_cell_cols = cell_args["metadata_merge_columns"]["cell_cols"]
-metadata_cell_quality_col = cell_args["metadata_merge_columns"]["cell_quality_col"]
-foci_site_col = cell_args["foci_site_col"]
-force = cell_args["force_overwrite"]
+input_platedir = config["directories"]["input_data_dir"]
+foci_dir = config["directories"]["preprocess"]["spots"]
+output_paintdir = config["directories"]["preprocess"]["paint"]
+
+image_cols = config["options"]["preprocess"]["process-spots"]["image_cols"]
+
+cell_config = config["options"]["preprocess"]["process-cells"]
+cell_sort_col = cell_config["sort_col"]
+merge_info = cell_config["merge_columns"]
+foci_site_col = cell_config["foci_site_col"]
+force = cell_config["force_overwrite"]
+metadata_merge_foci_cols = cell_config["metadata_merge_columns"]["foci_cols"]
+metadata_merge_cell_cols = cell_config["metadata_merge_columns"]["cell_cols"]
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
 if not force:
     force = args.force
 
-cell_quality = CellQuality(quality_func)
+cell_quality = CellQuality(
+    quality_func, category_class_name=quality_col, category_col_index=quality_idx
+)
 cell_category_dict = cell_quality.define_cell_quality()
 empty_cell_category = len(cell_category_dict) + 1
 cell_category_dict[empty_cell_category] = "Empty"
-cell_category_df = pd.DataFrame(cell_category_dict, index=["Cell_Class"]).transpose()
+cell_category_df = pd.DataFrame(cell_category_dict, index=[quality_col]).transpose()
 
 # Enables feature filtering by loading the Cell Painting feature file.
 # 0.prefilter-features.py must be run first
@@ -113,7 +117,7 @@ for site in sites:
 
     try:
         print(f"Now processing cells for {site}...")
-        compartment_dir = pathlib.Path(batch_dir, site)
+        compartment_dir = pathlib.Path(input_platedir, site)
 
         # Make the compartment_csvs dictionary used to merge dfs
         compartment_csvs = {}
@@ -167,9 +171,9 @@ for site in sites:
     ].drop_duplicates()
 
     # Adds a cell quality category to previously uncategorized cells
-    metadata_df.loc[:, metadata_cell_quality_col] = metadata_df.loc[
-        :, metadata_cell_quality_col
-    ].fillna(empty_cell_category)
+    metadata_df.loc[:, quality_idx] = metadata_df.loc[:, quality_idx].fillna(
+        empty_cell_category
+    )
 
     # Adds the site to the metadata_foci_site column to previously uncategorized cells
     metadata_df[foci_site_col] = metadata_df[foci_site_col].fillna(site)
@@ -177,13 +181,10 @@ for site in sites:
     # Add the cell quality metadata to the df
     metadata_df = (
         metadata_df.merge(
-            cell_category_df,
-            left_on=metadata_cell_quality_col,
-            right_index=True,
-            how="left",
+            cell_category_df, left_on=quality_idx, right_index=True, how="left",
         )
         .sort_values(by=cell_sort_col)
-        .drop_duplicates(subset=[cell_sort_col, "Cell_Class"])
+        .drop_duplicates(subset=[cell_sort_col, quality_idx])
         .reset_index(drop=True)
     )
 
@@ -193,8 +194,8 @@ for site in sites:
 
     # Create a summary of counts of each cell quality class
     cell_count_df = (
-        pd.DataFrame(metadata_df.Cell_Class.value_counts())
-        .rename(columns={"Cell_Class": "cell_count"})
+        pd.DataFrame(metadata_df.loc[:, quality_col].value_counts())
+        .rename(columns={quality_col: "cell_count"})
         .assign(site=site, plate=plate, well=well, site_location=site_location,)
     )
 

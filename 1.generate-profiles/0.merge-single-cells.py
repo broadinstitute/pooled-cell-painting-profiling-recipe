@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 sys.path.append("config")
-from config_utils import process_config_file
+from utils import parse_command_args, process_configuration
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
@@ -19,53 +19,46 @@ from paint_utils import load_single_cell_compartment_csv, merge_single_cell_comp
 from cell_quality_utils import CellQuality
 from profile_utils import sanitize_gene_col
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config_file",
-    help="configuration yaml file for the profiling pipeline",
-    default="profiling_config.yaml",
-)
-parser.add_argument(
-    "--force", help="force overwriting of single cell data", action="store_true"
-)
-args = parser.parse_args()
-config_file = args.config_file
+args = parse_command_args()
 
-config = process_config_file(config_file)
+plate_id = args.plate_id
+options_config_file = args.options_config_file
+experiment_config_file = args.experiment_config_file
+
+config = process_configuration(
+    plate_id,
+    options_config=options_config_file,
+    experiment_config=experiment_config_file,
+)
 
 # Extract config arguments
-main_args = config["main_config"]
-core_args = config["core"]
-single_cell_args = config["single_cell"]
-aggregate_args = config["aggregate"]
+control_barcodes = config["experiment"]["control_barcode_ids"]
 
-project = main_args["project_tag"]
-batch = core_args["batch"]
-batch_dir = core_args["batch_dir"]
-single_file_only = core_args["output_one_single_cell_file_only"]
-compartments = core_args["compartments"]
-parent_col_info = core_args["parent_cols"]
-ignore_files = core_args["ignore_files"]
-float_format = core_args["float_format"]
-compression = core_args["compression"]
-control_barcodes = core_args["control_barcodes"]
+compartments = config["options"]["core"]["compartments"]
+cell_filter = config["options"]["core"]["cell_quality"]["cell_filter"]
+float_format = config["options"]["core"]["float_format"]
+compression = config["options"]["core"]["compression"]
+ignore_files = config["options"]["core"]["ignore_files"]
+id_cols = config["options"]["core"]["cell_id_cols"]
+parent_col_info = config["options"]["core"]["cell_match_cols"]
 
-id_cols = core_args["id_cols"]
-spot_parent_cols = core_args["parent_cols"]["spots"]
+input_platedir = config["directories"]["input_data_dir"]
+single_cell_output_dir = config["directories"]["profile"]["single_cell"]
+input_spotdir = config["directories"]["preprocess"]["spots"]
+input_paintdir = config["directories"]["preprocess"]["paint"]
 
-prefilter_features = single_cell_args["prefilter_features"]
-prefilter_file = single_cell_args["prefilter_file"]
-filter_cell_quality = single_cell_args["filter_cell_quality"]
-sanitize_genes = single_cell_args["sanitize_gene_col"]
-cell_quality_col = single_cell_args["cell_quality_column"]
-spot_batch_dir = single_cell_args["spot_metadata_dir"]
-paint_metadata_dir = single_cell_args["paint_metadata_dir"]
-merge_info = single_cell_args["merge_columns"]
-single_cell_output_dir = single_cell_args["single_cell_output_dir"]
-single_file_only_output_file = single_cell_args["single_file_only_output_file"]
-force = single_cell_args["force_overwrite"]
+prefilter_file = config["files"]["prefilter_file"]
+single_file_only_output_file = config["files"]["single_file_only_output_file"]
 
-gene_col = aggregate_args["levels"]["gene"]
+sc_config = config["options"]["profile"]["single_cell"]
+prefilter_features = sc_config["prefilter_features"]
+sanitize_genes = sc_config["sanitize_gene_col"]
+cell_quality_col = sc_config["cell_quality_column"]
+merge_info = sc_config["merge_columns"]
+single_file_only = sc_config["output_one_single_cell_file_only"]
+force = sc_config["force_overwrite"]
+
+gene_col = config["options"]["profile"]["aggregate"]["levels"]["gene"]
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
@@ -87,7 +80,7 @@ if prefilter_features:
     all_feature_df = all_feature_df.query("not prefilter_column")
 
 # Pull out all sites that were measured
-sites = [x.name for x in spot_batch_dir.iterdir() if x.name not in ignore_files]
+sites = [x.name for x in input_spotdir.iterdir() if x.name not in ignore_files]
 
 sc_df = []
 for site in sites:
@@ -113,13 +106,13 @@ for site in sites:
             print(f"Now processing single cells for site: {site}...")
 
     # Point to appropriate directories
-    site_metadata_dir = pathlib.Path(paint_metadata_dir, site)
-    site_compartment_dir = pathlib.Path(batch_dir, site)
+    site_metadata_dir = pathlib.Path(input_paintdir, site)
+    site_compartment_dir = pathlib.Path(input_platedir, site)
 
     # Load cell metadata after cell quality determined in 0.preprocess-sites
     metadata_file = pathlib.Path(site_metadata_dir, f"metadata_{site}.tsv.gz")
     metadata_df = pd.read_csv(metadata_file, sep="\t").query(
-        f"{cell_quality_col} in @filter_cell_quality"
+        f"{cell_quality_col} in @cell_filter"
     )
 
     if sanitize_genes:

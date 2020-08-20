@@ -8,37 +8,37 @@ import pandas as pd
 from pycytominer import feature_select
 
 sys.path.append("config")
-from config_utils import process_config_file
+from utils import parse_command_args, process_configuration
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config_file",
-    help="configuration yaml file for the profiling pipeline",
-    default="profiling_config.yaml",
+args = parse_command_args()
+
+plate_id = args.plate_id
+options_config_file = args.options_config_file
+experiment_config_file = args.experiment_config_file
+
+config = process_configuration(
+    plate_id,
+    options_config=options_config_file,
+    experiment_config=experiment_config_file,
 )
-args = parser.parse_args()
-config_file = args.config_file
-
-config = process_config_file(config_file)
 
 # Extract config arguments
-core_args = config["core"]
-batch = core_args["batch"]
-float_format = core_args["float_format"]
-compression = core_args["compression"]
+float_format = config["options"]["core"]["float_format"]
+compression = config["options"]["core"]["compression"]
 
-normalize_args = config["normalize"]
-feature_select_args = config["feature_select"]
+feature_select_input_files = config["files"]["normalize_files"]
+feature_select_output_files = config["files"]["feature_select_files"]
 
-singlecell_from_single_file = core_args["output_one_single_cell_file_only"]
+sc_config = config["options"]["profile"]["single_cell"]
+singlecell_from_single_file = sc_config["output_one_single_cell_file_only"]
+
+feature_select_args = config["options"]["profile"]["feature_select"]
 feature_select_operations = feature_select_args["operations"]
 feature_select_levels = feature_select_args["levels"]
-feature_select_drop_samples = feature_select_args["drop_samples"]
+feature_select_drop_samples = feature_select_args["use_samples"]
 feature_select_features = feature_select_args["features"]
 feature_select_nacutoff = feature_select_args["na_cutoff"]
 feature_select_corr_threshold = feature_select_args["corr_threshold"]
-feature_select_input_files = normalize_args["normalize_output_files"]
-feature_select_output_files = feature_select_args["feature_select_output_files"]
 
 for data_level in feature_select_levels:
     if data_level == "single_cell":
@@ -55,8 +55,10 @@ for data_level in feature_select_levels:
         f"Now performing feature selection for {data_level}...with operations: {feature_select_operations}"
     )
 
+    df = pd.read_csv(input_file)
+
     feature_select(
-        profiles=input_file,
+        profiles=df,
         features=feature_select_features,
         samples=feature_select_drop_samples,
         operation=feature_select_operations,

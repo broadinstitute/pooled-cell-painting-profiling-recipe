@@ -6,45 +6,50 @@ import pandas as pd
 import plotnine as gg
 
 sys.path.append("config")
-from config_utils import process_config_file
+from utils import parse_command_args, process_configuration
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
-from arg_utils import parse_command_args
 from io_utils import check_if_write
 
-args = parse_command_args(config_file="site_processing_config.yaml")
-config_file = args.config_file
-config = process_config_file(config_file)
+args = parse_command_args()
+
+plate_id = args.plate_id
+options_config_file = args.options_config_file
+experiment_config_file = args.experiment_config_file
+
+config = process_configuration(
+    plate_id,
+    options_config=options_config_file,
+    experiment_config=experiment_config_file,
+)
 
 # Defines the sections of the config file
-core_args = config["core"]
-spots_args = config["process-spots"]
-summ_cell_args = config["summarize-cells"]
-summ_plate_args = config["summarize-plate"]
 
 # Defines the variables set in the config file
-batch = core_args["batch"]
-quality_func = core_args["categorize_cell_quality"]
-ignore_files = core_args["ignore_files"]
-sites_per_image_grid_side = core_args["sites_per_image_grid_side"]
-batch_dir = core_args["batch_dir"]
+barcoding_cycles = config["experiment"]["barcoding_cycles"]
+sites_per_image_grid_side = config["experiment"]["sites_per_image_grid_side"]
 
-cell_filter = spots_args["cell_filter"]
-image_cols = spots_args["image_cols"]
-input_image_file = spots_args["image_file"]
+ignore_files = config["options"]["core"]["ignore_files"]
+cell_filter = config["options"]["core"]["cell_quality"]["cell_filter"]
+quality_func = config["options"]["core"]["cell_quality"]["categorize_cell_quality"]
+cell_category_order = config["options"]["core"]["cell_quality"]["cell_category_order"]
+cell_category_colors = config["options"]["core"]["cell_quality"]["cell_category_colors"]
 
-figures_output = summ_cell_args["output_summary_figuresdir"]
-results_output = summ_cell_args["output_summary_resultsdir"]
-cell_category_order = summ_cell_args["cell_category_order"]
-cell_count_file = summ_cell_args["cell_count_file"]
+input_image_file = config["files"]["image_file"]
+cell_count_file = config["files"]["cell_count_file"]
+output_resultsdir = config["directories"]["preprocess"]["results"]
+output_figuresdir = config["directories"]["preprocess"]["figures"]
 
-correlation_threshold = summ_plate_args["correlation_threshold"]
-painting_image_names = summ_plate_args["painting_image_names"]
-barcoding_cycles = summ_plate_args["barcoding_cycles"]
-barcoding_prefix = summ_plate_args["barcoding_prefix"]
-force = summ_plate_args["force_overwrite"]
+spot_config = config["options"]["preprocess"]["process-spots"]
+image_cols = spot_config["image_cols"]
+
+plate_summary_config = config["options"]["preprocess"]["summarize-plate"]
+correlation_threshold = plate_summary_config["correlation_threshold"]
+painting_image_names = plate_summary_config["painting_image_names"]
+barcoding_prefix = plate_summary_config["barcoding_prefix"]
+force = plate_summary_config["force_overwrite"]
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
@@ -97,7 +102,7 @@ cell_count_totalcells_df = (
 
 plate = cell_count_df["plate"].unique()[0]
 
-os.makedirs(figures_output, exist_ok=True)
+os.makedirs(output_figuresdir, exist_ok=True)
 by_well_gg = (
     gg.ggplot(cell_count_totalcells_df, gg.aes(x="x_loc", y="y_loc"))
     + gg.geom_point(gg.aes(fill="total_cell_count"), size=10)
@@ -115,7 +120,7 @@ by_well_gg = (
     + gg.scale_fill_cmap(name="magma")
 )
 
-output_file = pathlib.Path(figures_output, "plate_layout_cells_count_per_well.png")
+output_file = pathlib.Path(output_figuresdir, "plate_layout_cells_count_per_well.png")
 if check_if_write(output_file, force, throw_warning=True):
     by_well_gg.save(output_file, dpi=300, verbose=False)
 
@@ -180,7 +185,7 @@ ratio_gg = (
     + gg.scale_fill_cmap(name="magma")
 )
 
-output_file = pathlib.Path(figures_output, "plate_layout_ratios_per_well.png")
+output_file = pathlib.Path(output_figuresdir, "plate_layout_ratios_per_well.png")
 if check_if_write(output_file, force, throw_warning=True):
     ratio_gg.save(
         output_file,
@@ -227,7 +232,7 @@ for threshhold_compartment in ["Cells", "Nuclei"]:
         + gg.labs(fill="Threshold")
     )
     output_file = pathlib.Path(
-        figures_output,
+        output_figuresdir,
         f"plate_layout_{threshhold_compartment}_FinalThreshold_per_well.png",
     )
     if check_if_write(output_file, force, throw_warning=True):
@@ -256,7 +261,7 @@ if confluent_col in image_df.columns:
         + gg.labs(fill="Percent")
     )
     output_file = pathlib.Path(
-        figures_output, "plate_layout_PercentConfluent_per_well.png"
+        output_figuresdir, "plate_layout_PercentConfluent_per_well.png"
     )
     if check_if_write(output_file, force, throw_warning=True):
         percent_confluent_gg.save(output_file, dpi=300, verbose=False)
@@ -271,7 +276,7 @@ if confluent_col in image_df.columns:
 
     if len(confluent_df.index) > 0:
         confluent_output_file = pathlib.Path(
-            results_output, "sites_with_confluent_regions.csv"
+            output_resultsdir, "sites_with_confluent_regions.csv"
         )
         if check_if_write(confluent_output_file, force, throw_warning=True):
             confluent_df.to_csv(confluent_output_file)
@@ -307,7 +312,7 @@ if all(x in image_df.columns.tolist() for x in PLLS_df_cols):
         )
     )
 
-    output_file = pathlib.Path(figures_output, "PLLS_per_well.png")
+    output_file = pathlib.Path(output_figuresdir, "PLLS_per_well.png")
     if check_if_write(output_file, force, throw_warning=True):
         PLLS_gg.save(
             output_file,
@@ -376,7 +381,7 @@ if not sat_df.empty:
 
 # saturated_sites.csv does not save if empty
 if len(sat_df.index) > 0:
-    sat_output_file = pathlib.Path(results_output, "saturated_sites.csv")
+    sat_output_file = pathlib.Path(output_resultsdir, "saturated_sites.csv")
     if check_if_write(output_file, force, throw_warning=True):
         sat_df.to_csv(sat_output_file)
 
@@ -427,7 +432,7 @@ if all(x in image_df.columns.tolist() for x in cp_sat_df_cols):
             subplots_adjust={"wspace": 0.2},
         )
     )
-    output_file = pathlib.Path(figures_output, "cp_saturation.png")
+    output_file = pathlib.Path(output_figuresdir, "cp_saturation.png")
     if check_if_write(output_file, force, throw_warning=True):
         cp_saturation_gg.save(
             output_file,
@@ -482,7 +487,7 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
             )
         )
 
-        output_file = pathlib.Path(figures_output, f"bc_saturation_{well}.png")
+        output_file = pathlib.Path(output_figuresdir, f"bc_saturation_{well}.png")
         if check_if_write(output_file, force, throw_warning=True):
             bc_saturation_gg.save(
                 output_file,
@@ -509,7 +514,7 @@ if len(corr_qc_cols) > 0:
         )
 
     image_corr_df = (
-        pd.concat(image_corr_list).drop_duplicates(subset="site").reset_index()
+        pd.concat(image_corr_list).drop_duplicates(subset="site_location").reset_index()
     )
 
     image_corr_df = image_corr_df.assign(
@@ -524,7 +529,7 @@ if len(corr_qc_cols) > 0:
             image_corr_df = image_corr_df.drop(col, axis=1)
 
     if len(image_corr_df.index) > 0:
-        corr_output_file = pathlib.Path(results_output, "flagged_correlations.csv")
+        corr_output_file = pathlib.Path(output_resultsdir, "flagged_correlations.csv")
 
         if check_if_write(corr_output_file, force, throw_warning=True):
             image_corr_df.to_csv(corr_output_file)
@@ -550,6 +555,6 @@ if len(corr_qc_cols) > 0:
         + gg.scale_fill_cmap(name="magma")
     )
 
-    output_file = pathlib.Path(figures_output, "plate_layout_min_correlation.png")
+    output_file = pathlib.Path(output_figuresdir, "plate_layout_min_correlation.png")
     if check_if_write(output_file, force, throw_warning=True):
         corr_by_well_gg.save(output_file, dpi=300, verbose=False)

@@ -17,31 +17,36 @@ import pandas as pd
 from scripts.site_processing_utils import prefilter_features
 
 sys.path.append("config")
-from config_utils import process_config_file
+from utils import parse_command_args, process_configuration
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
-from arg_utils import parse_command_args
 from io_utils import check_if_write
 
-args = parse_command_args(config_file="site_processing_config.yaml")
-config_file = args.config_file
-config = process_config_file(config_file)
+args = parse_command_args()
+
+plate_id = args.plate_id
+options_config_file = args.options_config_file
+experiment_config_file = args.experiment_config_file
+
+config = process_configuration(
+    plate_id,
+    options_config=options_config_file,
+    experiment_config=experiment_config_file,
+)
 
 # Set constants
-main_args = config["main_config"]
-core_args = config["core"]
-prefilter_args = config["prefilter"]
-
-project = main_args["project_tag"]
-batch = core_args["batch"]
-compartments = core_args["compartments"]
-
-perform = prefilter_args["perform"]
-example_site_dir = prefilter_args["example_site_dir"]
-flag_cols = prefilter_args["flag_cols"]
-output_file = prefilter_args["prefilter_file"]
+experiment_args = config["experiment"]
+prefilter_args = config["options"]["preprocess"]["prefilter"]
+core_option_args = config["options"]["core"]
 force = prefilter_args["force_overwrite"]
+perform = prefilter_args["perform"]
+flag_cols = prefilter_args["flag_cols"]
+
+prefilter_file = config["files"]["prefilter_file"]
+input_dir = config["directories"]["input_data_dir"]
+example_site = config["options"]["example_site"]
+example_site_dir = pathlib.Path(f"{input_dir}/{example_site}")
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
@@ -59,21 +64,18 @@ force_warning = """
 Warning, prefilter file already exists! Overwriting file. This may be intended.
 """
 
-if output_file.exists():
+if prefilter_file.exists():
     if not force:
         warnings.warn(file_exist_warning)
     else:
         warnings.warn(force_warning)
 
-# Create the directory
-output_file.parent.mkdir(exist_ok=True, parents=True)
-
 # Perform prefiltering and output file
 if perform:
-    features_df = prefilter_features(core_args, example_site_dir, flag_cols)
+    features_df = prefilter_features(core_option_args, example_site_dir, flag_cols)
 else:
-    features_df = load_features(core_args, example_dir)
+    features_df = load_features(core_option_args, example_site_dir)
     features_df = features_df.assign(prefilter_column=False)
 
-if check_if_write(output_file, force):
-    features_df.to_csv(output_file, sep="\t", index=False)
+if check_if_write(prefilter_file, force):
+    features_df.to_csv(prefilter_file, sep="\t", index=False)
