@@ -140,6 +140,7 @@ for site in sites:
         foci_df = pd.read_csv(foci_file)
     except FileNotFoundError:
         print(f"{site} data not found")
+        continue
 
     try:
         image_number = foci_df.ImageNumber.unique()[0]
