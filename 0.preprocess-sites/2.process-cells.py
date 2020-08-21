@@ -86,7 +86,7 @@ cell_category_df = pd.DataFrame(cell_category_dict, index=[quality_col]).transpo
 # Enables feature filtering by loading the Cell Painting feature file.
 # 0.prefilter-features.py must be run first
 try:
-    all_feature_df = pd.read_csv(prefilter_file, sep="\t")
+    all_feature_df = pd.read_csv(prefilter_file, sep="\t").query("not prefilter_column")
 except FileNotFoundError:
     raise FileNotFoundError(
         "Error",
@@ -154,11 +154,13 @@ for site in sites:
         print(f"Compartment data for {site} not found")
         continue
 
-    # Merge compartment csvs. Each row is a separate cell.
+    # Merge compartment csvs. Each row is a separate cell
     sc_merged_df = merge_single_cell_compartments(compartment_csvs, merge_info, id_cols)
-    sc_merged_df = sc_merged_df.sort_values(by=cell_sort_col)
+    sc_merged_df = sc_merged_df.sort_values(by=cell_sort_col).reindex(
+        all_feature_df.feature_name.tolist(), axis="columns"
+    )
 
-    # Add metadata to the merged csvs.
+    # Add metadata to the merged csvs and prefilter to remove sneaky flagged columns
     sc_merged_with_metadata_df = foci_df.merge(
         sc_merged_df,
         left_on=metadata_merge_foci_cols,
