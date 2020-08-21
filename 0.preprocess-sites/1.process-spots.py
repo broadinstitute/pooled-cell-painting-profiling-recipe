@@ -140,6 +140,7 @@ for site in sites:
         foci_df = pd.read_csv(foci_file)
     except FileNotFoundError:
         print(f"{site} data not found")
+        continue
 
     try:
         image_number = foci_df.ImageNumber.unique()[0]
@@ -160,6 +161,7 @@ for site in sites:
         )
     except AssertionError:
         print(f"{site} data not aligned between foci files")
+        continue
 
     output_dir = pathlib.Path(output_spotdir, site)
     if output_dir.exists():
