@@ -256,7 +256,7 @@ pert_count_df = (
         ~pert_count_df.loc[:, gene_cols].isin(control_barcodes).squeeze(),
     ]
     .reset_index(drop=True)
-    .groupby(gene_cols + barcode_cols)["Cell_Count_Per_Guide"]
+    .groupby(gene_cols + barcode_cols + quality_col)["Cell_Count_Per_Guide"]
     .sum()
     .reset_index()
 )
@@ -285,7 +285,7 @@ output_file = pathlib.Path(
     output_resultsdir, "all_cellpainting_unique_perturbations_coverage.tsv"
 )
 if check_if_write(output_file, force, throw_warning=True):
-    pert_count_df.to_csv(index=False, sep="\t")
+    pert_count_df.to_csv(output_file, index=False, sep="\t")
 
 guide_count_gg = (
     gg.ggplot(pert_count_df, gg.aes(x=gene_cols[0], y="Cell_Count_Per_Guide"))
