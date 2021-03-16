@@ -262,7 +262,7 @@ pert_count_df = (
         ~pert_count_df.loc[:, gene_cols].isin(control_barcodes).squeeze(),
     ]
     .reset_index(drop=True)
-    .groupby(gene_cols + barcode_cols + quality_col)["Cell_Count_Per_Guide"]
+    .groupby(gene_cols + barcode_cols + [quality_col])["Cell_Count_Per_Guide"]
     .sum()
     .reset_index()
 )
