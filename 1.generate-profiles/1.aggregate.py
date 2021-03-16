@@ -23,7 +23,14 @@ config = process_configuration(
     experiment_config=experiment_config_file,
 )
 
+
 # Extract config arguments
+perform = config["options"]["profile"]["aggregate"]["perform"]
+
+# check if this step should be performed
+if not perform:
+    sys.exit("Config file set to perform=False, not performing {}".format(__file__))
+
 ignore_files = config["options"]["core"]["ignore_files"]
 float_format = config["options"]["core"]["float_format"]
 compression = config["options"]["core"]["compression"]
@@ -42,6 +49,8 @@ aggregate_args = config["options"]["profile"]["aggregate"]
 aggregate_operation = aggregate_args["operation"]
 aggregate_features = aggregate_args["features"]
 aggregate_levels = aggregate_args["levels"]
+
+force = aggregate_args["force_overwrite"]
 
 # Input argument flow control
 if aggregate_from_single_file:

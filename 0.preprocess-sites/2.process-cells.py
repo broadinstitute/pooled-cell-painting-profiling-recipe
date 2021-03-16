@@ -67,8 +67,13 @@ cell_sort_col = cell_config["sort_col"]
 merge_info = cell_config["merge_columns"]
 foci_site_col = cell_config["foci_site_col"]
 force = cell_config["force_overwrite"]
+perform = cell_config["perform"] 
 metadata_merge_foci_cols = cell_config["metadata_merge_columns"]["foci_cols"]
 metadata_merge_cell_cols = cell_config["metadata_merge_columns"]["cell_cols"]
+
+# check if this step should be performed
+if not perform:
+    sys.exit('Config file set to perform=False, not performing {}'.format(__file__))
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided

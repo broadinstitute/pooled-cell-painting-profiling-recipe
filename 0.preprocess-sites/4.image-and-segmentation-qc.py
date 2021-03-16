@@ -50,6 +50,11 @@ correlation_threshold = plate_summary_config["correlation_threshold"]
 painting_image_names = plate_summary_config["painting_image_names"]
 barcoding_prefix = plate_summary_config["barcoding_prefix"]
 force = plate_summary_config["force_overwrite"]
+perform = plate_summary_config["perform"]
+
+# check if this step should be performed
+if not perform:
+    sys.exit('Config file set to perform=False, not performing {}'.format(__file__))
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided

@@ -55,6 +55,7 @@ cell_count_output_file = config["files"]["cell_count_file"]
 total_cell_count_file = config["files"]["total_cell_count_file"]
 
 force = config["options"]["preprocess"]["summarize-cells"]["force_overwrite"]
+perform = config["options"]["preprocess"]["summarize-cells"]["perform"] 
 
 # Perform the pipeline
 cell_quality = CellQuality(
@@ -65,6 +66,11 @@ empty_cell_category = len(cell_category_dict) + 1
 cell_category_dict[empty_cell_category] = "Empty"
 cell_category_df = pd.DataFrame(cell_category_dict, index=[quality_col])
 cell_category_list = list(cell_category_dict.values())
+
+# check if this step should be performed
+if not perform:
+    sys.exit('Config file set to perform=False, not performing {}'.format(__file__))
+
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
