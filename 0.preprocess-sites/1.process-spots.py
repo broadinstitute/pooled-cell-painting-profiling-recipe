@@ -91,11 +91,11 @@ location_cols = spot_config["location_cols"]
 spot_score_cols = spot_config["spot_score_cols"]
 foci_cols = spot_config["foci_cols"]
 force = spot_config["force_overwrite"]
-perform = spot_config["perform"] 
+perform = spot_config["perform"]
 
 # check if this step should be performed
 if not perform:
-    sys.exit('Config file set to perform=False, not performing {}'.format(__file__))
+    sys.exit("Config file set to perform=False, not performing {}".format(__file__))
 
 # Forced overwrite can be achieved in one of two ways.
 # The command line overrides the config file, check here if it is provided
