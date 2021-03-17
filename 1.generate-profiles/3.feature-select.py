@@ -23,6 +23,11 @@ config = process_configuration(
 )
 
 # Extract config arguments
+perform = config["options"]["profile"]["feature_select"]["perform"]
+# check if this step should be performed
+if not perform:
+    sys.exit("Config file set to perform=False, not performing {}".format(__file__))
+
 float_format = config["options"]["core"]["float_format"]
 compression = config["options"]["core"]["compression"]
 
@@ -39,6 +44,7 @@ feature_select_drop_samples = feature_select_args["use_samples"]
 feature_select_features = feature_select_args["features"]
 feature_select_nacutoff = feature_select_args["na_cutoff"]
 feature_select_corr_threshold = feature_select_args["corr_threshold"]
+force = feature_select_args["force_overwrite"]
 
 for data_level in feature_select_levels:
     if data_level == "single_cell":

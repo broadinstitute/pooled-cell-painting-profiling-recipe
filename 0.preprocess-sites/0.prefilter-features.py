@@ -14,7 +14,7 @@ import warnings
 import argparse
 import numpy as np
 import pandas as pd
-from scripts.site_processing_utils import prefilter_features
+from scripts.site_processing_utils import prefilter_features, load_features
 
 sys.path.append("config")
 from utils import parse_command_args, process_configuration

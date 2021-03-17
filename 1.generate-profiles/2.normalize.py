@@ -23,6 +23,12 @@ config = process_configuration(
 )
 
 # Extract config arguments
+perform = config["options"]["profile"]["normalize"]["perform"]
+
+# check if this step should be performed
+if not perform:
+    sys.exit("Config file set to perform=False, not performing {}".format(__file__))
+
 float_format = config["options"]["core"]["float_format"]
 compression = config["options"]["core"]["compression"]
 
@@ -37,6 +43,7 @@ normalize_levels = normalize_args["levels"]
 normalize_by_samples = normalize_args["by_samples"]
 normalize_these_features = normalize_args["features"]
 normalize_method = normalize_args["method"]
+force = normalize_args["force_overwrite"]
 
 for data_level in normalize_levels:
     if data_level == "single_cell":
