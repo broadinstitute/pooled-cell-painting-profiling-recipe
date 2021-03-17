@@ -55,7 +55,7 @@ cell_count_output_file = config["files"]["cell_count_file"]
 total_cell_count_file = config["files"]["total_cell_count_file"]
 
 force = config["options"]["preprocess"]["summarize-cells"]["force_overwrite"]
-perform = config["options"]["preprocess"]["summarize-cells"]["perform"] 
+perform = config["options"]["preprocess"]["summarize-cells"]["perform"]
 
 # Perform the pipeline
 cell_quality = CellQuality(
@@ -69,7 +69,7 @@ cell_category_list = list(cell_category_dict.values())
 
 # check if this step should be performed
 if not perform:
-    sys.exit('Config file set to perform=False, not performing {}'.format(__file__))
+    sys.exit("Config file set to perform=False, not performing {}".format(__file__))
 
 
 # Forced overwrite can be achieved in one of two ways.
@@ -257,6 +257,15 @@ if check_if_write(output_file, force, throw_warning=True):
 # Process overall perturbation counts per batch
 pert_count_df = pd.concat(pert_counts_list, axis="rows").reset_index()
 
+# Output a full count of perturbations per site
+output_file = pathlib.Path(
+    output_resultsdir, "complete_perturbation_count_per_site.tsv.gz"
+)
+
+if check_if_write(output_file, force, throw_warning=True):
+    pert_count_df.to_csv(output_file, index=False, sep="\t")
+
+# Summarize counts further in preparation for plotting
 pert_count_df = (
     pert_count_df.loc[
         ~pert_count_df.loc[:, gene_cols].isin(control_barcodes).squeeze(),
