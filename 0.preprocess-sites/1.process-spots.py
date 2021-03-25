@@ -72,7 +72,8 @@ config = process_configuration(
 control_barcodes = config["experiment"]["control_barcode_ids"]
 
 id_cols = config["options"]["core"]["cell_id_cols"]
-spot_parent_cols = config["options"]["core"]["cell_match_cols"]["spots"]
+parent_cols = config["options"]["core"]["cell_match_cols"]
+spot_parent_cols = parent_cols["spots"]
 ignore_files = config["options"]["core"]["ignore_files"]
 cell_filter = config["options"]["core"]["cell_quality"]["cell_filter"]
 quality_func = config["options"]["core"]["cell_quality"]["categorize_cell_quality"]
@@ -92,6 +93,7 @@ spot_score_cols = spot_config["spot_score_cols"]
 foci_cols = spot_config["foci_cols"]
 force = spot_config["force_overwrite"]
 perform = spot_config["perform"]
+exact_match_reads_col = spot_config["exact_match_reads_col"]
 
 # check if this step should be performed
 if not perform:
@@ -195,6 +197,44 @@ for site in sites:
     num_unassigned_spots = null_spot_df.shape[0]
     num_assigned_spots = cell_spot_df.shape[0]
 
+    # Table 1 - Number of cells with exact match reads
+    # Note, this includes cells with more than 1 perfect barcode
+    # First, select only spots with perfect match to barcode library
+    perfect_match_barcodes_df = complete_foci_df.loc[
+        (complete_foci_df.loc[:, spot_score_cols] == 1).squeeze(), :
+    ]
+
+    # Count perfect spots outside of cells
+    perfect_match_no_cell_df = perfect_match_barcodes_df.loc[
+        (perfect_match_barcodes_df.loc[:, parent_cols["spots"]] == 0).squeeze(), :
+    ]
+    perfect_match_no_cell_df = pd.Series(
+        [0, perfect_match_no_cell_df.shape[0]],
+        index=[exact_match_reads_col, "cell_count"],
+    )
+
+    # Next, drop spots outside of cells
+    perfect_match_barcodes_df = perfect_match_barcodes_df.loc[
+        (perfect_match_barcodes_df.loc[:, parent_cols["spots"]] != 0).squeeze(), :
+    ]
+
+    # Compile Table 1
+    perfect_match_barcodes_df = (
+        perfect_match_barcodes_df.groupby(parent_cols["spots"])[id_cols[0]]
+        .count()
+        .value_counts()
+        .reset_index()
+        .rename(
+            {"index": exact_match_reads_col, id_cols[0]: "cell_count"},
+            axis="columns",
+        )
+    ).append(perfect_match_no_cell_df, ignore_index=True)
+
+    # Output table
+    out_file = pathlib.Path(output_dir, "exact_match_barcode_reads_per_cell_counts.tsv")
+    if check_if_write(out_file, force):
+        perfect_match_barcodes_df.to_csv(out_file, sep="\t", index=False)
+
     # Figure 1 - histogram of barcode counts per cell
     fig_file = pathlib.Path(output_dir, "num_spots_per_cell_histogram.png")
     if check_if_write(fig_file, force):
@@ -242,7 +282,7 @@ for site in sites:
     )
     num_unique_genes = len(crispr_barcode_gene_df.loc[:, gene_cols].squeeze().unique())
 
-    # Table 1 - Full cell and CRISPR guide quality with scores
+    # Table 2 - Full cell and CRISPR guide quality with scores
     out_file = pathlib.Path(
         output_dir, "cell_id_barcode_alignment_scores_by_guide.tsv.gz"
     )
@@ -251,7 +291,7 @@ for site in sites:
             out_file, sep="\t", index=False, compression="gzip"
         )
 
-    # Table 2 - Cell Category Summary
+    # Table 3 - Cell Category Summary
     cell_quality_summary_df = cell_quality.summarize_cell_quality_counts(
         quality_df=crispr_barcode_gene_df, parent_cols=spot_parent_cols
     ).assign(
@@ -266,7 +306,7 @@ for site in sites:
     if check_if_write(out_file, force):
         cell_quality_summary_df.to_csv(out_file, sep="\t", index=False)
 
-    # Table 3 - Counting gene and guide by cell category
+    # Table 4 - Counting gene and guide by cell category
     gene_category_count_df = cell_quality.summarize_perturbation_quality_counts(
         quality_df=crispr_barcode_gene_df,
         parent_cols=spot_parent_cols,
