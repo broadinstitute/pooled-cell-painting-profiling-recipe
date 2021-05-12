@@ -53,6 +53,8 @@ class CellQuality:
             self.categorize = simple_categorize
         elif self.method == "simple_plus":
             self.categorize = simple_plus_categorize
+        elif self.method == "feldman":
+            self.categorize = feldman_categorize
 
         category_dict = self.define_cell_quality()
         self.category_df = (
@@ -65,12 +67,14 @@ class CellQuality:
     def define_cell_quality(self):
         return get_cell_quality_dict(method=self.method)
 
-    def assign_cell_quality(self, count_df, parent_cols, score_col):
+    def assign_cell_quality(self, count_df, parent_cols, score_col, barcode_col):
 
         quality_estimate_df = (
             pd.DataFrame(
                 count_df.groupby(parent_cols).apply(
-                    lambda x: self.categorize(x, score_col=score_col)
+                    lambda x: self.categorize(
+                        x, score_col=score_col, barcode_col=barcode_col
+                    )
                 ),
                 columns=[self.category_col_index],
             )
@@ -133,12 +137,20 @@ def get_cell_quality_dict(method):
             4: "Imperfect-Low",
             5: "Bad",
         },
+        "feldman": {
+            1: "Keep",
+            2: "Toss_No_Perfect",
+            3: "Toss_Multiple_Perfect",
+            4: "Toss_Minority_Perfect",
+        },
     }
 
     return cell_quality_dict[method]
 
 
-def simple_categorize(parent_cell, score_col, avg_col="mean", count_col="count"):
+def simple_categorize(
+    parent_cell, score_col, barcode_col=None, avg_col="mean", count_col="count"
+):
 
     score_col_avg = f"{score_col}_{avg_col}"
     count_col_avg = f"{score_col}_{count_col}"
@@ -148,8 +160,8 @@ def simple_categorize(parent_cell, score_col, avg_col="mean", count_col="count")
     )
 
     num_barcodes = parent_cell.shape[0]
-    max_score = max(parent_cell.Barcode_MatchedTo_Score_mean)
-    max_count = max(parent_cell.Barcode_MatchedTo_Score_count)
+    max_score = max(parent_cell.loc[:, score_col_avg])
+    max_count = max(parent_cell.loc[:, count_col_avg])
 
     if num_barcodes == 1:
         if max_score == 1:
@@ -177,7 +189,9 @@ def simple_categorize(parent_cell, score_col, avg_col="mean", count_col="count")
     return score
 
 
-def simple_plus_categorize(parent_cell, score_col, avg_col="mean", count_col="count"):
+def simple_plus_categorize(
+    parent_cell, score_col, barcode_col=None, avg_col="mean", count_col="count"
+):
 
     score_col_avg = f"{score_col}_{avg_col}"
     count_col_avg = f"{score_col}_{count_col}"
@@ -187,8 +201,8 @@ def simple_plus_categorize(parent_cell, score_col, avg_col="mean", count_col="co
     )
 
     num_barcodes = parent_cell.shape[0]
-    max_score = max(parent_cell.Barcode_MatchedTo_Score_mean)
-    max_count = max(parent_cell.Barcode_MatchedTo_Score_count)
+    max_score = max(parent_cell.loc[:, score_col_avg])
+    max_count = max(parent_cell.loc[:, count_col_avg])
 
     if num_barcodes == 1:
         if max_score == 1:
@@ -216,4 +230,38 @@ def simple_plus_categorize(parent_cell, score_col, avg_col="mean", count_col="co
                         score = 4
                 else:
                     score = 5
+    return score
+
+
+def feldman_categorize(
+    parent_cell,
+    score_col,
+    barcode_col="Barcode_MatchedTo_Barcode",
+    avg_col=None,
+    count_col=None,
+):
+    """
+    Note that the Feldman categorize function works on non-averaged scores
+    """
+    num_barcodes = parent_cell.shape[0]
+    max_score = max(parent_cell.loc[:, score_col])
+
+    if max_score < 1:
+        score = 2
+    else:
+        barcode_count_with_max_score = parent_cell.index[
+            parent_cell[score_col] == max_score
+        ].values
+
+        perfect_matches = parent_cell.loc[barcode_count_with_max_score, :]
+
+        if len(perfect_matches.loc[:, barcode_col].unique()) != 1:
+            score = 3
+        else:
+            top_barcode_ratio = len(barcode_count_with_max_score) / num_barcodes
+            if top_barcode_ratio > 0.5:
+                score = 1
+            else:
+                score = 4
+
     return score

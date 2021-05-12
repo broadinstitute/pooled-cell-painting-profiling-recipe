@@ -189,7 +189,10 @@ for site in sites:
     # Add the cell quality metadata to the df
     metadata_df = (
         metadata_df.merge(
-            cell_category_df, left_on=quality_idx, right_index=True, how="left",
+            cell_category_df,
+            left_on=quality_idx,
+            right_index=True,
+            how="left",
         )
         .sort_values(by=cell_sort_col)
         .drop_duplicates(subset=[cell_sort_col, quality_idx])
@@ -204,7 +207,12 @@ for site in sites:
     cell_count_df = (
         pd.DataFrame(metadata_df.loc[:, quality_col].value_counts())
         .rename(columns={quality_col: "cell_count"})
-        .assign(site=site, plate=plate, well=well, site_location=site_location,)
+        .assign(
+            site=site,
+            plate=plate,
+            well=well,
+            site_location=site_location,
+        )
     )
 
     output_folder = pathlib.Path(output_paintdir, site)
