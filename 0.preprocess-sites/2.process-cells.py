@@ -114,7 +114,7 @@ sites = [x for x in os.listdir(foci_dir) if x not in ignore_files]
 
 for site in sites:
     # Extract out image metadata information for the specific site
-    image_subset_df = image_df.query("Metadata_site == @site")
+    image_subset_df = image_df.query(f"{image_cols['full_info']} == @site")
 
     well = image_subset_df.loc[:, image_cols["well"]].squeeze()
     site_location = image_subset_df.loc[:, image_cols["site"]].squeeze()
