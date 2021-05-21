@@ -27,6 +27,7 @@ experiment_config_file = args.experiment_config_file
 
 config = process_configuration(
     plate_id,
+    step="profile--single_cell",
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
