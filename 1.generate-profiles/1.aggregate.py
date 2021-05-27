@@ -70,8 +70,11 @@ else:
     for site in sites:
         site_file = single_cell_site_files[site]
         if site_file.exists():
-            site_df = pd.read_csv(site_file, sep=",")
-            single_cell_df.append(site_df)
+            try:
+                site_df = pd.read_csv(site_file, sep=",")
+                single_cell_df.append(site_df)
+            except EOFError:
+                warnings.warn(f"{site_file} is corrupted. There must have been an error in processing")
         else:
             warnings.warn(
                 f"{site_file} does not exist. There must have been an error in processing"
