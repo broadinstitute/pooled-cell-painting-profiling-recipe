@@ -8,6 +8,9 @@ import pandas as pd
 from pycytominer import aggregate
 from pycytominer.cyto_utils import output
 
+sys.path.append("recipe")
+from scripts.profile_utils import aggregate_pooled_site, approx_aggregate_piecewise
+
 sys.path.append("config")
 from utils import parse_command_args, process_configuration
 
@@ -23,7 +26,6 @@ config = process_configuration(
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
-
 
 # Extract config arguments
 perform = config["options"]["profile"]["aggregate"]["perform"]
@@ -60,44 +62,64 @@ if aggregate_from_single_file:
     ), "Error! The single cell file does not exist! Check 0.merge-single-cells.py"
 
 # Load single cell data
+aggregate_output_dir.mkdir(parents=True, exist_ok=True)
 if aggregate_from_single_file:
     print(f"Loading one single cell file: {single_cell_file}")
     single_cell_df = pd.read_csv(single_cell_file, sep=",")
+
+    # Perform the aggregation based on the defined levels and columns
+    for aggregate_level, aggregate_columns in aggregate_levels.items():
+        aggregate_output_file = aggregate_output_files[aggregate_level]
+
+        print(
+            f"Now aggregating by {aggregate_level}...with operation: {aggregate_operation}"
+        )
+
+        aggregate(
+            population_df=single_cell_df,
+            strata=aggregate_columns,
+            features=aggregate_features,
+            operation=aggregate_operation,
+            output_file=aggregate_output_file,
+            compression_options=compression,
+            float_format=float_format,
+        )
+
 else:
     sites = list(single_cell_site_files)
     print(f"Now loading data from {len(sites)} sites")
-    single_cell_df = []
-    for site in sites:
-        site_file = single_cell_site_files[site]
-        if site_file.exists():
-            site_df = pd.read_csv(site_file, sep=",")
-            single_cell_df.append(site_df)
-        else:
-            warnings.warn(
-                f"{site_file} does not exist. There must have been an error in processing"
+
+    for aggregate_level, aggregate_columns in aggregate_levels.items():
+        aggregate_output_file = aggregate_output_files[aggregate_level]
+
+        site_aggregated_df = []
+        for site in sites:
+            site_file = single_cell_site_files[site]
+            if site_file.exists():
+                site_df = pd.read_csv(site_file, sep=",")
+            else:
+                warnings.warn(
+                    f"{site_file} does not exist. There must have been an error in processing"
+                )
+
+            # Aggregate each site individually
+            site_df = aggregate_pooled(
+                site_df=site_df,
+                strata=aggregate_columns,
+                features=aggregate_features,
+                operation=aggregate_operation,
             )
 
-    single_cell_df = pd.concat(single_cell_df, axis="rows").reset_index(drop=True)
+            site_aggregated_df.append(site_df)
 
-# Perform the aggregation based on the defined levels and columns
-aggregate_output_dir.mkdir(parents=True, exist_ok=True)
-for aggregate_level, aggregate_columns in aggregate_levels.items():
-    aggregate_output_file = aggregate_output_files[aggregate_level]
+        site_agg_df = pd.concat(site_aggregated_df).reset_index(drop=True)
+        site_agg_df = approx_aggregate_piecewise(
+            df=site_agg_df, agg_cols=aggregate_columns
+        )
 
-    print(
-        f"Now aggregating by {aggregate_level}...with operation: {aggregate_operation}"
-    )
-
-    aggregate_df = aggregate(
-        population_df=single_cell_df,
-        strata=aggregate_columns,
-        features=aggregate_features,
-        operation=aggregate_operation,
-    )
-
-    output(
-        aggregate_df,
-        output_filename=aggregate_output_file,
-        compression=compression,
-        float_format=float_format,
-    )
+        output(
+            site_agg_df,
+            output_filename=aggregate_output_file,
+            compression_options=compression,
+            float_format=float_format,
+        )
