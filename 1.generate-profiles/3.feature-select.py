@@ -72,6 +72,6 @@ for data_level in feature_select_levels:
         na_cutoff=feature_select_nacutoff,
         corr_threshold=feature_select_corr_threshold,
         output_file=output_file,
-        compression=compression,
+        compression_options=compression,
         float_format=float_format,
     )

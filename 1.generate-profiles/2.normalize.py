@@ -64,6 +64,6 @@ for data_level in normalize_levels:
         samples=normalize_by_samples,
         method=normalize_method,
         output_file=output_file,
-        compression=compression,
+        compression_options=compression,
         float_format=float_format,
     )
