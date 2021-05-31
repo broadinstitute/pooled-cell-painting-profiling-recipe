@@ -9,7 +9,7 @@ from pycytominer import aggregate
 from pycytominer.cyto_utils import output
 
 sys.path.append("recipe")
-from scripts.profile_utils import aggregate_pooled_site, approx_aggregate_piecewise
+from scripts.profile_utils import aggregate_pooled, approx_aggregate_piecewise
 
 sys.path.append("config")
 from utils import parse_command_args, process_configuration
