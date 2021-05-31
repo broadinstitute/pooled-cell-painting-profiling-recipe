@@ -150,9 +150,11 @@ for site in sites:
         ["Metadata_Foci_site"] + all_feature_df.feature_name.tolist(), axis="columns"
     )
 
-    # Merge single cell profiles and metadata
+    # Merge single cell profiles and metadata info containing cell assignments
+    # A left merge ensures that we retain only cells that pass the quality threshold
+    common_cols = list(set(metadata_df.columns).intersection(set(sc_merged_df.columns)))
     sc_merged_df = metadata_df.merge(
-        sc_merged_df, on=merge_info["metadata_linking_columns"], how="left"
+        sc_merged_df, on=common_cols, how="left"
     ).reset_index(drop=True)
 
     if single_file_only:
