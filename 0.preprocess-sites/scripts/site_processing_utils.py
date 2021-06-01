@@ -67,6 +67,12 @@ def load_features(core, example_dir):
     feature_df = feature_df.query("feature_name not in @meta_df.feature_name")
     feature_df = pd.concat([meta_df, feature_df]).reset_index(drop=True)
 
+    # Add dtype column specification
+    col_dtype = [
+        "str" if x.startswith("Metadata") else "float" for x in feature_df.feature_name
+    ]
+    feature_df = feature_df.assign(col_dtype=col_dtype)
+
     return feature_df
 
 
