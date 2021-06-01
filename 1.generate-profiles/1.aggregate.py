@@ -4,6 +4,7 @@ import pathlib
 import argparse
 import warnings
 import pandas as pd
+import dask.dataframe as dd
 
 from pycytominer import aggregate
 from pycytominer.cyto_utils import output
@@ -43,10 +44,12 @@ aggregate_output_dir = config["directories"]["profile"]["profiles"]
 
 single_cell_file = config["files"]["single_file_only_output_file"]
 single_cell_site_files = config["files"]["single_cell_site_files"]
+prefilter_file = config["files"]["prefilter_file"]
 aggregate_output_files = config["files"]["aggregate_files"]
 
 sc_config = config["options"]["profile"]["single_cell"]
 aggregate_from_single_file = sc_config["output_one_single_cell_file_only"]
+prefilter_features = sc_config["prefilter_features"]
 
 aggregate_args = config["options"]["profile"]["aggregate"]
 aggregate_operation = aggregate_args["operation"]
@@ -60,6 +63,12 @@ if aggregate_from_single_file:
     assert (
         single_cell_file.exists()
     ), "Error! The single cell file does not exist! Check 0.merge-single-cells.py"
+
+# Load preselected features
+all_feature_df = pd.read_csv(prefilter_file, sep="\t")
+
+if prefilter_features:
+    all_feature_df = all_feature_df.query("not prefilter_column")
 
 # Load single cell data
 aggregate_output_dir.mkdir(parents=True, exist_ok=True)
@@ -89,36 +98,37 @@ else:
     sites = list(single_cell_site_files)
     print(f"Now loading data from {len(sites)} sites")
 
+    # Process the feature dtype dictionary for dask loading
+    cp_feature_df = all_feature_df.query("col_dtype == 'float'")
+    dtype_dict = dict(zip(cp_feature_df.feature_name, cp_feature_df.col_dtype))
+    cp_features = cp_feature_df.feature_name.tolist()
+
+    # Initialize dask loading
+    sc_df = dd.read_csv(
+        list(single_cell_site_files.values()),
+        blocksize=None,
+        assume_missing=True,
+        dtype=dtype_dict,
+    )
+
+    # Perform the aggregation based on the defined levels and columns
     for aggregate_level, aggregate_columns in aggregate_levels.items():
         aggregate_output_file = aggregate_output_files[aggregate_level]
 
-        site_aggregated_df = []
-        for site in sites:
-            site_file = single_cell_site_files[site]
-            if site_file.exists():
-                site_df = pd.read_csv(site_file, sep=",")
-            else:
-                warnings.warn(
-                    f"{site_file} does not exist. There must have been an error in processing"
-                )
+        print(f"Now aggregating by {aggregate_level}...with dask operation mean")
 
-            # Aggregate each site individually
-            site_df = aggregate_pooled(
-                site_df=site_df,
-                strata=aggregate_columns,
-                features=aggregate_features,
-                operation=aggregate_operation,
-            )
-
-            site_aggregated_df.append(site_df)
-
-        site_agg_df = pd.concat(site_aggregated_df).reset_index(drop=True)
-        site_agg_df = approx_aggregate_piecewise(
-            df=site_agg_df, agg_cols=aggregate_columns
+        # Dask currently only supports mean
+        agg_df = (
+            sc_df.loc[:, aggregate_columns + cp_features]
+            .groupby(aggregate_columns)
+            .mean()
+            .compute()
+            .reset_index()
         )
 
+        # Output to file
         output(
-            site_agg_df,
+            agg_df,
             output_filename=aggregate_output_file,
             compression_options=compression,
             float_format=float_format,
