@@ -105,7 +105,9 @@ for data_split_site in site_info_dict:
 
         # Define options based on input flags
         if single_file_only:
-            print(f"Building single file; combining single cells from site: {site}...")
+            print(
+                f"Building single file for dataset {data_split_site}; combining single cells from site: {site}..."
+            )
         else:
             # If the output file already exists, only overwrite if --force is provided
             if sc_output_file.exists():
@@ -190,6 +192,7 @@ for data_split_site in site_info_dict:
                 force
             ), "Not outputting combined single cell file, --force not provided!"
 
+        print(f"Now writing single cell file: {single_cell_dataset_file}...")
         (pd.concat(sc_df, axis="rows").reset_index(drop=True)).to_csv(
             single_cell_dataset_file,
             sep=",",
