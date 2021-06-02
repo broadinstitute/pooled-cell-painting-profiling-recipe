@@ -15,12 +15,13 @@ from io_utils import check_if_write
 
 args = parse_command_args()
 
-plate_id = args.plate_id
+batch_id = args.batch_id
 options_config_file = args.options_config_file
 experiment_config_file = args.experiment_config_file
+split_step = args.split_step
 
 config = process_configuration(
-    plate_id,
+    batch_id,
     step="preprocess--summarize-plate",
     options_config=options_config_file,
     experiment_config=experiment_config_file,
@@ -31,6 +32,7 @@ config = process_configuration(
 # Defines the variables set in the config file
 barcoding_cycles = config["experiment"]["barcoding_cycles"]
 sites_per_image_grid_side = config["experiment"]["sites_per_image_grid_side"]
+split_info = config["experiment"]["split"][split_step]
 
 ignore_files = config["options"]["core"]["ignore_files"]
 cell_filter = config["options"]["core"]["cell_quality"]["cell_filter"]

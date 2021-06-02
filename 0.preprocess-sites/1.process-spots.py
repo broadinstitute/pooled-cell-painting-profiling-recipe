@@ -61,6 +61,7 @@ args = parse_command_args()
 batch_id = args.batch_id
 options_config_file = args.options_config_file
 experiment_config_file = args.experiment_config_file
+split_step = args.split_step
 
 config = process_configuration(
     batch_id,
@@ -71,7 +72,6 @@ config = process_configuration(
 
 # Set constants
 control_barcodes = config["experiment"]["control_barcode_ids"]
-split_step = "qc"
 split_info = config["experiment"]["split"][split_step]
 
 id_cols = config["options"]["core"]["cell_id_cols"]
@@ -121,7 +121,9 @@ cell_category_df = pd.DataFrame(cell_category_dict, index=[quality_col])
 # Define site and data set splits
 sites = [x.name for x in input_batchdir.iterdir() if x.name not in ignore_files]
 num_sites = len(sites)
-site_info_dict = get_split_aware_site_info(config["experiment"], sites, split_info, separator="___")
+site_info_dict = get_split_aware_site_info(
+    config["experiment"], sites, split_info, separator="___"
+)
 
 image_list = []
 for data_split_site in site_info_dict:
@@ -132,7 +134,9 @@ for data_split_site in site_info_dict:
         # Load image metadata per site
         try:
             image_file = pathlib.Path(input_batchdir, site, "Image.csv")
-            image_df = pd.read_csv(image_file).assign(Metadata_site=site, Metadata_dataset_split=data_split_site)
+            image_df = pd.read_csv(image_file).assign(
+                Metadata_site=site, Metadata_dataset_split=data_split_site
+            )
             image_list.append(image_df)
 
             # Obtain specific metadata info
@@ -163,7 +167,9 @@ for data_split_site in site_info_dict:
         try:
             # Confirm that image number and object number are aligned
             pd.testing.assert_frame_equal(
-                barcodefoci_df.loc[:, id_cols], foci_df.loc[:, id_cols], check_names=True
+                barcodefoci_df.loc[:, id_cols],
+                foci_df.loc[:, id_cols],
+                check_names=True,
             )
 
             pd.testing.assert_frame_equal(
@@ -180,7 +186,9 @@ for data_split_site in site_info_dict:
             if force:
                 warnings.warn("Output files likely exist, now overwriting...")
             else:
-                warnings.warn("Output files likely exist. If they do, NOT overwriting...")
+                warnings.warn(
+                    "Output files likely exist. If they do, NOT overwriting..."
+                )
         output_dir.mkdir(exist_ok=True, parents=True)
 
         # Merge spot data files
@@ -198,7 +206,9 @@ for data_split_site in site_info_dict:
             (complete_foci_df.loc[:, spot_parent_cols] != 0).squeeze(), :
         ]
 
-        num_assigned_cells = len(cell_spot_df.loc[:, spot_parent_cols].squeeze().unique())
+        num_assigned_cells = len(
+            cell_spot_df.loc[:, spot_parent_cols].squeeze().unique()
+        )
         num_unassigned_spots = null_spot_df.shape[0]
         num_assigned_spots = cell_spot_df.shape[0]
 
@@ -248,7 +258,9 @@ for data_split_site in site_info_dict:
         num_unique_guides = len(
             crispr_barcode_gene_df.loc[:, barcode_cols].squeeze().unique()
         )
-        num_unique_genes = len(crispr_barcode_gene_df.loc[:, gene_cols].squeeze().unique())
+        num_unique_genes = len(
+            crispr_barcode_gene_df.loc[:, gene_cols].squeeze().unique()
+        )
 
         # Table 1 - Full cell and CRISPR guide quality with scores
         out_file = pathlib.Path(
@@ -305,12 +317,14 @@ for data_split_site in site_info_dict:
                 plate=plate,
                 well=well,
                 site_location=site_location,
-                Metadata_dataset_split=data_split_site
+                Metadata_dataset_split=data_split_site,
             )
             .query(f"{quality_col} in @cell_filter")
         )
 
-        out_file = pathlib.Path(output_dir, "cell_perturbation_category_summary_counts.tsv")
+        out_file = pathlib.Path(
+            output_dir, "cell_perturbation_category_summary_counts.tsv"
+        )
         if check_if_write(out_file, force):
             cell_category_counts_df.to_csv(out_file, sep="\t", index=False)
 
@@ -348,7 +362,7 @@ for data_split_site in site_info_dict:
             plate=plate,
             well=well,
             site_location=site_location,
-            Metadata_dataset_split=data_split_site
+            Metadata_dataset_split=data_split_site,
         )
 
         output_file = pathlib.Path(output_dir, "site_stats.tsv")

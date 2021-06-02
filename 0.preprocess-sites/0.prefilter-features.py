@@ -25,12 +25,12 @@ from io_utils import check_if_write
 
 args = parse_command_args()
 
-plate_id = args.plate_id
+batch_id = args.batch_id
 options_config_file = args.options_config_file
 experiment_config_file = args.experiment_config_file
 
 config = process_configuration(
-    plate_id,
+    batch_id,
     step="preprocess--prefilter",
     options_config=options_config_file,
     experiment_config=experiment_config_file,
