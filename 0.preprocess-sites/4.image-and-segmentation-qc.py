@@ -153,6 +153,13 @@ ratio_df = ratio_df.assign(
     Pass_Fail_0empty=ratio_df["Pass_Filter"] / ratio_df["Fail_Filter_noempty"],
 )
 empty_df = ratio_df.assign(Percent_Empty=ratio_df["Empty"] / ratio_df["Sum"] * 100)
+empty_df = (
+    empty_df[["Percent_Empty"]]
+    .stack()
+    .to_frame()
+    .reset_index()
+    .rename(columns={0: "Percent Empty"})
+)
 ratio_df = (
     ratio_df.drop(
         cell_category_order
@@ -164,16 +171,9 @@ ratio_df = (
     .reset_index()
     .rename(columns={0: "Ratio"})
 )
-empty_df = (
-    empty_df[["Percent_Empty"]]
-    .stack()
-    .to_frame()
-    .reset_index()
-    .rename(columns={0: "Percent Empty"})
-)
 quality_recode = {
-    "Pass_Fail_withempty": "Pass/Fail (with empty)",
-    "Pass_Fail_0empty": "Pass/Fail (without empty)",
+    "Pass_Fail_withempty": "Included/Excluded (with empty cells)",
+    "Pass_Fail_0empty": "Included/Excluded (without empty cells)",
 }
 ratio_df = ratio_df.assign(
     cell_quality_recode=ratio_df.Cell_Quality.replace(quality_recode)
@@ -208,7 +208,7 @@ if check_if_write(output_file, force, throw_warning=True):
 
 empty_gg = (
     gg.ggplot(empty_df, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill="Percent_Empty"), shape="s", size=6)
+    + gg.geom_point(gg.aes(fill="Percent Empty"), shape="s", size=6)
     + gg.geom_text(gg.aes(label="site_location"), size=6, color="lightgrey")
     + gg.facet_wrap("~well", ncol=3, scales="fixed")
     + gg.theme_bw()
@@ -222,9 +222,11 @@ empty_gg = (
     + gg.coord_fixed()
 )
 
-output_file = pathlib.Path(output_figuresdir, "percent_empty_cells_per_well.png")
+output_file = pathlib.Path(
+    output_figuresdir, "plate_layout_percent_empty_cells_per_well.png"
+)
 if check_if_write(output_file, force, throw_warning=True):
-    ratio_gg.save(
+    empty_gg.save(
         output_file, dpi=300, verbose=False,
     )
 
@@ -395,14 +397,13 @@ cp_sat_df = pd.DataFrame()
 bc_sat_df = pd.DataFrame()
 sat_df = pd.DataFrame()
 
-# Create list of columns measuring CP saturation
-for name in painting_image_names:
-    cp_sat_cols.append(f"{saturated_col_prefix}{name}")
-
-# Create list of columns measuring BC saturation
-for x in range(1, (barcoding_cycles + 1)):
-    for nt in nts:
-        bc_sat_cols.append(f"{saturated_col_prefix}{barcoding_prefix}{x:02d}_{nt}")
+# Create lists of columns measuring saturation
+for col in image_df.columns:
+    if saturated_col_prefix in col:
+        if "Cycle" not in col:
+            cp_sat_cols.append(col)
+        if "Cycle" in col:
+            bc_sat_cols.append(col)
 
 # Create df of sites that fail CP saturation
 if all(x in image_df.columns.tolist() for x in cp_sat_cols):
@@ -530,6 +531,17 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
     bc_sat_df = pd.pivot_table(
         bc_sat_df, index=image_meta_col_list + ["Ch"], columns=["type"]
     ).reset_index()
+
+    ch_order = []
+    for ch in bc_sat_df["Ch"].unique():
+        if "DAPI" not in ch:
+            ch_order.append(ch)
+    for ch in bc_sat_df["Ch"].unique():
+        if "DAPI" in ch:
+            ch_order.append(ch)
+    bc_sat_df["Ch"] = bc_sat_df.Ch.astype("category")
+    bc_sat_df["Ch"] = bc_sat_df["Ch"].cat.reorder_categories(ch_order)
+
     bc_sat_df.columns = image_meta_col_list + ["Ch", "PercentMax", "StdIntensity"]
     bc_saturation_ymax = max(bc_sat_df.PercentMax)
     if bc_saturation_ymax < 0.2:
