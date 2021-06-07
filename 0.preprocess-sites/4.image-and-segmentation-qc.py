@@ -152,9 +152,7 @@ ratio_df = ratio_df.assign(
     Pass_Fail_withempty=ratio_df["Pass_Filter"] / ratio_df["Fail_Filter"],
     Pass_Fail_0empty=ratio_df["Pass_Filter"] / ratio_df["Fail_Filter_noempty"],
 )
-empty_df = ratio_df.assign(
-    Percent_Empty=ratio_df["Empty"] / ratio_df["Sum"] *100
-)
+empty_df = ratio_df.assign(Percent_Empty=ratio_df["Empty"] / ratio_df["Sum"] * 100)
 ratio_df = (
     ratio_df.drop(
         cell_category_order
@@ -166,7 +164,13 @@ ratio_df = (
     .reset_index()
     .rename(columns={0: "Ratio"})
 )
-empty_df=empty_df[['Percent_Empty']].stack().to_frame().reset_index().rename(columns={0: "Percent Empty"})
+empty_df = (
+    empty_df[["Percent_Empty"]]
+    .stack()
+    .to_frame()
+    .reset_index()
+    .rename(columns={0: "Percent Empty"})
+)
 quality_recode = {
     "Pass_Fail_withempty": "Pass/Fail (with empty)",
     "Pass_Fail_0empty": "Pass/Fail (without empty)",
@@ -177,16 +181,16 @@ ratio_df = ratio_df.assign(
 
 ratio_gg = (
     gg.ggplot(ratio_df, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill="Ratio"), shape='s', size=6)
+    + gg.geom_point(gg.aes(fill="Ratio"), shape="s", size=6)
     + gg.geom_text(gg.aes(label="site_location"), size=6, color="lightgrey")
-    + gg.facet_wrap("~cell_quality_recode + well", ncol = 3, scales="fixed")
+    + gg.facet_wrap("~cell_quality_recode + well", ncol=3, scales="fixed")
     + gg.theme_bw()
     + gg.ggtitle(f"Cells Included/Excluded by Cell Quality\n{plate}")
     + gg.theme(
         axis_text=gg.element_blank(),
         axis_title=gg.element_blank(),
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4", height = 1/5),
-        strip_text=gg.element_text(y=1.1)
+        strip_background=gg.element_rect(colour="black", fill="#fdfff4", height=1 / 5),
+        strip_text=gg.element_text(y=1.1),
     )
     + gg.scale_fill_cmap(name="Ratio")
     + gg.coord_fixed()
@@ -204,9 +208,9 @@ if check_if_write(output_file, force, throw_warning=True):
 
 empty_gg = (
     gg.ggplot(empty_df, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill="Percent_Empty"), shape='s', size=6)
+    + gg.geom_point(gg.aes(fill="Percent_Empty"), shape="s", size=6)
     + gg.geom_text(gg.aes(label="site_location"), size=6, color="lightgrey")
-    + gg.facet_wrap("~well", ncol = 3, scales="fixed")
+    + gg.facet_wrap("~well", ncol=3, scales="fixed")
     + gg.theme_bw()
     + gg.ggtitle(f"Percent Empty Cells\n{plate}")
     + gg.theme(
@@ -221,9 +225,7 @@ empty_gg = (
 output_file = pathlib.Path(output_figuresdir, "percent_empty_cells_per_well.png")
 if check_if_write(output_file, force, throw_warning=True):
     ratio_gg.save(
-        output_file,
-        dpi=300,
-        verbose=False,
+        output_file, dpi=300, verbose=False,
     )
 
 # Load image file
@@ -246,12 +248,14 @@ for col in image_df.columns:
 image_df_subset = image_df.dropna(subset=[corr_qc_col])
 correlation_gg = (
     gg.ggplot(image_df_subset, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill=corr_qc_col), shape = "s", size = 6)
+    + gg.geom_point(gg.aes(fill=corr_qc_col), shape="s", size=6)
     + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
     + gg.facet_wrap("~Metadata_Well")
     + gg.coord_fixed()
     + gg.theme_bw()
-    + gg.ggtitle(f"Correlation between BC & CP DAPI images\n(Alignment quality)\n{plate}")
+    + gg.ggtitle(
+        f"Correlation between BC & CP DAPI images\n(Alignment quality)\n{plate}"
+    )
     + gg.theme(
         axis_text=gg.element_blank(),
         axis_title=gg.element_blank(),
@@ -261,8 +265,7 @@ correlation_gg = (
 )
 
 output_file = pathlib.Path(
-    output_figuresdir,
-    f"plate_layout_BC_to_CP_DAPI_correlation_per_well.png",
+    output_figuresdir, f"plate_layout_BC_to_CP_DAPI_correlation_per_well.png",
 )
 if check_if_write(output_file, force, throw_warning=True):
     correlation_gg.save(output_file, dpi=300, verbose=False)
@@ -349,7 +352,7 @@ pll_col_prefix = "ImageQuality_PowerLogLogSlope_"
 PLLS_df_cols = image_meta_col_list.copy()
 for x in image_df.columns.tolist():
     if pll_col_prefix in x:
-        if 'Cycle' not in x:
+        if "Cycle" not in x:
             PLLS_df_cols.append(x)
 PLLS_df = image_df.loc[:, PLLS_df_cols]
 PLLS_df = PLLS_df.melt(id_vars=image_meta_col_list, var_name="channel").replace(
@@ -452,7 +455,7 @@ if len(sat_df.index) > 0:
 intensity_col_prefix = "ImageQuality_StdIntensity_"
 cp_sat_df_cols = image_meta_col_list.copy()
 for x in image_df.columns.tolist():
-     if 'Cycle' not in x:
+    if "Cycle" not in x:
         if intensity_col_prefix in x:
             cp_sat_df_cols.append(x)
         if saturated_col_prefix in x:
@@ -510,7 +513,7 @@ if all(x in image_df.columns.tolist() for x in cp_sat_df_cols):
 # Look at points off cluster where y > .2
 bc_sat_df_cols = image_meta_col_list.copy()
 for x in image_df.columns.tolist():
-     if 'Cycle' in x:
+    if "Cycle" in x:
         if intensity_col_prefix in x:
             bc_sat_df_cols.append(x)
         if saturated_col_prefix in x:
