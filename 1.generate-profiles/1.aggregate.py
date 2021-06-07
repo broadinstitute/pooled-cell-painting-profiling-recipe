@@ -9,23 +9,24 @@ from pycytominer import aggregate
 from pycytominer.cyto_utils import output
 
 sys.path.append("config")
-from utils import parse_command_args, process_configuration
+from utils import parse_command_args, process_configuration, get_split_aware_site_info
 
 args = parse_command_args()
 
-plate_id = args.plate_id
+batch_id = args.batch_id
 options_config_file = args.options_config_file
 experiment_config_file = args.experiment_config_file
+split_step = args.split_step
 
 config = process_configuration(
-    plate_id,
+    batch_id,
     step="profile--aggregate",
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
 
-
 # Extract config arguments
+split_info = config["experiment"]["split"][split_step]
 perform = config["options"]["profile"]["aggregate"]["perform"]
 
 # check if this step should be performed
@@ -36,6 +37,7 @@ ignore_files = config["options"]["core"]["ignore_files"]
 float_format = config["options"]["core"]["float_format"]
 compression = config["options"]["core"]["compression"]
 
+input_spotdir = config["directories"]["preprocess"]["spots"]
 single_cell_output_dir = config["directories"]["profile"]["single_cell"]
 aggregate_output_dir = config["directories"]["profile"]["profiles"]
 
@@ -53,51 +55,68 @@ aggregate_levels = aggregate_args["levels"]
 
 force = aggregate_args["force_overwrite"]
 
-# Input argument flow control
-if aggregate_from_single_file:
-    assert (
-        single_cell_file.exists()
-    ), "Error! The single cell file does not exist! Check 0.merge-single-cells.py"
+sites = [x.name for x in input_spotdir.iterdir() if x.name not in ignore_files]
+site_info_dict = get_split_aware_site_info(
+    config["experiment"], sites, split_info, separator="___"
+)
 
-# Load single cell data
-if aggregate_from_single_file:
-    print(f"Loading one single cell file: {single_cell_file}")
-    single_cell_df = pd.read_csv(single_cell_file, sep=",")
-else:
-    sites = list(single_cell_site_files)
-    print(f"Now loading data from {len(sites)} sites")
-    single_cell_df = []
-    for site in sites:
-        site_file = single_cell_site_files[site]
-        if site_file.exists():
-            site_df = pd.read_csv(site_file, sep=",")
-            single_cell_df.append(site_df)
-        else:
-            warnings.warn(
-                f"{site_file} does not exist. There must have been an error in processing"
-            )
-
-    single_cell_df = pd.concat(single_cell_df, axis="rows").reset_index(drop=True)
-
-# Perform the aggregation based on the defined levels and columns
-aggregate_output_dir.mkdir(parents=True, exist_ok=True)
-for aggregate_level, aggregate_columns in aggregate_levels.items():
-    aggregate_output_file = aggregate_output_files[aggregate_level]
-
-    print(
-        f"Now aggregating by {aggregate_level}...with operation: {aggregate_operation}"
+for data_split_site in site_info_dict:
+    # Define a dataset specific file
+    single_cell_dataset_file = pathlib.Path(
+        single_cell_output_dir,
+        single_cell_file.name.replace(".csv.gz", f"_{data_split_site}.csv.gz"),
     )
+    # Input argument flow control
+    if aggregate_from_single_file:
+        assert (
+            single_cell_dataset_file.exists()
+        ), "Error! The single cell file does not exist! Check 0.merge-single-cells.py"
 
-    aggregate_df = aggregate(
-        population_df=single_cell_df,
-        strata=aggregate_columns,
-        features=aggregate_features,
-        operation=aggregate_operation,
-    )
+    # Load single cell data
+    if aggregate_from_single_file:
+        print(f"Loading one single cell file: {single_cell_dataset_file}")
+        single_cell_df = pd.read_csv(single_cell_dataset_file, sep=",")
+    else:
+        sites = site_info_dict[data_split_site]
+        print(f"Now loading data from {len(sites)} sites")
+        single_cell_df = []
+        for site in sites:
+            site_file = single_cell_site_files[site]
+            if site_file.exists():
+                site_df = pd.read_csv(site_file, sep=",")
+                single_cell_df.append(site_df)
+            else:
+                warnings.warn(
+                    f"{site_file} does not exist. There must have been an error in processing"
+                )
 
-    output(
-        aggregate_df,
-        output_filename=aggregate_output_file,
-        compression=compression,
-        float_format=float_format,
-    )
+        single_cell_df = pd.concat(single_cell_df, axis="rows").reset_index(drop=True)
+
+    # Perform the aggregation based on the defined levels and columns
+    aggregate_output_dir.mkdir(parents=True, exist_ok=True)
+    for aggregate_level, aggregate_columns in aggregate_levels.items():
+        aggregate_output_file = aggregate_output_files[aggregate_level]
+
+        print(
+            f"Now aggregating by {aggregate_level}...with operation: {aggregate_operation}"
+        )
+
+        aggregate_df = aggregate(
+            population_df=single_cell_df,
+            strata=aggregate_columns,
+            features=aggregate_features,
+            operation=aggregate_operation,
+        )
+
+        # Define a dataset specific file
+        aggregate_dataset_file = pathlib.Path(
+            aggregate_output_dir,
+            aggregate_output_file.name.replace(".csv.gz", f"_{data_split_site}.csv.gz"),
+        )
+
+        output(
+            aggregate_df,
+            output_filename=aggregate_dataset_file,
+            compression_options=compression,
+            float_format=float_format,
+        )
