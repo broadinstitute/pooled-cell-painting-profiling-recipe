@@ -97,6 +97,9 @@ cell_count_df = cell_count_df.merge(cell_count_bysite_df, on="site").merge(
     loc_df, on="site_location"
 )
 
+# Determine list of plates in dataset
+platelist = cell_count_df["plate"].unique()
+
 # Plot total number of cells per well
 cell_count_totalcells_df = (
     cell_count_df.groupby(["x_loc", "y_loc", "well", "site_location", "site"])[
@@ -106,29 +109,35 @@ cell_count_totalcells_df = (
     .reset_index()
 )
 
-plate = cell_count_df["plate"].unique()[0]
-
-os.makedirs(output_figuresdir, exist_ok=True)
-by_well_gg = (
-    gg.ggplot(cell_count_totalcells_df, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill="total_cell_count"), shape="s", size=6)
-    + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
-    + gg.facet_wrap("~well")
-    + gg.coord_fixed()
-    + gg.theme_bw()
-    + gg.ggtitle(f"Total Cells/Well\n{plate}")
-    + gg.theme(
-        axis_text=gg.element_blank(),
-        axis_title=gg.element_blank(),
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+for plate in platelist:
+    os.makedirs(output_figuresdir, exist_ok=True)
+    by_well_gg = (
+        gg.ggplot(
+            cell_count_totalcells_df.loc[
+                cell_count_totalcells_df["site"].str.contains(plate)
+            ],
+            gg.aes(x="x_loc", y="y_loc"),
+        )
+        + gg.geom_point(gg.aes(fill="total_cell_count"), shape="s", size=6)
+        + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
+        + gg.facet_wrap("~well")
+        + gg.coord_fixed()
+        + gg.theme_bw()
+        + gg.ggtitle(f"Total Cells/Well\n{plate}")
+        + gg.theme(
+            axis_text=gg.element_blank(),
+            axis_title=gg.element_blank(),
+            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+        )
+        + gg.labs(fill="Cells")
+        + gg.scale_fill_cmap(name="Number of Cells")
     )
-    + gg.labs(fill="Cells")
-    + gg.scale_fill_cmap(name="Number of Cells")
-)
 
-output_file = pathlib.Path(output_figuresdir, "plate_layout_cells_count_per_well.png")
-if check_if_write(output_file, force, throw_warning=True):
-    by_well_gg.save(output_file, dpi=300, verbose=False)
+    output_file = pathlib.Path(
+        output_figuresdir, f"plate_layout_cells_count_per_well_{plate}.png"
+    )
+    if check_if_write(output_file, force, throw_warning=True):
+        by_well_gg.save(output_file, dpi=300, verbose=False)
 
 # Plot cell category ratios per well and empty cells per well
 ratio_df = pd.pivot_table(
@@ -179,56 +188,67 @@ ratio_df = ratio_df.assign(
     cell_quality_recode=ratio_df.Cell_Quality.replace(quality_recode)
 )
 
-ratio_gg = (
-    gg.ggplot(ratio_df, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill="Ratio"), shape="s", size=6)
-    + gg.geom_text(gg.aes(label="site_location"), size=6, color="lightgrey")
-    + gg.facet_wrap("~cell_quality_recode + well", ncol=3, scales="fixed")
-    + gg.theme_bw()
-    + gg.ggtitle(f"Cells Included/Excluded by Cell Quality\n{plate}")
-    + gg.theme(
-        axis_text=gg.element_blank(),
-        axis_title=gg.element_blank(),
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4", height=1 / 5),
-        strip_text=gg.element_text(y=1.1),
-    )
-    + gg.scale_fill_cmap(name="Ratio")
-    + gg.coord_fixed()
-)
-
-output_file = pathlib.Path(output_figuresdir, "plate_layout_ratios_per_well.png")
-if check_if_write(output_file, force, throw_warning=True):
-    ratio_gg.save(
-        output_file,
-        dpi=300,
-        width=(len(ratio_df["well"].unique()) + 2),
-        height=6,
-        verbose=False,
+for plate in platelist:
+    ratio_gg = (
+        gg.ggplot(
+            ratio_df.loc[ratio_df["plate"].str.contains(plate)],
+            gg.aes(x="x_loc", y="y_loc"),
+        )
+        + gg.geom_point(gg.aes(fill="Ratio"), shape="s", size=6)
+        + gg.geom_text(gg.aes(label="site_location"), size=6, color="lightgrey")
+        + gg.facet_wrap("~cell_quality_recode + well", ncol=3, scales="fixed")
+        + gg.theme_bw()
+        + gg.ggtitle(f"Cells Included/Excluded by Cell Quality\n{plate}")
+        + gg.theme(
+            axis_text=gg.element_blank(),
+            axis_title=gg.element_blank(),
+            strip_background=gg.element_rect(
+                colour="black", fill="#fdfff4", height=1 / 5
+            ),
+            strip_text=gg.element_text(y=1.1),
+        )
+        + gg.scale_fill_cmap(name="Ratio")
+        + gg.coord_fixed()
     )
 
-empty_gg = (
-    gg.ggplot(empty_df, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill="Percent Empty"), shape="s", size=6)
-    + gg.geom_text(gg.aes(label="site_location"), size=6, color="lightgrey")
-    + gg.facet_wrap("~well", ncol=3, scales="fixed")
-    + gg.theme_bw()
-    + gg.ggtitle(f"Percent Empty Cells\n{plate}")
-    + gg.theme(
-        axis_text=gg.element_blank(),
-        axis_title=gg.element_blank(),
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+    output_file = pathlib.Path(
+        output_figuresdir, f"plate_layout_ratios_per_well_{plate}.png"
     )
-    + gg.scale_fill_cmap(name="Percent")
-    + gg.coord_fixed()
-)
+    if check_if_write(output_file, force, throw_warning=True):
+        ratio_gg.save(
+            output_file,
+            dpi=300,
+            width=(len(ratio_df["well"].unique()) + 2),
+            height=6,
+            verbose=False,
+        )
 
-output_file = pathlib.Path(
-    output_figuresdir, "plate_layout_percent_empty_cells_per_well.png"
-)
-if check_if_write(output_file, force, throw_warning=True):
-    empty_gg.save(
-        output_file, dpi=300, verbose=False,
+    empty_gg = (
+        gg.ggplot(
+            empty_df.loc[empty_df["plate"].str.contains(plate)],
+            gg.aes(x="x_loc", y="y_loc"),
+        )
+        + gg.geom_point(gg.aes(fill="Percent Empty"), shape="s", size=6)
+        + gg.geom_text(gg.aes(label="site_location"), size=6, color="lightgrey")
+        + gg.facet_wrap("~well", ncol=3, scales="fixed")
+        + gg.theme_bw()
+        + gg.ggtitle(f"Percent Empty Cells\n{plate}")
+        + gg.theme(
+            axis_text=gg.element_blank(),
+            axis_title=gg.element_blank(),
+            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+        )
+        + gg.scale_fill_cmap(name="Percent")
+        + gg.coord_fixed()
     )
+
+    output_file = pathlib.Path(
+        output_figuresdir, f"plate_layout_percent_empty_cells_per_well_{plate}.png"
+    )
+    if check_if_write(output_file, force, throw_warning=True):
+        empty_gg.save(
+            output_file, dpi=300, verbose=False,
+        )
 
 # Load image file
 image_df = pd.read_csv(input_image_file, sep="\t")
@@ -248,29 +268,34 @@ for col in image_df.columns:
             if "Mask" in col:
                 corr_qc_col = col
 image_df_subset = image_df.dropna(subset=[corr_qc_col])
-correlation_gg = (
-    gg.ggplot(image_df_subset, gg.aes(x="x_loc", y="y_loc"))
-    + gg.geom_point(gg.aes(fill=corr_qc_col), shape="s", size=6)
-    + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
-    + gg.facet_wrap("~Metadata_Well")
-    + gg.coord_fixed()
-    + gg.theme_bw()
-    + gg.ggtitle(
-        f"Correlation between BC & CP DAPI images\n(Alignment quality)\n{plate}"
+for plate in platelist:
+    correlation_gg = (
+        gg.ggplot(
+            image_df_subset.loc[image_df_subset["Metadata_Plate"].str.contains(plate)],
+            gg.aes(x="x_loc", y="y_loc"),
+        )
+        + gg.geom_point(gg.aes(fill=corr_qc_col), shape="s", size=6)
+        + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
+        + gg.facet_wrap("~Metadata_Well")
+        + gg.coord_fixed()
+        + gg.theme_bw()
+        + gg.ggtitle(
+            f"Correlation between BC & CP DAPI images\n(Alignment quality)\n{plate}"
+        )
+        + gg.theme(
+            axis_text=gg.element_blank(),
+            axis_title=gg.element_blank(),
+            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+        )
+        + gg.scale_fill_cmap(name="Correlation")
     )
-    + gg.theme(
-        axis_text=gg.element_blank(),
-        axis_title=gg.element_blank(),
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
-    )
-    + gg.scale_fill_cmap(name="Correlation")
-)
 
-output_file = pathlib.Path(
-    output_figuresdir, f"plate_layout_BC_to_CP_DAPI_correlation_per_well.png",
-)
-if check_if_write(output_file, force, throw_warning=True):
-    correlation_gg.save(output_file, dpi=300, verbose=False)
+    output_file = pathlib.Path(
+        output_figuresdir,
+        f"plate_layout_BC_to_CP_DAPI_correlation_per_well_{plate}.png",
+    )
+    if check_if_write(output_file, force, throw_warning=True):
+        correlation_gg.save(output_file, dpi=300, verbose=False)
 
 # Plot final compartment thresholds per well
 threshold_col_prefix = "Threshold_FinalThreshold_"
@@ -281,57 +306,67 @@ for threshhold_compartment in ["Cells", "Nuclei"]:
         continue
 
     image_df_subset = image_df.dropna(subset=[threshold_full_col])
-
-    compartment_finalthresh_gg = (
-        gg.ggplot(image_df_subset, gg.aes(x="x_loc", y="y_loc"))
-        + gg.geom_point(gg.aes(fill=f"{threshold_full_col}"), shape="s", size=6)
-        + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
-        + gg.facet_wrap(f"~{image_cols['well']}")
-        + gg.coord_fixed()
-        + gg.theme_bw()
-        + gg.ggtitle(f"{threshhold_compartment} Thresholds \n {plate}")
-        + gg.theme(
-            axis_text=gg.element_blank(),
-            axis_title=gg.element_blank(),
-            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+    for plate in platelist:
+        compartment_finalthresh_gg = (
+            gg.ggplot(
+                image_df_subset.loc[
+                    image_df_subset["Metadata_Plate"].str.contains(plate)
+                ],
+                gg.aes(x="x_loc", y="y_loc"),
+            )
+            + gg.geom_point(gg.aes(fill=f"{threshold_full_col}"), shape="s", size=6)
+            + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
+            + gg.facet_wrap(f"~{image_cols['well']}")
+            + gg.coord_fixed()
+            + gg.theme_bw()
+            + gg.ggtitle(f"{threshhold_compartment} Thresholds \n {plate}")
+            + gg.theme(
+                axis_text=gg.element_blank(),
+                axis_title=gg.element_blank(),
+                strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+            )
+            + gg.scale_fill_cmap(name="Threshold")
+            + gg.labs(fill="Threshold")
         )
-        + gg.scale_fill_cmap(name="Threshold")
-        + gg.labs(fill="Threshold")
-    )
-    output_file = pathlib.Path(
-        output_figuresdir,
-        f"plate_layout_{threshhold_compartment}_FinalThreshold_per_well.png",
-    )
-    if check_if_write(output_file, force, throw_warning=True):
-        compartment_finalthresh_gg.save(output_file, dpi=300, verbose=False)
+        output_file = pathlib.Path(
+            output_figuresdir,
+            f"plate_layout_{threshhold_compartment}_FinalThreshold_per_well_{plate}.png",
+        )
+        if check_if_write(output_file, force, throw_warning=True):
+            compartment_finalthresh_gg.save(output_file, dpi=300, verbose=False)
 
 # Create list of sites with confluent regions
 confluent_col = "Math_PercentConfluent"
 if confluent_col in image_df.columns:
     # Plot percent confluent regions per well
     image_df_subset = image_df.dropna(subset=[confluent_col])
-
-    percent_confluent_gg = (
-        gg.ggplot(image_df_subset, gg.aes(x="x_loc", y="y_loc"))
-        + gg.geom_point(gg.aes(fill=confluent_col), shape="s", size=6)
-        + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
-        + gg.facet_wrap(f"~{image_cols['well']}")
-        + gg.coord_fixed()
-        + gg.theme_bw()
-        + gg.ggtitle(f"Percent of Image That Is Confluent \n {plate}")
-        + gg.theme(
-            axis_text=gg.element_blank(),
-            axis_title=gg.element_blank(),
-            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+    for plate in platelist:
+        percent_confluent_gg = (
+            gg.ggplot(
+                image_df_subset.loc[
+                    image_df_subset["Metadata_Plate"].str.contains(plate)
+                ],
+                gg.aes(x="x_loc", y="y_loc"),
+            )
+            + gg.geom_point(gg.aes(fill=confluent_col), shape="s", size=6)
+            + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
+            + gg.facet_wrap(f"~{image_cols['well']}")
+            + gg.coord_fixed()
+            + gg.theme_bw()
+            + gg.ggtitle(f"Percent of Image That Is Confluent \n {plate}")
+            + gg.theme(
+                axis_text=gg.element_blank(),
+                axis_title=gg.element_blank(),
+                strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+            )
+            + gg.scale_fill_cmap(name="Percent Confluent")
+            + gg.labs(fill="Percent")
         )
-        + gg.scale_fill_cmap(name="Percent Confluent")
-        + gg.labs(fill="Percent")
-    )
-    output_file = pathlib.Path(
-        output_figuresdir, "plate_layout_PercentConfluent_per_well.png"
-    )
-    if check_if_write(output_file, force, throw_warning=True):
-        percent_confluent_gg.save(output_file, dpi=300, verbose=False)
+        output_file = pathlib.Path(
+            output_figuresdir, f"plate_layout_PercentConfluent_per_well_{plate}.png"
+        )
+        if check_if_write(output_file, force, throw_warning=True):
+            percent_confluent_gg.save(output_file, dpi=300, verbose=False)
 
     confluent_cols = ["site_location", confluent_col] + image_meta_col_list
     confluent_df = image_df.loc[image_df[confluent_col] > 0]
@@ -360,32 +395,33 @@ PLLS_df = image_df.loc[:, PLLS_df_cols]
 PLLS_df = PLLS_df.melt(id_vars=image_meta_col_list, var_name="channel").replace(
     {pll_col_prefix: ""}, regex=True
 )
+for plate in platelist:
+    PLLS_gg = (
+        gg.ggplot(
+            PLLS_df.loc[PLLS_df["Metadata_Plate"].str.contains(plate)],
+            gg.aes(x=image_cols["site"], y="value", label=image_cols["site"]),
+        )
+        + gg.coord_fixed(ratio=0.25)
+        + gg.geom_text(size=6)
+        + gg.facet_grid(f"channel~{image_cols['well']}", scales="free_y")
+        + gg.ggtitle(f"Image focus \n {plate}")
+        + gg.theme_bw()
+        + gg.ylab("Power log log slope")
+        + gg.theme(
+            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+            axis_text_y=gg.element_text(size=4),
+        )
+    )
 
-PLLS_gg = (
-    gg.ggplot(
-        PLLS_df, gg.aes(x=image_cols["site"], y="value", label=image_cols["site"])
-    )
-    + gg.coord_fixed(ratio=0.25)
-    + gg.geom_text(size=6)
-    + gg.facet_grid(f"channel~{image_cols['well']}", scales="free_y")
-    + gg.ggtitle(f"Image focus \n {plate}")
-    + gg.theme_bw()
-    + gg.ylab("Power log log slope")
-    + gg.theme(
-        strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
-        axis_text_y=gg.element_text(size=4),
-    )
-)
-
-output_file = pathlib.Path(output_figuresdir, "PLLS_per_well.png")
-if check_if_write(output_file, force, throw_warning=True):
-    PLLS_gg.save(
-        output_file,
-        width=(len(PLLS_df[image_cols["well"]].unique()) + 2),
-        height=8,
-        dpi=300,
-        verbose=False,
-    )
+    output_file = pathlib.Path(output_figuresdir, f"PLLS_per_well_{plate}.png")
+    if check_if_write(output_file, force, throw_warning=True):
+        PLLS_gg.save(
+            output_file,
+            width=(len(PLLS_df[image_cols["well"]].unique()) + 2),
+            height=8,
+            dpi=300,
+            verbose=False,
+        )
 
 # Outputs list of sites that are saturated in any channel
 # Cell Painting images use >1% saturated, Barcoding images uses >.2% saturated
@@ -478,36 +514,38 @@ if all(x in image_df.columns.tolist() for x in cp_sat_df_cols):
     cp_saturation_ymax = max(cp_sat_df.PercentMax)
     if cp_saturation_ymax < 1:
         cp_saturation_ymax = 1
-
-    cp_saturation_gg = (
-        gg.ggplot(
-            cp_sat_df,
-            gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
+    for plate in platelist:
+        cp_saturation_gg = (
+            gg.ggplot(
+                cp_sat_df.loc[cp_sat_df["Metadata_Plate"].str.contains(plate)],
+                gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
+            )
+            + gg.geom_text(size=6)
+            + gg.facet_wrap(
+                ["Ch", image_cols["well"]],
+                nrow=len(painting_image_names),
+                scales="fixed",
+            )
+            + gg.ylim([0, cp_saturation_ymax])
+            + gg.theme_bw()
+            + gg.ggtitle(f"Cell Painting Image Saturation \n {plate}")
+            + gg.theme(
+                strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+                strip_text=gg.element_text(size=7),
+                axis_text=gg.element_text(size=6),
+                axis_text_x=gg.element_text(rotation=90),
+                subplots_adjust={"wspace": 0.2},
+            )
         )
-        + gg.geom_text(size=6)
-        + gg.facet_wrap(
-            ["Ch", image_cols["well"]], nrow=len(painting_image_names), scales="fixed"
-        )
-        + gg.ylim([0, cp_saturation_ymax])
-        + gg.theme_bw()
-        + gg.ggtitle(f"Cell Painting Image Saturation \n {plate}")
-        + gg.theme(
-            strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
-            strip_text=gg.element_text(size=7),
-            axis_text=gg.element_text(size=6),
-            axis_text_x=gg.element_text(rotation=90),
-            subplots_adjust={"wspace": 0.2},
-        )
-    )
-    output_file = pathlib.Path(output_figuresdir, "cp_saturation.png")
-    if check_if_write(output_file, force, throw_warning=True):
-        cp_saturation_gg.save(
-            output_file,
-            dpi=300,
-            width=(len(cp_sat_df[image_cols["well"]].unique()) + 2),
-            height=(len(cp_sat_df["Ch"].unique())),
-            verbose=False,
-        )
+        output_file = pathlib.Path(output_figuresdir, f"cp_saturation_{plate}.png")
+        if check_if_write(output_file, force, throw_warning=True):
+            cp_saturation_gg.save(
+                output_file,
+                dpi=300,
+                width=(len(cp_sat_df[image_cols["well"]].unique()) + 2),
+                height=(len(cp_sat_df["Ch"].unique())),
+                verbose=False,
+            )
 # Plots saturation in Barcoding images
 # x = std dev of intensity (to find images that have unusually bright spots)
 # y = % image that is saturated (to find images that are unusually bright)
@@ -548,31 +586,37 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
         bc_saturation_ymax = 0.2
 
     for well in bc_sat_df.loc[:, image_cols["well"]].squeeze().unique():
-        bc_saturation_gg = (
-            gg.ggplot(
-                bc_sat_df.loc[bc_sat_df.loc[:, image_cols["well"]] == well, :],
-                gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
+        for plate in platelist:
+            bc_saturation_gg = (
+                gg.ggplot(
+                    bc_sat_df.loc[
+                        (bc_sat_df["Metadata_Well"] == well)
+                        & (bc_sat_df["Metadata_Plate"] == plate)
+                    ],
+                    gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
+                )
+                + gg.geom_text(size=6)
+                + gg.facet_wrap("~Ch", ncol=4, scales="fixed")
+                + gg.ylim([0, bc_saturation_ymax])
+                + gg.theme_bw()
+                + gg.ggtitle(f"Barcoding Image Saturation (Well: {well}) \n {plate}")
+                + gg.theme(
+                    strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
+                    strip_text=gg.element_text(size=7),
+                    axis_text=gg.element_text(size=6),
+                    axis_text_x=gg.element_text(rotation=90),
+                    subplots_adjust={"wspace": 0.2},
+                )
             )
-            + gg.geom_text(size=6)
-            + gg.facet_wrap("~Ch", ncol=4, scales="fixed")
-            + gg.ylim([0, bc_saturation_ymax])
-            + gg.theme_bw()
-            + gg.ggtitle(f"Barcoding Image Saturation (Well: {well}) \n {plate}")
-            + gg.theme(
-                strip_background=gg.element_rect(colour="black", fill="#fdfff4"),
-                strip_text=gg.element_text(size=7),
-                axis_text=gg.element_text(size=6),
-                axis_text_x=gg.element_text(rotation=90),
-                subplots_adjust={"wspace": 0.2},
-            )
-        )
 
-        output_file = pathlib.Path(output_figuresdir, f"bc_saturation_{well}.png")
-        if check_if_write(output_file, force, throw_warning=True):
-            bc_saturation_gg.save(
-                output_file,
-                dpi=300,
-                width=5,
-                height=(barcoding_cycles + 2),
-                verbose=False,
+            output_file = pathlib.Path(
+                output_figuresdir, f"bc_saturation_{well}_{plate}.png"
             )
+            if check_if_write(output_file, force, throw_warning=True):
+                bc_saturation_gg.save(
+                    output_file,
+                    dpi=300,
+                    width=5,
+                    height=(barcoding_cycles + 2),
+                    verbose=False,
+                )
