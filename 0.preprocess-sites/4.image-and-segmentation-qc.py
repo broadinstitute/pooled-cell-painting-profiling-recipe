@@ -271,12 +271,12 @@ image_df_subset = image_df.dropna(subset=[corr_qc_col])
 for plate in platelist:
     correlation_gg = (
         gg.ggplot(
-            image_df_subset.loc[image_df_subset["Metadata_Plate"].str.contains(plate)],
+            image_df_subset.loc[image_df_subset[image_cols['plate']].str.contains(plate)],
             gg.aes(x="x_loc", y="y_loc"),
         )
         + gg.geom_point(gg.aes(fill=corr_qc_col), shape="s", size=6)
         + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
-        + gg.facet_wrap("~Metadata_Well")
+        + gg.facet_wrap(f"~{image_cols['well']}")
         + gg.coord_fixed()
         + gg.theme_bw()
         + gg.ggtitle(
@@ -310,11 +310,11 @@ for threshhold_compartment in ["Cells", "Nuclei"]:
         compartment_finalthresh_gg = (
             gg.ggplot(
                 image_df_subset.loc[
-                    image_df_subset["Metadata_Plate"].str.contains(plate)
+                    image_df_subset[image_cols['plate']].str.contains(plate)
                 ],
                 gg.aes(x="x_loc", y="y_loc"),
             )
-            + gg.geom_point(gg.aes(fill=f"{threshold_full_col}"), shape="s", size=6)
+            + gg.geom_point(gg.aes(fill=threshold_full_col), shape="s", size=6)
             + gg.geom_text(gg.aes(label="site_location"), color="lightgrey", size=6)
             + gg.facet_wrap(f"~{image_cols['well']}")
             + gg.coord_fixed()
@@ -344,7 +344,7 @@ if confluent_col in image_df.columns:
         percent_confluent_gg = (
             gg.ggplot(
                 image_df_subset.loc[
-                    image_df_subset["Metadata_Plate"].str.contains(plate)
+                    image_df_subset[image_cols['plate']].str.contains(plate)
                 ],
                 gg.aes(x="x_loc", y="y_loc"),
             )
@@ -398,7 +398,7 @@ PLLS_df = PLLS_df.melt(id_vars=image_meta_col_list, var_name="channel").replace(
 for plate in platelist:
     PLLS_gg = (
         gg.ggplot(
-            PLLS_df.loc[PLLS_df["Metadata_Plate"].str.contains(plate)],
+            PLLS_df.loc[PLLS_df[image_cols['plate']].str.contains(plate)],
             gg.aes(x=image_cols["site"], y="value", label=image_cols["site"]),
         )
         + gg.coord_fixed(ratio=0.25)
@@ -517,7 +517,7 @@ if all(x in image_df.columns.tolist() for x in cp_sat_df_cols):
     for plate in platelist:
         cp_saturation_gg = (
             gg.ggplot(
-                cp_sat_df.loc[cp_sat_df["Metadata_Plate"].str.contains(plate)],
+                cp_sat_df.loc[cp_sat_df[image_cols['plate']].str.contains(plate)],
                 gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
             )
             + gg.geom_text(size=6)
@@ -590,8 +590,8 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
             bc_saturation_gg = (
                 gg.ggplot(
                     bc_sat_df.loc[
-                        (bc_sat_df["Metadata_Well"] == well)
-                        & (bc_sat_df["Metadata_Plate"] == plate)
+                        (bc_sat_df[image_cols['well']] == well)
+                        & (bc_sat_df[image_cols['plate']] == plate)
                     ],
                     gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
                 )
