@@ -54,7 +54,7 @@ from utils import parse_command_args, process_configuration, get_split_aware_sit
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
-from io_utils import check_if_write
+from io_utils import check_if_write, read_csvs_with_chunksize
 
 args = parse_command_args()
 
@@ -134,7 +134,7 @@ for data_split_site in site_info_dict:
         # Load image metadata per site
         try:
             image_file = pathlib.Path(input_batchdir, site, "Image.csv")
-            image_df = pd.read_csv(image_file).assign(
+            image_df = read_csvs_with_chunksize(image_file).assign(
                 Metadata_site=site, Metadata_dataset_split=data_split_site
             )
             image_list.append(image_df)
@@ -150,10 +150,10 @@ for data_split_site in site_info_dict:
         # Load spot data
         try:
             barcode_file = pathlib.Path(input_batchdir, site, "BarcodeFoci.csv")
-            barcodefoci_df = pd.read_csv(barcode_file)
+            barcodefoci_df = read_csvs_with_chunksize(barcode_file)
 
             foci_file = pathlib.Path(input_batchdir, site, "Foci.csv")
-            foci_df = pd.read_csv(foci_file)
+            foci_df = read_csvs_with_chunksize(foci_file)
         except FileNotFoundError:
             print(f"{site} data not found")
             continue

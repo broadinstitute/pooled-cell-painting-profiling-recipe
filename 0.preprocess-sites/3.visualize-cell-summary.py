@@ -14,7 +14,7 @@ from utils import parse_command_args, process_configuration, get_split_aware_sit
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
-from io_utils import check_if_write
+from io_utils import check_if_write, read_csvs_with_chunksize
 
 args = parse_command_args()
 
@@ -99,17 +99,17 @@ for data_split_site in site_info_dict:
         cell_count_file = pathlib.Path(
             f"{input_paintdir}/{site}/cell_counts_{site}.tsv"
         )
-        cell_quality_list.append(pd.read_csv(cell_count_file, sep="\t"))
+        cell_quality_list.append(read_csvs_with_chunksize(cell_count_file, sep="\t"))
 
         # Aggregates site summary stats into a single list
         site_stat_file = pathlib.Path(input_spotdir, site, f"site_stats.tsv")
-        site_stat_list.append(pd.read_csv(site_stat_file, sep="\t"))
+        site_stat_list.append(read_csvs_with_chunksize(site_stat_file, sep="\t"))
 
         # Aggregates perturbation counts by site into a single list
         pert_count_file = pathlib.Path(
             input_spotdir, site, f"cell_perturbation_category_summary_counts.tsv"
         )
-        pert_counts_list.append(pd.read_csv(pert_count_file, sep="\t"))
+        pert_counts_list.append(read_csvs_with_chunksize(pert_count_file, sep="\t"))
 
 # Creates dataframe from cell quality list
 cell_count_df = pd.concat(cell_quality_list, axis="rows").reset_index(drop=True)

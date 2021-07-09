@@ -1,6 +1,7 @@
 import pathlib
 import pandas as pd
 
+from io_utils import read_csvs_with_chunksize
 
 def load_single_cell_compartment_csv(compartment_dir, compartment, metadata_cols):
     """
@@ -21,7 +22,7 @@ def load_single_cell_compartment_csv(compartment_dir, compartment, metadata_cols
     compartment_file = pathlib.Path(compartment_dir, f"{compartment}.csv")
 
     # Load compartment data
-    compartment_df = pd.read_csv(compartment_file)
+    compartment_df = read_csvs_with_chunksize(compartment_file)
     compartment_df.columns = [f"{compartment}_{x}" for x in compartment_df.columns]
 
     # Identify and rename metadata_cols

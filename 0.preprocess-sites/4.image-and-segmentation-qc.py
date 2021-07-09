@@ -11,7 +11,7 @@ from utils import parse_command_args, process_configuration
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
-from io_utils import check_if_write
+from io_utils import check_if_write, read_csvs_with_chunksize
 
 args = parse_command_args()
 
@@ -64,7 +64,7 @@ if not perform:
 if not force:
     force = args.force
 
-cell_count_df = pd.read_csv(cell_count_file, sep="\t")
+cell_count_df = read_csvs_with_chunksize(cell_count_file, sep="\t")
 
 # Creates x, y coordinates for plotting per-plate views.
 # Assumes image numbering starts in upper left corner and proceeds down
@@ -253,7 +253,7 @@ for plate in platelist:
         )
 
 # Load image file
-image_df = pd.read_csv(input_image_file, sep="\t")
+image_df = read_csvs_with_chunksize(input_image_file, sep="\t")
 image_meta_col_list = list(image_cols.values())
 
 # Add in x, y coordinates for plotting

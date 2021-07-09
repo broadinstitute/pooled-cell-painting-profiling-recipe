@@ -1,6 +1,7 @@
 import pathlib
 import pandas as pd
 
+from io_utils import read_csvs_with_chunksize
 
 def get_compartment_file(compartment, example_dir):
     compartment = compartment.capitalize()
@@ -15,7 +16,7 @@ def load_compartments(core, example_dir):
     for compartment in compartments:
 
         compart_file = get_compartment_file(compartment, example_dir)
-        df = pd.read_csv(compart_file)
+        df = read_csvs_with_chunksize(compart_file)
         df = recode_cols(df, core, compartment)
 
         data[compartment] = df

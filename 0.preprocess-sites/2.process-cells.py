@@ -30,7 +30,7 @@ recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
-from io_utils import check_if_write
+from io_utils import check_if_write, read_csvs_with_chunksize
 
 args = parse_command_args()
 
@@ -95,7 +95,7 @@ cell_category_df = pd.DataFrame(cell_category_dict, index=[quality_col]).transpo
 # Enables feature filtering by loading the Cell Painting feature file.
 # 0.prefilter-features.py must be run first
 try:
-    all_feature_df = pd.read_csv(prefilter_file, sep="\t").query("not prefilter_column")
+    all_feature_df = read_csvs_with_chunksize(prefilter_file, sep="\t").query("not prefilter_column")
 except FileNotFoundError:
     raise FileNotFoundError(
         "Error",
@@ -106,7 +106,7 @@ except FileNotFoundError:
 # Load image metadata summary file to extract out important metadata indicators
 # 1.process-spots.py must be run first
 try:
-    image_df = pd.read_csv(input_image_file, sep="\t")
+    image_df = read_csvs_with_chunksize(input_image_file, sep="\t")
 except FileNotFoundError:
     raise FileNotFoundError(
         "Error",
@@ -151,7 +151,7 @@ for data_split_site in site_info_dict:
                 foci_dir, site, "cell_id_barcode_alignment_scores_by_guide.tsv.gz"
             )
             try:
-                foci_df = pd.read_csv(foci_file, sep="\t")
+                foci_df = read_csvs_with_chunksize(foci_file, sep="\t")
             except FileNotFoundError:
                 print(
                     """Run 1.process-spots before continuing. \n
