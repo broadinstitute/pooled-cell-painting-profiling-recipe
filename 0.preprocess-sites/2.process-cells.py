@@ -95,7 +95,9 @@ cell_category_df = pd.DataFrame(cell_category_dict, index=[quality_col]).transpo
 # Enables feature filtering by loading the Cell Painting feature file.
 # 0.prefilter-features.py must be run first
 try:
-    all_feature_df = read_csvs_with_chunksize(prefilter_file, sep="\t").query("not prefilter_column")
+    all_feature_df = read_csvs_with_chunksize(prefilter_file, sep="\t").query(
+        "not prefilter_column"
+    )
 except FileNotFoundError:
     raise FileNotFoundError(
         "Error",
@@ -202,7 +204,10 @@ for data_split_site in site_info_dict:
         # Add the cell quality metadata to the df
         metadata_df = (
             metadata_df.merge(
-                cell_category_df, left_on=quality_idx, right_index=True, how="left",
+                cell_category_df,
+                left_on=quality_idx,
+                right_index=True,
+                how="left",
             )
             .sort_values(by=cell_sort_col)
             .drop_duplicates(subset=[cell_sort_col, quality_idx])

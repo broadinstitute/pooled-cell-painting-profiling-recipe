@@ -16,15 +16,15 @@ def check_if_write(file_path, force, throw_warning=False):
         return True
 
 
-def read_csvs_with_chunksize(filename,chunksize=10000,**kwargs):
+def read_csvs_with_chunksize(filename, chunksize=10000, **kwargs):
     """
     Read a CSV with an optionally passed chunksize to make reading large files easier.
-    Re-raises any exceptions (likely mostly going to be FileNotFound errors) so they 
+    Re-raises any exceptions (likely mostly going to be FileNotFound errors) so they
     can continue to be handled how they currently are in the various locations.
     """
     try:
         dflist = []
-        for chunk in pd.read_csv(filename,chunksize=chunksize,**kwargs):
+        for chunk in pd.read_csv(filename, chunksize=chunksize, **kwargs):
             dflist.append(chunk)
         df = pd.concat(dflist)
         return df

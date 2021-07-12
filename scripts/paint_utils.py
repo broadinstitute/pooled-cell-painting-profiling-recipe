@@ -3,6 +3,7 @@ import pandas as pd
 
 from io_utils import read_csvs_with_chunksize
 
+
 def load_single_cell_compartment_csv(compartment_dir, compartment, metadata_cols):
     """
     Load and process columns for CellProfiler output data

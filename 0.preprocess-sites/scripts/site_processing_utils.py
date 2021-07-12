@@ -3,6 +3,7 @@ import pandas as pd
 
 from io_utils import read_csvs_with_chunksize
 
+
 def get_compartment_file(compartment, example_dir):
     compartment = compartment.capitalize()
     compart_file = pathlib.PurePath(f"{example_dir}/{compartment}.csv")

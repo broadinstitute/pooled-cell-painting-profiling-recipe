@@ -227,7 +227,9 @@ total_cell_count_gg = (
     + gg.ggtitle(f"{all_cells} Total Cells")
     + gg.facet_wrap("~Metadata_dataset_split", drop=False, scales="free_x")
     + gg.scale_fill_manual(
-        name="Cell Quality", labels=cell_category_order, values=cell_category_colors,
+        name="Cell Quality",
+        labels=cell_category_order,
+        values=cell_category_colors,
     )
 )
 
@@ -251,7 +253,9 @@ total_cell_well_count_gg = (
     + gg.ylab("Cell Count")
     + gg.facet_wrap("~Cell_Quality")
     + gg.scale_fill_manual(
-        name="Cell Quality", labels=cell_category_order, values=cell_category_colors,
+        name="Cell Quality",
+        labels=cell_category_order,
+        values=cell_category_colors,
     )
     + gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
 )
