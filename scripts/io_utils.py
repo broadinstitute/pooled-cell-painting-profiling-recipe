@@ -30,6 +30,6 @@ def read_csvs_with_chunksize(filename, chunksize=10000, **kwargs):
             for chunk in reader:
                 dflist.append(chunk)
             df = pd.concat(dflist)
-            return df
+        return df
     except:
         raise
