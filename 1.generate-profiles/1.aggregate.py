@@ -11,6 +11,8 @@ from pycytominer.cyto_utils import output
 sys.path.append("config")
 from utils import parse_command_args, process_configuration, get_split_aware_site_info
 
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
 from io_utils import read_csvs_with_chunksize
 
 args = parse_command_args()
