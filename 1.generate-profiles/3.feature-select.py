@@ -10,6 +10,10 @@ from pycytominer import feature_select
 sys.path.append("config")
 from utils import parse_command_args, process_configuration, get_split_aware_site_info
 
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
+from io_utils import read_csvs_with_chunksize
+
 args = parse_command_args()
 
 batch_id = args.batch_id
@@ -86,7 +90,7 @@ for data_split_site in site_info_dict:
             feature_select_output_files[data_level].parents[0],
             output_file.name.replace(".csv.gz", f"_{data_split_site}.csv.gz"),
         )
-        df = pd.read_csv(file_to_feature_select)
+        df = read_csvs_with_chunksize(file_to_feature_select)
 
         feature_select(
             profiles=df,

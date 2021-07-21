@@ -18,6 +18,7 @@ sys.path.append(os.path.join(recipe_path, "scripts"))
 from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
 from cell_quality_utils import CellQuality
 from profile_utils import sanitize_gene_col
+from io_utils import read_csvs_with_chunksize
 
 args = parse_command_args()
 
@@ -82,7 +83,7 @@ if single_file_only:
             )
 
 # Load preselected features
-all_feature_df = pd.read_csv(prefilter_file, sep="\t")
+all_feature_df = read_csvs_with_chunksize(prefilter_file, sep="\t")
 
 if prefilter_features:
     all_feature_df = all_feature_df.query("not prefilter_column")
@@ -127,7 +128,7 @@ for data_split_site in site_info_dict:
 
         # Load cell metadata after cell quality determined in 0.preprocess-sites
         metadata_file = pathlib.Path(site_metadata_dir, f"metadata_{site}.tsv.gz")
-        metadata_df = pd.read_csv(metadata_file, sep="\t").query(
+        metadata_df = read_csvs_with_chunksize(metadata_file, sep="\t").query(
             f"{cell_quality_col} in @cell_filter"
         )
 

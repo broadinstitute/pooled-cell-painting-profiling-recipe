@@ -11,7 +11,7 @@ from utils import parse_command_args, process_configuration
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
-from io_utils import check_if_write
+from io_utils import check_if_write, read_csvs_with_chunksize
 
 args = parse_command_args()
 
@@ -64,7 +64,7 @@ if not perform:
 if not force:
     force = args.force
 
-cell_count_df = pd.read_csv(cell_count_file, sep="\t")
+cell_count_df = read_csvs_with_chunksize(cell_count_file, sep="\t")
 
 # Creates x, y coordinates for plotting per-plate views.
 # Assumes image numbering starts in upper left corner and proceeds down
@@ -249,11 +249,13 @@ for plate in platelist:
     )
     if check_if_write(output_file, force, throw_warning=True):
         empty_gg.save(
-            output_file, dpi=300, verbose=False,
+            output_file,
+            dpi=300,
+            verbose=False,
         )
 
 # Load image file
-image_df = pd.read_csv(input_image_file, sep="\t")
+image_df = read_csvs_with_chunksize(input_image_file, sep="\t")
 image_meta_col_list = list(image_cols.values())
 
 # Add in x, y coordinates for plotting
@@ -273,7 +275,9 @@ image_df_subset = image_df.dropna(subset=[corr_qc_col])
 for plate in platelist:
     correlation_gg = (
         gg.ggplot(
-            image_df_subset.loc[image_df_subset[image_cols['plate']].str.contains(plate)],
+            image_df_subset.loc[
+                image_df_subset[image_cols["plate"]].str.contains(plate)
+            ],
             gg.aes(x="x_loc", y="y_loc"),
         )
         + gg.geom_point(gg.aes(fill=corr_qc_col), shape="s", size=6)
@@ -312,7 +316,7 @@ for threshhold_compartment in ["Cells", "Nuclei"]:
         compartment_finalthresh_gg = (
             gg.ggplot(
                 image_df_subset.loc[
-                    image_df_subset[image_cols['plate']].str.contains(plate)
+                    image_df_subset[image_cols["plate"]].str.contains(plate)
                 ],
                 gg.aes(x="x_loc", y="y_loc"),
             )
@@ -346,7 +350,7 @@ if confluent_col in image_df.columns:
         percent_confluent_gg = (
             gg.ggplot(
                 image_df_subset.loc[
-                    image_df_subset[image_cols['plate']].str.contains(plate)
+                    image_df_subset[image_cols["plate"]].str.contains(plate)
                 ],
                 gg.aes(x="x_loc", y="y_loc"),
             )
@@ -400,7 +404,7 @@ PLLS_df = PLLS_df.melt(id_vars=image_meta_col_list, var_name="channel").replace(
 for plate in platelist:
     PLLS_gg = (
         gg.ggplot(
-            PLLS_df.loc[PLLS_df[image_cols['plate']].str.contains(plate)],
+            PLLS_df.loc[PLLS_df[image_cols["plate"]].str.contains(plate)],
             gg.aes(x=image_cols["site"], y="value", label=image_cols["site"]),
         )
         + gg.coord_fixed(ratio=0.25)
@@ -519,7 +523,7 @@ if all(x in image_df.columns.tolist() for x in cp_sat_df_cols):
     for plate in platelist:
         cp_saturation_gg = (
             gg.ggplot(
-                cp_sat_df.loc[cp_sat_df[image_cols['plate']].str.contains(plate)],
+                cp_sat_df.loc[cp_sat_df[image_cols["plate"]].str.contains(plate)],
                 gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
             )
             + gg.geom_text(size=6)
@@ -592,8 +596,8 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
             bc_saturation_gg = (
                 gg.ggplot(
                     bc_sat_df.loc[
-                        (bc_sat_df[image_cols['well']] == well)
-                        & (bc_sat_df[image_cols['plate']] == plate)
+                        (bc_sat_df[image_cols["well"]] == well)
+                        & (bc_sat_df[image_cols["plate"]] == plate)
                     ],
                     gg.aes(x="StdIntensity", y="PercentMax", label=image_cols["site"]),
                 )

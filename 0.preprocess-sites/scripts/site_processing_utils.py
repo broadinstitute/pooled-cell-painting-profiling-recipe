@@ -1,6 +1,12 @@
 import pathlib
 import pandas as pd
 
+import os
+import sys
+recipe_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(recipe_path, "scripts"))
+from io_utils import read_csvs_with_chunksize
+
 
 def get_compartment_file(compartment, example_dir):
     compartment = compartment.capitalize()
@@ -15,7 +21,7 @@ def load_compartments(core, example_dir):
     for compartment in compartments:
 
         compart_file = get_compartment_file(compartment, example_dir)
-        df = pd.read_csv(compart_file)
+        df = read_csvs_with_chunksize(compart_file)
         df = recode_cols(df, core, compartment)
 
         data[compartment] = df

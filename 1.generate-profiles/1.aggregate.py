@@ -11,6 +11,10 @@ from pycytominer.cyto_utils import output
 sys.path.append("config")
 from utils import parse_command_args, process_configuration, get_split_aware_site_info
 
+recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(recipe_path, "scripts"))
+from io_utils import read_csvs_with_chunksize
+
 args = parse_command_args()
 
 batch_id = args.batch_id
@@ -75,7 +79,7 @@ for data_split_site in site_info_dict:
     # Load single cell data
     if aggregate_from_single_file:
         print(f"Loading one single cell file: {single_cell_dataset_file}")
-        single_cell_df = pd.read_csv(single_cell_dataset_file, sep=",")
+        single_cell_df = read_csvs_with_chunksize(single_cell_dataset_file, sep=",")
     else:
         sites = site_info_dict[data_split_site]
         print(f"Now loading data from {len(sites)} sites")
@@ -83,7 +87,7 @@ for data_split_site in site_info_dict:
         for site in sites:
             site_file = single_cell_site_files[site]
             if site_file.exists():
-                site_df = pd.read_csv(site_file, sep=",")
+                site_df = read_csvs_with_chunksize(site_file, sep=",")
                 single_cell_df.append(site_df)
             else:
                 warnings.warn(
