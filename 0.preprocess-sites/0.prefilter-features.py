@@ -72,6 +72,7 @@ if prefilter_file.exists():
         warnings.warn(force_warning)
 
 # Perform prefiltering and output file
+print("Starting 0.prefilter-features")
 if perform:
     features_df = prefilter_features(core_option_args, example_site_dir, flag_cols)
 else:
@@ -80,3 +81,4 @@ else:
 
 if check_if_write(prefilter_file, force):
     features_df.to_csv(prefilter_file, sep="\t", index=False)
+print("Finished 0.prefilter-features")

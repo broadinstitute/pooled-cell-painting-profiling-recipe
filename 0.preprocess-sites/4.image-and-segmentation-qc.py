@@ -64,6 +64,8 @@ if not perform:
 if not force:
     force = args.force
 
+print("Starting 4.image-and-segmentation-qc.")
+
 cell_count_df = read_csvs_with_chunksize(cell_count_file, sep="\t")
 
 # Creates x, y coordinates for plotting per-plate views.
@@ -626,3 +628,4 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
                     height=(barcoding_cycles + 2),
                     verbose=False,
                 )
+print("Finished 4.image-and-segmentation-qc.")
