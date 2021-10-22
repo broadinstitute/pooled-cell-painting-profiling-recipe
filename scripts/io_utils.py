@@ -21,6 +21,7 @@ def check_if_write(file_path, force, throw_warning=False):
 def read_csvs_with_chunksize(filename, chunksize=10000, **kwargs):
     """
     Read a CSV with an optionally passed chunksize to make reading large files easier.
+    If Pandas ParserError, tries a second time.
     Re-raises any exceptions (likely mostly going to be FileNotFound errors) so they
     can continue to be handled how they currently are in the various locations.
     """
@@ -31,5 +32,15 @@ def read_csvs_with_chunksize(filename, chunksize=10000, **kwargs):
                 dflist.append(chunk)
             df = pd.concat(dflist)
         return df
+    except pd.errors.ParserError:
+        try:
+            with pd.read_csv(filename, chunksize=chunksize, **kwargs) as reader:
+                dflist = []
+                for chunk in reader:
+                    dflist.append(chunk)
+                df = pd.concat(dflist)
+            return df
+        except:
+            raise
     except:
         raise

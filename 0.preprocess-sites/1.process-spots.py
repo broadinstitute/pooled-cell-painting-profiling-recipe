@@ -146,6 +146,9 @@ for data_split_site in site_info_dict:
         except FileNotFoundError:
             print(f"{site} image metadata does not exist. Skipping...")
             continue
+        except pd.errors.ParserError:
+            print(f"Couldn't parse {site} image metadata. Skipping...")
+            continue
 
         # Load spot data
         try:
@@ -155,7 +158,10 @@ for data_split_site in site_info_dict:
             foci_file = pathlib.Path(input_batchdir, site, "Foci.csv")
             foci_df = read_csvs_with_chunksize(foci_file)
         except FileNotFoundError:
-            print(f"{site} data not found")
+            print(f"{site} foci data not found")
+            continue
+        except pd.errors.ParserError:
+            print(f"Couldn't parse {site} foci data. Skipping...")
             continue
 
         try:
