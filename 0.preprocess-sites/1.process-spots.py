@@ -131,7 +131,7 @@ allowed_skip_counter = 0
 for data_split_site in site_info_dict:
     split_sites = site_info_dict[data_split_site]
     for site in split_sites:
-        if allowed_skip_counter >= allowed_skips:
+        if allowed_skips >= allowed_skip_counter:
             print(f"Now processing spots for {site}...part of set {data_split_site}")
 
             # Load image metadata per site
