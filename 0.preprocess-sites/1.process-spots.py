@@ -105,6 +105,7 @@ if not perform:
 if not force:
     force = args.force
 
+print("Starting 1.process-spots.")
 barcode_foci_cols = id_cols + location_cols + spot_parent_cols
 all_foci_cols = list(
     set(
@@ -372,4 +373,4 @@ for data_split_site in site_info_dict:
 # Save the output image info
 image_df = pd.concat(image_list, axis="rows").reset_index(drop=True)
 image_df.to_csv(output_image_file, sep="\t", index=False)
-print("All sites complete.")
+print("Finished 1.process-spots.")

@@ -82,6 +82,8 @@ if single_file_only:
                 "Combined single cell file exists. Use '--force' to overwrite."
             )
 
+print("Starting 0.merge-single-cells.")
+
 # Load preselected features
 all_feature_df = read_csvs_with_chunksize(prefilter_file, sep="\t")
 
@@ -201,3 +203,4 @@ for data_split_site in site_info_dict:
             compression=compression,
             float_format=float_format,
         )
+print("Finished 0.merge-single-cells.")

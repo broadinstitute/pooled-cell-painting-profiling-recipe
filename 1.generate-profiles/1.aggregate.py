@@ -59,6 +59,8 @@ aggregate_levels = aggregate_args["levels"]
 
 force = aggregate_args["force_overwrite"]
 
+print("Starting 1.aggregate.")
+
 sites = [x.name for x in input_spotdir.iterdir() if x.name not in ignore_files]
 site_info_dict = get_split_aware_site_info(
     config["experiment"], sites, split_info, separator="___"
@@ -124,3 +126,4 @@ for data_split_site in site_info_dict:
             compression_options=compression,
             float_format=float_format,
         )
+print("Finished 1.aggregate.")

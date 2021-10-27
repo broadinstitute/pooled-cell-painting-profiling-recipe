@@ -70,7 +70,7 @@ cell_category_dict[empty_cell_category] = "Empty"
 cell_category_df = pd.DataFrame(cell_category_dict, index=[quality_col])
 cell_category_list = list(cell_category_dict.values())
 
-# check if this step should be performed
+# Check if this step should be performed
 if not perform:
     sys.exit("Config file set to perform=False, not performing {}".format(__file__))
 
@@ -79,6 +79,7 @@ if not perform:
 if not force:
     force = args.force
 
+print("Starting 3.visualize-cell-summary.")
 # Pull out site info and split into distinct datasets based on experiment config
 sites = [x.name for x in input_paintdir.iterdir() if x.name not in ignore_files]
 print(f"Summarizing {len(sites)} sites in batch: {batch_id}.")
@@ -388,3 +389,4 @@ if check_if_write(output_file, force, throw_warning=True):
     )
 
 print(f"There are a total of {all_cells} cells in {batch_id}")
+print("Finished 3.visualize-cell-summary.")

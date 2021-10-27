@@ -84,6 +84,7 @@ if not perform:
 if not force:
     force = args.force
 
+print("Starting 2.process-cells.")
 cell_quality = CellQuality(
     quality_func, category_class_name=quality_col, category_col_index=quality_idx
 )
@@ -252,4 +253,4 @@ for data_split_site in site_info_dict:
                 count_output_file, sep="\t", index_label="Cell_Quality"
             )
 
-print("All sites complete.")
+print("Finished 2.process-cells.")
