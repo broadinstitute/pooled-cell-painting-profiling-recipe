@@ -127,6 +127,7 @@ site_info_dict = get_split_aware_site_info(
 )
 
 image_list = []
+all_called_barcodes = []
 for data_split_site in site_info_dict:
     split_sites = site_info_dict[data_split_site]
     for site in split_sites:
@@ -369,6 +370,17 @@ for data_split_site in site_info_dict:
         output_file = pathlib.Path(output_dir, "site_stats.tsv")
         if check_if_write(output_file, force):
             descriptive_results.to_csv(output_file, sep="\t", index=False)
+
+        # Append site to barcode count summary
+        site_called_barcodes = list(crispr_barcode_gene_df['Barcode_MatchedTo_Barcode'])
+        all_called_barcodes+=site_called_barcodes
+
+# Create and save the barcode count summary for easy NGS comparison
+barcode_count_summary_df = pd.DataFrame()
+barcode_count_summary_df['All_Called_Barcodes'] = all_called_barcodes
+barcode_count_summary_df = barcode_count_summary_df.groupby(['All_Called_Barcodes']).size().reset_index(name='count')
+output_file = pathlib.Path(output_spotdir, "Total_Barcode_Calls_Counts.tsv")
+barcode_count_summary_df.to_csv(output_file, sep="\t", index=False)
 
 # Save the output image info
 image_df = pd.concat(image_list, axis="rows").reset_index(drop=True)
