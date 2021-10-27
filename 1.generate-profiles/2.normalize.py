@@ -3,6 +3,7 @@ import sys
 import pathlib
 import argparse
 import warnings
+import logging
 import pandas as pd
 
 from pycytominer import normalize
@@ -13,6 +14,14 @@ from utils import parse_command_args, process_configuration, get_split_aware_sit
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from io_utils import read_csvs_with_chunksize
+
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "2.normalize.log"),
+    level=logging.INFO,
+)
 
 args = parse_command_args()
 
@@ -58,6 +67,7 @@ normalize_method = normalize_args["method"]
 force = normalize_args["force_overwrite"]
 
 print("Starting 2.normalize.")
+logging.info(f"Started 2.normalize.")
 
 sites = [x.name for x in input_spotdir.iterdir() if x.name not in ignore_files]
 site_info_dict = get_split_aware_site_info(
@@ -81,7 +91,10 @@ for data_split_site in site_info_dict:
             )
 
         print(
-            f"Now normalizing {data_level}...with operation: {normalize_method} for spilt {data_split_site}"
+            f"Now normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
+        )
+        logging.info(
+            f"Normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
         )
 
         output_file = normalize_output_files[data_level]
@@ -101,3 +114,4 @@ for data_split_site in site_info_dict:
             float_format=float_format,
         )
 print("Finished 2.normalize.")
+logging.info("Finished 2.normalize.")

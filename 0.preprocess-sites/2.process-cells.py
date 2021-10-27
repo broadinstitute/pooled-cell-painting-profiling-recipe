@@ -21,6 +21,7 @@ import sys
 import pathlib
 import warnings
 import argparse
+import logging
 import pandas as pd
 
 sys.path.append("config")
@@ -31,6 +32,14 @@ sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
 from io_utils import check_if_write, read_csvs_with_chunksize
+
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "2.process-cells.log"),
+    level=logging.INFO,
+)
 
 args = parse_command_args()
 
@@ -85,6 +94,7 @@ if not force:
     force = args.force
 
 print("Starting 2.process-cells.")
+logging.info(f"Starting 2.process-cells.")
 cell_quality = CellQuality(
     quality_func, category_class_name=quality_col, category_col_index=quality_idx
 )
@@ -136,6 +146,7 @@ for data_split_site in site_info_dict:
 
         try:
             print(f"Now processing cells for {site}...")
+            logging.info(f"Processing cells for {site}")
             compartment_dir = pathlib.Path(input_batchdir, site)
 
             # Make the compartment_csvs dictionary used to merge dfs
@@ -161,6 +172,9 @@ for data_split_site in site_info_dict:
                       If it has been run, check that output_paintdir is set correctly in
                       the process-spots section of the config"""
                 )
+                logging.info(
+                    f"Didn't find cell_id_barcode_alignment_scores_by_guide.tsv"
+                )
                 continue
 
             # Relabel columns in foci_df to start with Metadata_Foci_
@@ -171,6 +185,7 @@ for data_split_site in site_info_dict:
 
         except FileNotFoundError:
             print(f"Compartment data for {site} not found")
+            logging.info(f"Didn't find compartment data for {site}")
             continue
 
         # Merge compartment csvs. Each row is a separate cell
@@ -205,10 +220,7 @@ for data_split_site in site_info_dict:
         # Add the cell quality metadata to the df
         metadata_df = (
             metadata_df.merge(
-                cell_category_df,
-                left_on=quality_idx,
-                right_index=True,
-                how="left",
+                cell_category_df, left_on=quality_idx, right_index=True, how="left",
             )
             .sort_values(by=cell_sort_col)
             .drop_duplicates(subset=[cell_sort_col, quality_idx])
@@ -236,10 +248,12 @@ for data_split_site in site_info_dict:
         if output_folder.exists():
             if force:
                 warnings.warn("Output files likely exist, now overwriting...")
+                logging.warning("Output files likely exist. Overwriting.")
             else:
                 warnings.warn(
                     "Output files likely exist. If they do, NOT overwriting..."
                 )
+                logging.warning("Output files likely exist. NOT Overwriting.")
         os.makedirs(output_folder, exist_ok=True)
 
         meta_output_file = pathlib.Path(output_folder, f"metadata_{site}.tsv.gz")
@@ -254,3 +268,4 @@ for data_split_site in site_info_dict:
             )
 
 print("Finished 2.process-cells.")
+logging.info(f"Finished 2.process-cells.")

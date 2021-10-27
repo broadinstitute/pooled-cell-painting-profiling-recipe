@@ -3,6 +3,7 @@ import sys
 import pathlib
 import argparse
 import warnings
+import logging
 import pandas as pd
 import yaml
 
@@ -19,6 +20,14 @@ from paint_utils import load_single_cell_compartment_csv, merge_single_cell_comp
 from cell_quality_utils import CellQuality
 from profile_utils import sanitize_gene_col
 from io_utils import read_csvs_with_chunksize
+
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "0.merge-single-cells.log"),
+    level=logging.INFO,
+)
 
 args = parse_command_args()
 
@@ -81,8 +90,10 @@ if single_file_only:
             warnings.warn(
                 "Combined single cell file exists. Use '--force' to overwrite."
             )
+            logging.warning("Combined single cell file already exists.")
 
 print("Starting 0.merge-single-cells.")
+logging.info(f"Started 0.merge-single-cells.")
 
 # Load preselected features
 all_feature_df = read_csvs_with_chunksize(prefilter_file, sep="\t")
@@ -111,6 +122,9 @@ for data_split_site in site_info_dict:
             print(
                 f"Building single file for dataset {data_split_site}; combining single cells from site: {site}..."
             )
+            logging.info(
+                f"Building single file for dataset {data_split_site}; combining single cells from site: {site}..."
+            )
         else:
             # If the output file already exists, only overwrite if --force is provided
             if sc_output_file.exists():
@@ -118,11 +132,14 @@ for data_split_site in site_info_dict:
                     print(
                         f"Skipping reprocessing single cells for site: {site}... use --force to overwrite"
                     )
+                    logging.info(f"Skipped reprocessing single cells for site: {site}")
                     continue
                 else:
                     print(f"Now overwriting single cells for site: {site}...")
+                    logging.info(f"Overwrote single cells for site: {site}")
             else:
                 print(f"Now processing single cells for site: {site}...")
+                logging.info(f"Processed single cells for site: {site}")
 
         # Point to appropriate directories
         site_metadata_dir = pathlib.Path(input_paintdir, site)
@@ -154,6 +171,9 @@ for data_split_site in site_info_dict:
         if len(compartment_csvs) != len(compartments):
             warnings.warn(
                 f"Not all compartments are present in site: {site}\nCheck CellProfiler output path: {site_compartment_dir}. Skipping this site."
+            )
+            logging.warning(
+                f"{site} skipped because of missing compartments in {site_compartment_dir}."
             )
             continue
 
@@ -196,6 +216,7 @@ for data_split_site in site_info_dict:
             ), "Not outputting combined single cell file, --force not provided!"
 
         print(f"Now writing single cell file: {single_cell_dataset_file}...")
+        logging.info(f"Writing single cell file: {single_cell_dataset_file}...")
         (pd.concat(sc_df, axis="rows").reset_index(drop=True)).to_csv(
             single_cell_dataset_file,
             sep=",",
@@ -204,3 +225,4 @@ for data_split_site in site_info_dict:
             float_format=float_format,
         )
 print("Finished 0.merge-single-cells.")
+logging.info(f"Finished 0.merge-single-cells.")

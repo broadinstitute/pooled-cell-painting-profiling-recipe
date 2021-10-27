@@ -3,6 +3,7 @@ import sys
 import pathlib
 import argparse
 import warnings
+import logging
 import pandas as pd
 
 from pycytominer import feature_select
@@ -13,6 +14,14 @@ from utils import parse_command_args, process_configuration, get_split_aware_sit
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from io_utils import read_csvs_with_chunksize
+
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "3.feature-select.log"),
+    level=logging.INFO,
+)
 
 args = parse_command_args()
 
@@ -60,6 +69,7 @@ feature_select_corr_threshold = feature_select_args["corr_threshold"]
 force = feature_select_args["force_overwrite"]
 
 print("Starting 3.feature-select.")
+logging.info("Starting 3.feature-select.")
 
 sites = [x.name for x in input_spotdir.iterdir() if x.name not in ignore_files]
 site_info_dict = get_split_aware_site_info(
@@ -73,6 +83,9 @@ for data_split_site in site_info_dict:
                 warnings.warn(
                     "Feature select operation is not enabled for site-specific single cell files. Skipping."
                 )
+                logging.warning(
+                    "Feature select operation is not enabled for site-specific single cell files. Skipping."
+                )
                 continue
 
         file_to_feature_select = feature_select_input_files[data_level]
@@ -84,7 +97,10 @@ for data_split_site in site_info_dict:
         )
 
         print(
-            f"Now performing feature selection for {data_level}...with operations: {feature_select_operations} for spilt {data_split_site}"
+            f"Now performing feature selection for {data_level}...with operations: {feature_select_operations} for split {data_split_site}"
+        )
+        logging.info(
+            f"Performing feature selection for {data_level} with operations: {feature_select_operations} for split {data_split_site}"
         )
 
         output_file = feature_select_output_files[data_level]
@@ -106,3 +122,4 @@ for data_split_site in site_info_dict:
             float_format=float_format,
         )
 print("Finished 3.feature-select.")
+logging.info("Finished 3.feature-select.")

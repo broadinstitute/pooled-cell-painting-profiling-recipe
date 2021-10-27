@@ -1,6 +1,7 @@
 import os
 import sys
 import pathlib
+import logging
 import argparse
 import pandas as pd
 import plotnine as gg
@@ -12,6 +13,14 @@ recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from io_utils import check_if_write, read_csvs_with_chunksize
+
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "4.image-and-segmentation-qc.log"),
+    level=logging.INFO,
+)
 
 args = parse_command_args()
 
@@ -65,6 +74,7 @@ if not force:
     force = args.force
 
 print("Starting 4.image-and-segmentation-qc.")
+logging.info(f"Started 4.image-and-segmentation-qc.")
 
 cell_count_df = read_csvs_with_chunksize(cell_count_file, sep="\t")
 
@@ -251,9 +261,7 @@ for plate in platelist:
     )
     if check_if_write(output_file, force, throw_warning=True):
         empty_gg.save(
-            output_file,
-            dpi=300,
-            verbose=False,
+            output_file, dpi=300, verbose=False,
         )
 
 # Load image file
@@ -629,3 +637,4 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
                     verbose=False,
                 )
 print("Finished 4.image-and-segmentation-qc.")
+logging.info(f"Finished 4.image-and-segmentation-qc.")

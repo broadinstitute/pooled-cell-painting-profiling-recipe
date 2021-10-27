@@ -34,6 +34,7 @@ import sys
 import pathlib
 import warnings
 import argparse
+import logging
 import pandas as pd
 import yaml
 
@@ -55,6 +56,14 @@ recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from io_utils import check_if_write, read_csvs_with_chunksize
+
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "1.process-spots.log"),
+    level=logging.INFO,
+)
 
 args = parse_command_args()
 
@@ -106,6 +115,7 @@ if not force:
     force = args.force
 
 print("Starting 1.process-spots.")
+logging.info("Started 1.process-spots.")
 barcode_foci_cols = id_cols + location_cols + spot_parent_cols
 all_foci_cols = list(
     set(
@@ -132,6 +142,7 @@ for data_split_site in site_info_dict:
     split_sites = site_info_dict[data_split_site]
     for site in split_sites:
         print(f"Now processing spots for {site}...part of set {data_split_site}")
+        logging.info(f"Now processing spots for {site}...part of set {data_split_site}")
 
         # Load image metadata per site
         try:
@@ -147,6 +158,7 @@ for data_split_site in site_info_dict:
             site_location = image_df.loc[:, image_cols["site"]].squeeze()
         except FileNotFoundError:
             print(f"{site} image metadata does not exist. Skipping...")
+            logging.info(f"Skipped {site}. No Image.csv")
             continue
 
         # Load spot data
@@ -158,12 +170,14 @@ for data_split_site in site_info_dict:
             foci_df = read_csvs_with_chunksize(foci_file)
         except FileNotFoundError:
             print(f"{site} data not found")
+            logging.info(f"Skipped {site}. No Foci.csv and/or BarcodeFoci.csv")
             continue
 
         try:
             image_number = foci_df.ImageNumber.unique()[0]
         except IndexError:
             print(f"{site} does not have any foci")
+            logging.info(f"{site} does not have any foci")
             continue
 
         try:
@@ -181,16 +195,19 @@ for data_split_site in site_info_dict:
             )
         except AssertionError:
             print(f"{site} data not aligned between foci files")
+            logging.info(f"{site} data not aligned between Barcode.csv and Foci.csv")
             continue
 
         output_dir = pathlib.Path(output_spotdir, site)
         if output_dir.exists():
             if force:
                 warnings.warn("Output files likely exist, now overwriting...")
+                logging.warning(f"{site} output files likely exist. Overwriting.")
             else:
                 warnings.warn(
                     "Output files likely exist. If they do, NOT overwriting..."
                 )
+                logging.warning(f"{site} output files likely exist. NOT Overwriting.")
         output_dir.mkdir(exist_ok=True, parents=True)
 
         # Merge spot data files
@@ -372,13 +389,17 @@ for data_split_site in site_info_dict:
             descriptive_results.to_csv(output_file, sep="\t", index=False)
 
         # Append site to barcode count summary
-        site_called_barcodes = list(crispr_barcode_gene_df['Barcode_MatchedTo_Barcode'])
-        all_called_barcodes+=site_called_barcodes
+        site_called_barcodes = list(crispr_barcode_gene_df["Barcode_MatchedTo_Barcode"])
+        all_called_barcodes += site_called_barcodes
 
 # Create and save the barcode count summary for easy NGS comparison
 barcode_count_summary_df = pd.DataFrame()
-barcode_count_summary_df['All_Called_Barcodes'] = all_called_barcodes
-barcode_count_summary_df = barcode_count_summary_df.groupby(['All_Called_Barcodes']).size().reset_index(name='count')
+barcode_count_summary_df["All_Called_Barcodes"] = all_called_barcodes
+barcode_count_summary_df = (
+    barcode_count_summary_df.groupby(["All_Called_Barcodes"])
+    .size()
+    .reset_index(name="count")
+)
 output_file = pathlib.Path(output_spotdir, "Total_Barcode_Calls_Counts.tsv")
 barcode_count_summary_df.to_csv(output_file, sep="\t", index=False)
 
@@ -386,3 +407,4 @@ barcode_count_summary_df.to_csv(output_file, sep="\t", index=False)
 image_df = pd.concat(image_list, axis="rows").reset_index(drop=True)
 image_df.to_csv(output_image_file, sep="\t", index=False)
 print("Finished 1.process-spots.")
+logging.info(f"Finished 1.process-spots.")
