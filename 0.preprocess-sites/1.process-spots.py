@@ -75,9 +75,10 @@ def handle_excepthook(exc_type, exc_value, exc_traceback):
 
 sys.excepthook = handle_excepthook
 
-args = parse_command_args()
-
 # Configure experiment
+args = parse_command_args()
+logging.info(f"Args used:{args}")
+
 batch_id = args.batch_id
 options_config_file = args.options_config_file
 experiment_config_file = args.experiment_config_file
