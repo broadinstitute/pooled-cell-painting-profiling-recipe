@@ -44,6 +44,7 @@ config = process_configuration(
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
+logging.info(f"Config used:{config}")
 
 # Set constants
 experiment_args = config["experiment"]

@@ -54,6 +54,7 @@ config = process_configuration(
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
+logging.info(f"Config used:{config}")
 
 # Define variables set in the config file
 split_info = config["experiment"]["split"][split_step]
