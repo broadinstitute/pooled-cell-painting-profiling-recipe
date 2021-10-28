@@ -2,6 +2,7 @@ import os
 import sys
 import pathlib
 import logging
+import traceback
 import argparse
 import pandas as pd
 import plotnine as gg
@@ -14,6 +15,7 @@ sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from io_utils import check_if_write, read_csvs_with_chunksize
 
+# Configure logging
 logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 if not os.path.isdir(logfolder):
     os.mkdir(logfolder)
@@ -22,6 +24,16 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
+
+def handle_excepthook(exc_type, exc_value, exc_traceback):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    traceback_details = "\n".join(traceback.extract_tb(exc_traceback).format())
+    print(f"Uncaught Exception: {traceback_details}")
+
+
+sys.excepthook = handle_excepthook
+
+# Configure experiment
 args = parse_command_args()
 
 batch_id = args.batch_id

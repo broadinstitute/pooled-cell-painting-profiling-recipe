@@ -13,6 +13,7 @@ import pathlib
 import warnings
 import argparse
 import logging
+import traceback
 import numpy as np
 import pandas as pd
 from scripts.site_processing_utils import prefilter_features, load_features
@@ -24,14 +25,24 @@ recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from io_utils import check_if_write
 
+# Configure logging
 logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 if not os.path.isdir(logfolder):
     os.mkdir(logfolder)
 logging.basicConfig(
-    filename=os.path.join(logfolder, "0.prefilter-features.log"),
-    level=logging.INFO,
+    filename=os.path.join(logfolder, "0.prefilter-features.log"), level=logging.INFO,
 )
 
+
+def handle_excepthook(exc_type, exc_value, exc_traceback):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    traceback_details = "\n".join(traceback.extract_tb(exc_traceback).format())
+    print(f"Uncaught Exception: {traceback_details}")
+
+
+sys.excepthook = handle_excepthook
+
+# Configure experiment
 args = parse_command_args()
 
 batch_id = args.batch_id

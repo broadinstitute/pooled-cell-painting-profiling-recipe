@@ -22,6 +22,7 @@ import pathlib
 import warnings
 import argparse
 import logging
+import traceback
 import pandas as pd
 
 sys.path.append("config")
@@ -33,14 +34,24 @@ from cell_quality_utils import CellQuality
 from paint_utils import load_single_cell_compartment_csv, merge_single_cell_compartments
 from io_utils import check_if_write, read_csvs_with_chunksize
 
+# Configure logging
 logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 if not os.path.isdir(logfolder):
     os.mkdir(logfolder)
 logging.basicConfig(
-    filename=os.path.join(logfolder, "2.process-cells.log"),
-    level=logging.INFO,
+    filename=os.path.join(logfolder, "2.process-cells.log"), level=logging.INFO,
 )
 
+
+def handle_excepthook(exc_type, exc_value, exc_traceback):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    traceback_details = "\n".join(traceback.extract_tb(exc_traceback).format())
+    print(f"Uncaught Exception: {traceback_details}")
+
+
+sys.excepthook = handle_excepthook
+
+# Configure experiment
 args = parse_command_args()
 
 batch_id = args.batch_id

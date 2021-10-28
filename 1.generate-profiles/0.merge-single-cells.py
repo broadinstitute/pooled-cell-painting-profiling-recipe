@@ -4,6 +4,7 @@ import pathlib
 import argparse
 import warnings
 import logging
+import traceback
 import pandas as pd
 import yaml
 
@@ -21,14 +22,24 @@ from cell_quality_utils import CellQuality
 from profile_utils import sanitize_gene_col
 from io_utils import read_csvs_with_chunksize
 
+# Configure logging
 logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 if not os.path.isdir(logfolder):
     os.mkdir(logfolder)
 logging.basicConfig(
-    filename=os.path.join(logfolder, "0.merge-single-cells.log"),
-    level=logging.INFO,
+    filename=os.path.join(logfolder, "0.merge-single-cells.log"), level=logging.INFO,
 )
 
+
+def handle_excepthook(exc_type, exc_value, exc_traceback):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    traceback_details = "\n".join(traceback.extract_tb(exc_traceback).format())
+    print(f"Uncaught Exception: {traceback_details}")
+
+
+sys.excepthook = handle_excepthook
+
+# Configure experiment
 args = parse_command_args()
 
 batch_id = args.batch_id
