@@ -2,6 +2,8 @@ import os
 import sys
 import pathlib
 import argparse
+import logging
+import traceback
 import warnings
 import pandas as pd
 import plotnine as gg
@@ -16,7 +18,27 @@ sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from io_utils import check_if_write, read_csvs_with_chunksize
 
+# Configure logging
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "3.visualize-cell-summary.log"),
+    level=logging.INFO,
+)
+
+
+def handle_excepthook(exc_type, exc_value, exc_traceback):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    traceback_details = "\n".join(traceback.extract_tb(exc_traceback).format())
+    print(f"Uncaught Exception: {traceback_details}")
+
+
+sys.excepthook = handle_excepthook
+
+# Configure experiment
 args = parse_command_args()
+logging.info(f"Args used:{args}")
 
 batch_id = args.batch_id
 options_config_file = args.options_config_file
@@ -29,6 +51,7 @@ config = process_configuration(
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
+logging.info(f"Config used:{config}")
 
 # Define variables set in the config file
 control_barcodes = config["experiment"]["control_barcode_ids"]
@@ -80,9 +103,11 @@ if not force:
     force = args.force
 
 print("Starting 3.visualize-cell-summary.")
+logging.info(f"Starting 3.visualize-cell-summary.")
 # Pull out site info and split into distinct datasets based on experiment config
 sites = [x.name for x in input_paintdir.iterdir() if x.name not in ignore_files]
 print(f"Summarizing {len(sites)} sites in batch: {batch_id}.")
+logging.info(f"Summarizing {len(sites)} sites in batch: {batch_id}.")
 
 site_info_dict = get_split_aware_site_info(
     config["experiment"], sites, split_info, separator="___"
@@ -228,9 +253,7 @@ total_cell_count_gg = (
     + gg.ggtitle(f"{all_cells} Total Cells")
     + gg.facet_wrap("~Metadata_dataset_split", drop=False, scales="free_x")
     + gg.scale_fill_manual(
-        name="Cell Quality",
-        labels=cell_category_order,
-        values=cell_category_colors,
+        name="Cell Quality", labels=cell_category_order, values=cell_category_colors,
     )
 )
 
@@ -254,9 +277,7 @@ total_cell_well_count_gg = (
     + gg.ylab("Cell Count")
     + gg.facet_wrap("~Cell_Quality")
     + gg.scale_fill_manual(
-        name="Cell Quality",
-        labels=cell_category_order,
-        values=cell_category_colors,
+        name="Cell Quality", labels=cell_category_order, values=cell_category_colors,
     )
     + gg.theme(strip_background=gg.element_rect(colour="black", fill="#fdfff4"))
 )
@@ -389,4 +410,6 @@ if check_if_write(output_file, force, throw_warning=True):
     )
 
 print(f"There are a total of {all_cells} cells in {batch_id}")
+logging.info(f"There are a total of {all_cells} cells in {batch_id}")
 print("Finished 3.visualize-cell-summary.")
+logging.info(f"Finished 3.visualize-cell-summary.")

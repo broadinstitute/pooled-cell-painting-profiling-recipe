@@ -3,6 +3,8 @@ import sys
 import pathlib
 import argparse
 import warnings
+import logging
+import traceback
 import pandas as pd
 
 from pycytominer import aggregate
@@ -15,7 +17,26 @@ recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from io_utils import read_csvs_with_chunksize
 
+# Configure logging
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "1.aggregate.log"), level=logging.INFO,
+)
+
+
+def handle_excepthook(exc_type, exc_value, exc_traceback):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    traceback_details = "\n".join(traceback.extract_tb(exc_traceback).format())
+    print(f"Uncaught Exception: {traceback_details}")
+
+
+sys.excepthook = handle_excepthook
+
+# Configure experiment
 args = parse_command_args()
+logging.info(f"Args used:{args}")
 
 batch_id = args.batch_id
 options_config_file = args.options_config_file
@@ -28,6 +49,7 @@ config = process_configuration(
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
+logging.info(f"Config used:{config}")
 
 # Extract config arguments
 split_info = config["experiment"]["split"][split_step]
@@ -60,6 +82,7 @@ aggregate_levels = aggregate_args["levels"]
 force = aggregate_args["force_overwrite"]
 
 print("Starting 1.aggregate.")
+logging.info(f"Started 1.aggregate.")
 
 sites = [x.name for x in input_spotdir.iterdir() if x.name not in ignore_files]
 site_info_dict = get_split_aware_site_info(
@@ -82,9 +105,11 @@ for data_split_site in site_info_dict:
     if aggregate_from_single_file:
         print(f"Loading one single cell file: {single_cell_dataset_file}")
         single_cell_df = read_csvs_with_chunksize(single_cell_dataset_file, sep=",")
+        logging.info(f"Loaded one single cell file: {single_cell_dataset_file}")
     else:
         sites = site_info_dict[data_split_site]
         print(f"Now loading data from {len(sites)} sites")
+        logging.info(f"Loading data from {len(sites)} sites")
         single_cell_df = []
         for site in sites:
             site_file = single_cell_site_files[site]
@@ -95,6 +120,7 @@ for data_split_site in site_info_dict:
                 warnings.warn(
                     f"{site_file} does not exist. There must have been an error in processing"
                 )
+                logging.warning(f"{site_file} does not exist.")
 
         single_cell_df = pd.concat(single_cell_df, axis="rows").reset_index(drop=True)
 
@@ -105,6 +131,9 @@ for data_split_site in site_info_dict:
 
         print(
             f"Now aggregating by {aggregate_level}...with operation: {aggregate_operation}"
+        )
+        logging.info(
+            f"Aggregating by {aggregate_level}...with operation: {aggregate_operation}"
         )
 
         aggregate_df = aggregate(
@@ -127,3 +156,4 @@ for data_split_site in site_info_dict:
             float_format=float_format,
         )
 print("Finished 1.aggregate.")
+logging.info(f"Finished 1.aggregate.")

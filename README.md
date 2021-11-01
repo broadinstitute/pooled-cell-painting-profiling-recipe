@@ -51,3 +51,9 @@ Briefly, the goal of the weld is to tightly couple the Pooled Cell Painting proc
 This recipe is the versioned code and a GitHub submodule links the recipe by commit hash.
 
 The recipe is interacted with via a series of configuration yaml files defined in the data repository.
+
+## Logging
+
+The recipe includes creation of a log file for each step.
+The file is named after the step (e.g. 0.prefilter-features.log) and saves in a log/ folder within each module.
+The file logs progress information, warnings, and uncaught exceptions.

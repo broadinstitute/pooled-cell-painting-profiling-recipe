@@ -1,6 +1,8 @@
 import os
 import sys
 import pathlib
+import logging
+import traceback
 import argparse
 import pandas as pd
 import plotnine as gg
@@ -13,7 +15,27 @@ sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from io_utils import check_if_write, read_csvs_with_chunksize
 
+# Configure logging
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "4.image-and-segmentation-qc.log"),
+    level=logging.INFO,
+)
+
+
+def handle_excepthook(exc_type, exc_value, exc_traceback):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    traceback_details = "\n".join(traceback.extract_tb(exc_traceback).format())
+    print(f"Uncaught Exception: {traceback_details}")
+
+
+sys.excepthook = handle_excepthook
+
+# Configure experiment
 args = parse_command_args()
+logging.info(f"Args used:{args}")
 
 batch_id = args.batch_id
 options_config_file = args.options_config_file
@@ -26,6 +48,7 @@ config = process_configuration(
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
+logging.info(f"Config used:{config}")
 
 # Defines the sections of the config file
 
@@ -65,6 +88,7 @@ if not force:
     force = args.force
 
 print("Starting 4.image-and-segmentation-qc.")
+logging.info(f"Started 4.image-and-segmentation-qc.")
 
 cell_count_df = read_csvs_with_chunksize(cell_count_file, sep="\t")
 
@@ -251,9 +275,7 @@ for plate in platelist:
     )
     if check_if_write(output_file, force, throw_warning=True):
         empty_gg.save(
-            output_file,
-            dpi=300,
-            verbose=False,
+            output_file, dpi=300, verbose=False,
         )
 
 # Load image file
@@ -629,3 +651,4 @@ if all(x in image_df.columns.tolist() for x in bc_sat_df_cols):
                     verbose=False,
                 )
 print("Finished 4.image-and-segmentation-qc.")
+logging.info(f"Finished 4.image-and-segmentation-qc.")
