@@ -117,6 +117,7 @@ spot_score_cols = spot_config["spot_score_cols"]
 foci_cols = spot_config["foci_cols"]
 force = spot_config["force_overwrite"]
 perform = spot_config["perform"]
+allowed_skips = spot_config["allowed_skips"]
 
 # check if this step should be performed
 if not perform:
@@ -151,199 +152,143 @@ site_info_dict = get_split_aware_site_info(
 
 image_list = []
 all_called_barcodes = []
+allowed_skip_counter = 0
 for data_split_site in site_info_dict:
     split_sites = site_info_dict[data_split_site]
     for site in split_sites:
-        print(f"Now processing spots for {site}...part of set {data_split_site}")
-        logging.info(f"Now processing spots for {site}...part of set {data_split_site}")
+        if allowed_skips >= allowed_skip_counter:
+            print(f"Now processing spots for {site}...part of set {data_split_site}")
+            logging.info(f"Now processing spots for {site}...part of set {data_split_site}")
 
-        # Load image metadata per site
-        try:
-            image_file = pathlib.Path(input_batchdir, site, "Image.csv")
-            image_df = read_csvs_with_chunksize(image_file).assign(
-                Metadata_site=site, Metadata_dataset_split=data_split_site
-            )
-            image_list.append(image_df)
-
-            # Obtain specific metadata info
-            well = image_df.loc[:, image_cols["well"]].squeeze()
-            plate = image_df.loc[:, image_cols["plate"]].squeeze()
-            site_location = image_df.loc[:, image_cols["site"]].squeeze()
-        except FileNotFoundError:
-            print(f"{site} image metadata does not exist. Skipping...")
-            logging.info(f"Skipped {site}. No Image.csv")
-            continue
-
-        # Load spot data
-        try:
-            barcode_file = pathlib.Path(input_batchdir, site, "BarcodeFoci.csv")
-            barcodefoci_df = read_csvs_with_chunksize(barcode_file)
-
-            foci_file = pathlib.Path(input_batchdir, site, "Foci.csv")
-            foci_df = read_csvs_with_chunksize(foci_file)
-        except FileNotFoundError:
-            print(f"{site} data not found")
-            logging.info(f"Skipped {site}. No Foci.csv and/or BarcodeFoci.csv")
-            continue
-
-        try:
-            image_number = foci_df.ImageNumber.unique()[0]
-        except IndexError:
-            print(f"{site} does not have any foci")
-            logging.info(f"{site} does not have any foci")
-            continue
-
-        try:
-            # Confirm that image number and object number are aligned
-            pd.testing.assert_frame_equal(
-                barcodefoci_df.loc[:, id_cols],
-                foci_df.loc[:, id_cols],
-                check_names=True,
-            )
-
-            pd.testing.assert_frame_equal(
-                barcodefoci_df.loc[:, location_cols],
-                foci_df.loc[:, location_cols],
-                check_names=True,
-            )
-        except AssertionError:
-            print(f"{site} data not aligned between foci files")
-            logging.info(f"{site} data not aligned between Barcode.csv and Foci.csv")
-            continue
-
-        output_dir = pathlib.Path(output_spotdir, site)
-        if output_dir.exists():
-            if force:
-                warnings.warn("Output files likely exist, now overwriting...")
-                logging.warning(f"{site} output files likely exist. Overwriting.")
-            else:
-                warnings.warn(
-                    "Output files likely exist. If they do, NOT overwriting..."
+            # Load image metadata per site
+            try:
+                image_file = pathlib.Path(input_batchdir, site, "Image.csv")
+                image_df = read_csvs_with_chunksize(image_file).assign(
+                    Metadata_site=site, Metadata_dataset_split=data_split_site
                 )
-                logging.warning(f"{site} output files likely exist. NOT Overwriting.")
-        output_dir.mkdir(exist_ok=True, parents=True)
+                image_list.append(image_df)
 
-        # Merge spot data files
-        complete_foci_df = barcodefoci_df.loc[:, barcode_foci_cols].merge(
-            foci_df.loc[:, all_foci_cols],
-            left_on=id_cols + location_cols,
-            right_on=id_cols + location_cols,
-            how="inner",
-        )
+                # Obtain specific metadata info
+                well = image_df.loc[:, image_cols["well"]].squeeze()
+                plate = image_df.loc[:, image_cols["plate"]].squeeze()
+                site_location = image_df.loc[:, image_cols["site"]].squeeze()
+            except FileNotFoundError:
+                print(f"{site} image metadata does not exist. Skipping...")
+                logging.info(f"Skipped {site}. No Image.csv")
+                continue
+            except pd.errors.ParserError:
+                print(f"Couldn't parse {site} image metadata. Skipping...")
+                allowed_skip_counter += 1
+                continue
 
-        null_spot_df = complete_foci_df.loc[
-            (complete_foci_df.loc[:, spot_parent_cols] == 0).squeeze(), :
-        ]
-        cell_spot_df = complete_foci_df.loc[
-            (complete_foci_df.loc[:, spot_parent_cols] != 0).squeeze(), :
-        ]
+            # Load spot data
+            try:
+                barcode_file = pathlib.Path(input_batchdir, site, "BarcodeFoci.csv")
+                barcodefoci_df = read_csvs_with_chunksize(barcode_file)
 
-        num_assigned_cells = len(
-            cell_spot_df.loc[:, spot_parent_cols].squeeze().unique()
-        )
-        num_unassigned_spots = null_spot_df.shape[0]
-        num_assigned_spots = cell_spot_df.shape[0]
+                foci_file = pathlib.Path(input_batchdir, site, "Foci.csv")
+                foci_df = read_csvs_with_chunksize(foci_file)
+            except FileNotFoundError:
+                print(f"{site} data not found")
+                logging.info(f"Skipped {site}. No Foci.csv and/or BarcodeFoci.csv")
+                continue
+            except pd.errors.ParserError:
+                print(f"Couldn't parse {site} foci data. Skipping...")
+                allowed_skip_counter += 1
+                continue
 
-        # Figure 1 - histogram of barcode counts per cell
-        fig_file = pathlib.Path(output_dir, "num_spots_per_cell_histogram.png")
-        if check_if_write(fig_file, force):
-            spot_counts_per_cell_histogram(cell_spot_df, spot_parent_cols, fig_file)
+            try:
+                image_number = foci_df.ImageNumber.unique()[0]
+            except IndexError:
+                print(f"{site} does not have any foci")
+                logging.info(f"{site} does not have any foci")
+                continue
 
-        # Figure 2 - histogram of barcode scores per spot
-        fig_file = pathlib.Path(output_dir, "barcode_scores_per_spot_histogram.png")
-        if check_if_write(fig_file, force):
-            spot_score_histogram(cell_spot_df, spot_score_cols, fig_file)
+            try:
+                # Confirm that image number and object number are aligned
+                pd.testing.assert_frame_equal(
+                    barcodefoci_df.loc[:, id_cols],
+                    foci_df.loc[:, id_cols],
+                    check_names=True,
+                )
 
-        # Figure 3 - Joint plot of relationship of barcode counts per cell and mean score
-        fig_file = pathlib.Path(
-            output_dir, "per_cell_barcode_count_by_mean_score_jointplot.png"
-        )
-        if check_if_write(fig_file, force):
-            spot_count_score_jointplot(
-                cell_spot_df, spot_parent_cols[0], spot_score_cols[0], fig_file
+                pd.testing.assert_frame_equal(
+                    barcodefoci_df.loc[:, location_cols],
+                    foci_df.loc[:, location_cols],
+                    check_names=True,
+                )
+            except AssertionError:
+                print(f"{site} data not aligned between foci files")
+                logging.info(f"{site} data not aligned between Barcode.csv and Foci.csv")
+                continue
+
+            output_dir = pathlib.Path(output_spotdir, site)
+            if output_dir.exists():
+                if force:
+                    warnings.warn("Output files likely exist, now overwriting...")
+                    logging.warning(f"{site} output files likely exist. Overwriting.")
+                else:
+                    warnings.warn(
+                        "Output files likely exist. If they do, NOT overwriting..."
+                    )
+                    logging.warning(f"{site} output files likely exist. NOT Overwriting.")
+            output_dir.mkdir(exist_ok=True, parents=True)
+
+            # Merge spot data files
+            complete_foci_df = barcodefoci_df.loc[:, barcode_foci_cols].merge(
+                foci_df.loc[:, all_foci_cols],
+                left_on=id_cols + location_cols,
+                right_on=id_cols + location_cols,
+                how="inner",
             )
 
-        # Barcodes: Get counts of initial baseline calls
-        crispr_barcode_gene_df = category_counts(
-            df=cell_spot_df,
-            gene_cols=gene_cols,
-            barcode_cols=barcode_cols,
-            score_cols=spot_score_cols,
-            parent_cols=spot_parent_cols,
-            guide=True,
-        )
+            null_spot_df = complete_foci_df.loc[
+                (complete_foci_df.loc[:, spot_parent_cols] == 0).squeeze(), :
+            ]
+            cell_spot_df = complete_foci_df.loc[
+                (complete_foci_df.loc[:, spot_parent_cols] != 0).squeeze(), :
+            ]
+            num_assigned_cells = len(
+                cell_spot_df.loc[:, spot_parent_cols].squeeze().unique()
+            )
+            num_unassigned_spots = null_spot_df.shape[0]
+            num_assigned_spots = cell_spot_df.shape[0]
 
-        # Assign Cell Quality scores based on gene and barcode assignments
-        crispr_barcode_gene_df = cell_quality.assign_cell_quality(
-            count_df=crispr_barcode_gene_df,
-            parent_cols=spot_parent_cols,
-            score_col=spot_score_cols[0],
-        ).assign(
-            ImageNumber=image_number,
-            site=site,
-            plate=plate,
-            well=well,
-            site_location=site_location,
-            Metadata_dataset_split=data_split_site,
-        )
+            # Figure 1 - histogram of barcode counts per cell
+            fig_file = pathlib.Path(output_dir, "num_spots_per_cell_histogram.png")
+            if check_if_write(fig_file, force):
+                spot_counts_per_cell_histogram(cell_spot_df, spot_parent_cols, fig_file)
 
-        num_unique_guides = len(
-            crispr_barcode_gene_df.loc[:, barcode_cols].squeeze().unique()
-        )
-        num_unique_genes = len(
-            crispr_barcode_gene_df.loc[:, gene_cols].squeeze().unique()
-        )
+            # Figure 2 - histogram of barcode scores per spot
+            fig_file = pathlib.Path(output_dir, "barcode_scores_per_spot_histogram.png")
+            if check_if_write(fig_file, force):
+                spot_score_histogram(cell_spot_df, spot_score_cols, fig_file)
 
-        # Table 1 - Full cell and CRISPR guide quality with scores
-        out_file = pathlib.Path(
-            output_dir, "cell_id_barcode_alignment_scores_by_guide.tsv.gz"
-        )
-        if check_if_write(out_file, force):
-            crispr_barcode_gene_df.to_csv(
-                out_file, sep="\t", index=False, compression="gzip"
+            # Figure 3 - Joint plot of relationship of barcode counts per cell and mean score
+            fig_file = pathlib.Path(
+                output_dir, "per_cell_barcode_count_by_mean_score_jointplot.png"
+            )
+            if check_if_write(fig_file, force):
+                spot_count_score_jointplot(
+                    cell_spot_df, spot_parent_cols[0], spot_score_cols[0], fig_file
+                )
+
+            # Barcodes: Get counts of initial baseline calls
+            crispr_barcode_gene_df = category_counts(
+                df=cell_spot_df,
+                gene_cols=gene_cols,
+                barcode_cols=barcode_cols,
+                score_cols=spot_score_cols,
+                parent_cols=spot_parent_cols,
+                guide=True,
             )
 
-        # Table 2 - Cell Category Summary
-        cell_quality_summary_df = cell_quality.summarize_cell_quality_counts(
-            quality_df=crispr_barcode_gene_df, parent_cols=spot_parent_cols
-        ).assign(
-            ImageNumber=image_number,
-            site=site,
-            plate=plate,
-            well=well,
-            site_location=site_location,
-            Metadata_dataset_split=data_split_site,
-        )
-
-        out_file = pathlib.Path(output_dir, "cell_category_summary_count.tsv")
-        if check_if_write(out_file, force):
-            cell_quality_summary_df.to_csv(out_file, sep="\t", index=False)
-
-        # Table 3 - Counting gene and guide by cell category
-        gene_category_count_df = cell_quality.summarize_perturbation_quality_counts(
-            quality_df=crispr_barcode_gene_df,
-            parent_cols=spot_parent_cols,
-            group_cols=gene_cols,
-        )
-
-        guide_category_count_df = cell_quality.summarize_perturbation_quality_counts(
-            quality_df=crispr_barcode_gene_df,
-            parent_cols=spot_parent_cols,
-            group_cols=gene_cols + barcode_cols,
-            guide=True,
-        )
-
-        count_merge_cols = list(
-            set(gene_category_count_df.columns).intersection(
-                guide_category_count_df.columns
-            )
-        )
-
-        cell_category_counts_df = (
-            guide_category_count_df.merge(
-                gene_category_count_df, on=count_merge_cols, how="left"
-            )
-            .assign(
+            # Assign Cell Quality scores based on gene and barcode assignments
+            crispr_barcode_gene_df = cell_quality.assign_cell_quality(
+                count_df=crispr_barcode_gene_df,
+                parent_cols=spot_parent_cols,
+                score_col=spot_score_cols[0],
+            ).assign(
                 ImageNumber=image_number,
                 site=site,
                 plate=plate,
@@ -351,59 +296,128 @@ for data_split_site in site_info_dict:
                 site_location=site_location,
                 Metadata_dataset_split=data_split_site,
             )
-            .query(f"{quality_col} in @cell_filter")
-        )
 
-        out_file = pathlib.Path(
-            output_dir, "cell_perturbation_category_summary_counts.tsv"
-        )
-        if check_if_write(out_file, force):
-            cell_category_counts_df.to_csv(out_file, sep="\t", index=False)
+            num_unique_guides = len(
+                crispr_barcode_gene_df.loc[:, barcode_cols].squeeze().unique()
+            )
+            num_unique_genes = len(
+                crispr_barcode_gene_df.loc[:, gene_cols].squeeze().unique()
+            )
 
-        passed_gene_df = (
-            gene_category_count_df.groupby(gene_cols)["Cell_Count_Per_Gene"]
-            .sum()
-            .reset_index()
-            .sort_values(by="Cell_Count_Per_Gene", ascending=False)
-            .reset_index(drop=True)
-        )
+            # Table 1 - Full cell and CRISPR guide quality with scores
+            out_file = pathlib.Path(
+                output_dir, "cell_id_barcode_alignment_scores_by_guide.tsv.gz"
+            )
+            if check_if_write(out_file, force):
+                crispr_barcode_gene_df.to_csv(
+                    out_file, sep="\t", index=False, compression="gzip"
+                )
 
-        passed_gene_df.loc[:, gene_cols] = pd.Categorical(
-            passed_gene_df.loc[:, gene_cols].squeeze(),
-            categories=passed_gene_df.loc[:, gene_cols].squeeze(),
-        )
+            # Table 2 - Cell Category Summary
+            cell_quality_summary_df = cell_quality.summarize_cell_quality_counts(
+                quality_df=crispr_barcode_gene_df, parent_cols=spot_parent_cols
+            ).assign(
+                ImageNumber=image_number,
+                site=site,
+                plate=plate,
+                well=well,
+                site_location=site_location,
+                Metadata_dataset_split=data_split_site,
+            )
 
-        # Number of non-targetting controls
-        nt_gene_df = passed_gene_df.query(f"{gene_cols[0]} in @control_barcodes")
-        num_nt = nt_gene_df.Cell_Count_Per_Gene.sum()
+            out_file = pathlib.Path(output_dir, "cell_category_summary_count.tsv")
+            if check_if_write(out_file, force):
+                cell_quality_summary_df.to_csv(out_file, sep="\t", index=False)
 
-        # Table 4: Complete Site Summary
-        descriptive_results = {
-            "image_number": image_number,
-            "num_unassigned_spots": num_unassigned_spots,
-            "num_assigned_spots": num_assigned_spots,
-            "num_unique_genes": num_unique_genes,
-            "num_unique_guides": num_unique_guides,
-            "num_assigned_cells": num_assigned_cells,
-            "number_nontarget_controls_good_cells": num_nt,
-        }
+            # Table 3 - Counting gene and guide by cell category
+            gene_category_count_df = cell_quality.summarize_perturbation_quality_counts(
+                quality_df=crispr_barcode_gene_df,
+                parent_cols=spot_parent_cols,
+                group_cols=gene_cols,
+            )
 
-        descriptive_results = pd.DataFrame(descriptive_results, index=[0]).assign(
-            ImageNumber=image_number,
-            site=site,
-            plate=plate,
-            well=well,
-            site_location=site_location,
-            Metadata_dataset_split=data_split_site,
-        )
+            guide_category_count_df = cell_quality.summarize_perturbation_quality_counts(
+                quality_df=crispr_barcode_gene_df,
+                parent_cols=spot_parent_cols,
+                group_cols=gene_cols + barcode_cols,
+                guide=True,
+            )
 
-        output_file = pathlib.Path(output_dir, "site_stats.tsv")
-        if check_if_write(output_file, force):
-            descriptive_results.to_csv(output_file, sep="\t", index=False)
+            count_merge_cols = list(
+                set(gene_category_count_df.columns).intersection(
+                    guide_category_count_df.columns
+                )
+            )
 
-        # Append site to barcode count summary
-        site_called_barcodes = list(crispr_barcode_gene_df["Barcode_MatchedTo_Barcode"])
-        all_called_barcodes += site_called_barcodes
+            cell_category_counts_df = (
+                guide_category_count_df.merge(
+                    gene_category_count_df, on=count_merge_cols, how="left"
+                )
+                .assign(
+                    ImageNumber=image_number,
+                    site=site,
+                    plate=plate,
+                    well=well,
+                    site_location=site_location,
+                    Metadata_dataset_split=data_split_site,
+                )
+                .query(f"{quality_col} in @cell_filter")
+            )
+
+            out_file = pathlib.Path(
+                output_dir, "cell_perturbation_category_summary_counts.tsv"
+            )
+            if check_if_write(out_file, force):
+                cell_category_counts_df.to_csv(out_file, sep="\t", index=False)
+
+            passed_gene_df = (
+                gene_category_count_df.groupby(gene_cols)["Cell_Count_Per_Gene"]
+                .sum()
+                .reset_index()
+                .sort_values(by="Cell_Count_Per_Gene", ascending=False)
+                .reset_index(drop=True)
+            )
+
+            passed_gene_df.loc[:, gene_cols] = pd.Categorical(
+                passed_gene_df.loc[:, gene_cols].squeeze(),
+                categories=passed_gene_df.loc[:, gene_cols].squeeze(),
+            )
+
+            # Number of non-targetting controls
+            nt_gene_df = passed_gene_df.query(f"{gene_cols[0]} in @control_barcodes")
+            num_nt = nt_gene_df.Cell_Count_Per_Gene.sum()
+
+            # Table 4: Complete Site Summary
+            descriptive_results = {
+                "image_number": image_number,
+                "num_unassigned_spots": num_unassigned_spots,
+                "num_assigned_spots": num_assigned_spots,
+                "num_unique_genes": num_unique_genes,
+                "num_unique_guides": num_unique_guides,
+                "num_assigned_cells": num_assigned_cells,
+                "number_nontarget_controls_good_cells": num_nt,
+            }
+
+            descriptive_results = pd.DataFrame(descriptive_results, index=[0]).assign(
+                ImageNumber=image_number,
+                site=site,
+                plate=plate,
+                well=well,
+                site_location=site_location,
+                Metadata_dataset_split=data_split_site,
+            )
+
+            output_file = pathlib.Path(output_dir, "site_stats.tsv")
+            if check_if_write(output_file, force):
+                descriptive_results.to_csv(output_file, sep="\t", index=False)
+
+            # Append site to barcode count summary
+            site_called_barcodes = list(crispr_barcode_gene_df["Barcode_MatchedTo_Barcode"])
+            all_called_barcodes += site_called_barcodes
+        else:
+            print (f"More than {allowed_skips} sites errored and were skipped. Processing stopped.")
+            logging.warning(f"More than {allowed_skips} sites errored and were skipped. Processing stopped.")
+            sys.exit()
 
 # Create and save the barcode count summary for easy NGS comparison
 barcode_count_summary_df = pd.DataFrame()
