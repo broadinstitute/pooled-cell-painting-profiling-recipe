@@ -3,7 +3,10 @@ import pandas as pd
 
 import os
 import sys
-recipe_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+recipe_path = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from io_utils import read_csvs_with_chunksize
 

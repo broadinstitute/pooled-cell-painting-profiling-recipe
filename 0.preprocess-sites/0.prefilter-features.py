@@ -12,6 +12,8 @@ import sys
 import pathlib
 import warnings
 import argparse
+import logging
+import traceback
 import numpy as np
 import pandas as pd
 from scripts.site_processing_utils import prefilter_features, load_features
@@ -23,7 +25,26 @@ recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "scripts"))
 from io_utils import check_if_write
 
+# Configure logging
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "0.prefilter-features.log"), level=logging.INFO,
+)
+
+
+def handle_excepthook(exc_type, exc_value, exc_traceback):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    traceback_details = "\n".join(traceback.extract_tb(exc_traceback).format())
+    print(f"Uncaught Exception: {traceback_details}")
+
+
+sys.excepthook = handle_excepthook
+
+# Configure experiment
 args = parse_command_args()
+logging.info(f"Args used:{args}")
 
 batch_id = args.batch_id
 options_config_file = args.options_config_file
@@ -35,6 +56,7 @@ config = process_configuration(
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
+logging.info(f"Config used:{config}")
 
 # Set constants
 experiment_args = config["experiment"]
@@ -68,10 +90,14 @@ Warning, prefilter file already exists! Overwriting file. This may be intended.
 if prefilter_file.exists():
     if not force:
         warnings.warn(file_exist_warning)
+        logging.warning("Prefilter file exists. NOT overwriting")
     else:
         warnings.warn(force_warning)
+        logging.warning("Prefilter file exists. Overwriting")
 
 # Perform prefiltering and output file
+print("Starting 0.prefilter-features")
+logging.info("0.prefilter-features started")
 if perform:
     features_df = prefilter_features(core_option_args, example_site_dir, flag_cols)
 else:
@@ -80,3 +106,5 @@ else:
 
 if check_if_write(prefilter_file, force):
     features_df.to_csv(prefilter_file, sep="\t", index=False)
+print("Finished 0.prefilter-features")
+logging.info("0.prefilter-features finished")

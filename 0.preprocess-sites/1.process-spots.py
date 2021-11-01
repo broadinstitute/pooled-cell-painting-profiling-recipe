@@ -34,6 +34,8 @@ import sys
 import pathlib
 import warnings
 import argparse
+import logging
+import traceback
 import pandas as pd
 import yaml
 
@@ -56,7 +58,26 @@ sys.path.append(os.path.join(recipe_path, "scripts"))
 from cell_quality_utils import CellQuality
 from io_utils import check_if_write, read_csvs_with_chunksize
 
+# Configure logging
+logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.isdir(logfolder):
+    os.mkdir(logfolder)
+logging.basicConfig(
+    filename=os.path.join(logfolder, "1.process-spots.log"), level=logging.INFO,
+)
+
+
+def handle_excepthook(exc_type, exc_value, exc_traceback):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    traceback_details = "\n".join(traceback.extract_tb(exc_traceback).format())
+    print(f"Uncaught Exception: {traceback_details}")
+
+
+sys.excepthook = handle_excepthook
+
+# Configure experiment
 args = parse_command_args()
+logging.info(f"Args used:{args}")
 
 batch_id = args.batch_id
 options_config_file = args.options_config_file
@@ -69,6 +90,7 @@ config = process_configuration(
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
+logging.info(f"Config used:{config}")
 
 # Set constants
 control_barcodes = config["experiment"]["control_barcode_ids"]
@@ -106,6 +128,8 @@ if not perform:
 if not force:
     force = args.force
 
+print("Starting 1.process-spots.")
+logging.info("Started 1.process-spots.")
 barcode_foci_cols = id_cols + location_cols + spot_parent_cols
 all_foci_cols = list(
     set(
@@ -224,7 +248,6 @@ for data_split_site in site_info_dict:
             cell_spot_df = complete_foci_df.loc[
                 (complete_foci_df.loc[:, spot_parent_cols] != 0).squeeze(), :
             ]
-
             num_assigned_cells = len(
                 cell_spot_df.loc[:, spot_parent_cols].squeeze().unique()
             )
