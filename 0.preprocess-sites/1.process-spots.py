@@ -127,12 +127,14 @@ site_info_dict = get_split_aware_site_info(
 )
 
 image_list = []
+all_called_barcodes = []
 allowed_skip_counter = 0
 for data_split_site in site_info_dict:
     split_sites = site_info_dict[data_split_site]
     for site in split_sites:
         if allowed_skips >= allowed_skip_counter:
             print(f"Now processing spots for {site}...part of set {data_split_site}")
+            logging.info(f"Now processing spots for {site}...part of set {data_split_site}")
 
             # Load image metadata per site
             try:
@@ -148,6 +150,7 @@ for data_split_site in site_info_dict:
                 site_location = image_df.loc[:, image_cols["site"]].squeeze()
             except FileNotFoundError:
                 print(f"{site} image metadata does not exist. Skipping...")
+                logging.info(f"Skipped {site}. No Image.csv")
                 continue
             except pd.errors.ParserError:
                 print(f"Couldn't parse {site} image metadata. Skipping...")
@@ -162,7 +165,8 @@ for data_split_site in site_info_dict:
                 foci_file = pathlib.Path(input_batchdir, site, "Foci.csv")
                 foci_df = read_csvs_with_chunksize(foci_file)
             except FileNotFoundError:
-                print(f"{site} foci data not found")
+                print(f"{site} data not found")
+                logging.info(f"Skipped {site}. No Foci.csv and/or BarcodeFoci.csv")
                 continue
             except pd.errors.ParserError:
                 print(f"Couldn't parse {site} foci data. Skipping...")
@@ -173,6 +177,7 @@ for data_split_site in site_info_dict:
                 image_number = foci_df.ImageNumber.unique()[0]
             except IndexError:
                 print(f"{site} does not have any foci")
+                logging.info(f"{site} does not have any foci")
                 continue
 
             try:
@@ -190,16 +195,19 @@ for data_split_site in site_info_dict:
                 )
             except AssertionError:
                 print(f"{site} data not aligned between foci files")
+                logging.info(f"{site} data not aligned between Barcode.csv and Foci.csv")
                 continue
 
             output_dir = pathlib.Path(output_spotdir, site)
             if output_dir.exists():
                 if force:
                     warnings.warn("Output files likely exist, now overwriting...")
+                    logging.warning(f"{site} output files likely exist. Overwriting.")
                 else:
                     warnings.warn(
                         "Output files likely exist. If they do, NOT overwriting..."
                     )
+                    logging.warning(f"{site} output files likely exist. NOT Overwriting.")
             output_dir.mkdir(exist_ok=True, parents=True)
 
             # Merge spot data files
@@ -379,11 +387,28 @@ for data_split_site in site_info_dict:
             output_file = pathlib.Path(output_dir, "site_stats.tsv")
             if check_if_write(output_file, force):
                 descriptive_results.to_csv(output_file, sep="\t", index=False)
+
+            # Append site to barcode count summary
+            site_called_barcodes = list(crispr_barcode_gene_df["Barcode_MatchedTo_Barcode"])
+            all_called_barcodes += site_called_barcodes
         else:
             print (f"More than {allowed_skips} sites errored and were skipped. Processing stopped.")
+            logging.warning(f"More than {allowed_skips} sites errored and were skipped. Processing stopped.")
             sys.exit()
+
+# Create and save the barcode count summary for easy NGS comparison
+barcode_count_summary_df = pd.DataFrame()
+barcode_count_summary_df["All_Called_Barcodes"] = all_called_barcodes
+barcode_count_summary_df = (
+    barcode_count_summary_df.groupby(["All_Called_Barcodes"])
+    .size()
+    .reset_index(name="count")
+)
+output_file = pathlib.Path(output_spotdir, "Total_Barcode_Calls_Counts.tsv")
+barcode_count_summary_df.to_csv(output_file, sep="\t", index=False)
 
 # Save the output image info
 image_df = pd.concat(image_list, axis="rows").reset_index(drop=True)
 image_df.to_csv(output_image_file, sep="\t", index=False)
-print("All sites complete.")
+print("Finished 1.process-spots.")
+logging.info(f"Finished 1.process-spots.")
