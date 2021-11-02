@@ -32,15 +32,18 @@ def read_csvs_with_chunksize(filename, chunksize=10000, **kwargs):
                 dflist.append(chunk)
             df = pd.concat(dflist)
         return df
-    except pd.errors.ParserError:
+    except pd.errors.ParserError or OSError:
+        print (f'Error reading {filename}')
         try:
             with pd.read_csv(filename, chunksize=chunksize, **kwargs) as reader:
                 dflist = []
                 for chunk in reader:
                     dflist.append(chunk)
                 df = pd.concat(dflist)
+            print (f'Read {filename} on second try.')
             return df
         except:
+            print (f'Error reading {filename} on second try.')
             raise
     except:
         raise

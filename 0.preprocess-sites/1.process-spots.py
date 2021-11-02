@@ -176,9 +176,10 @@ for data_split_site in site_info_dict:
                 print(f"{site} image metadata does not exist. Skipping...")
                 logging.info(f"Skipped {site}. No Image.csv")
                 continue
-            except pd.errors.ParserError:
+            except pd.errors.ParserError or OSError:
                 print(f"Couldn't parse {site} image metadata. Skipping...")
                 allowed_skip_counter += 1
+                print(f"Now at {allowed_skip_counter} sites skipped from errors.")
                 continue
 
             # Load spot data
@@ -192,9 +193,10 @@ for data_split_site in site_info_dict:
                 print(f"{site} data not found")
                 logging.info(f"Skipped {site}. No Foci.csv and/or BarcodeFoci.csv")
                 continue
-            except pd.errors.ParserError:
+            except pd.errors.ParserError or OSError:
                 print(f"Couldn't parse {site} foci data. Skipping...")
                 allowed_skip_counter += 1
+                print(f"Now at {allowed_skip_counter} sites skipped from errors.")
                 continue
 
             try:
