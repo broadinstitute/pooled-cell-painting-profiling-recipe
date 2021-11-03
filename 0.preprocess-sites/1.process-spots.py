@@ -178,8 +178,11 @@ for data_split_site in site_info_dict:
                 continue
             except:
                 print(f"Couldn't parse {site} image metadata. Skipping...")
+                logging.warning(f"Couldn't parse {site} image metadata. Skipping...")
                 allowed_skip_counter += 1
                 print(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                logging.warning(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                logging.warning(traceback.format_exc())
                 continue
 
             # Load spot data
@@ -195,8 +198,11 @@ for data_split_site in site_info_dict:
                 continue
             except:
                 print(f"Couldn't parse {site} foci data. Skipping...")
+                logging.warning(f"Couldn't parse {site} foci data. Skipping...")
                 allowed_skip_counter += 1
                 print(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                logging.warning(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                logging.warning(traceback.format_exc())
                 continue
 
             try:
