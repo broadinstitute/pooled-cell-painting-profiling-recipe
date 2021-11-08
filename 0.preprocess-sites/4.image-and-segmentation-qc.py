@@ -479,6 +479,7 @@ if all(x in image_df.columns.tolist() for x in cp_sat_cols):
         temp = image_df[image_df[col] > 1]
         cp_sat_df = cp_sat_df.append(temp)
     if len(cp_sat_df) != 0:
+        cp_sat_df = cp_sat_df.drop_duplicates()
         cp_sat_df.loc[:, "Fails_CP_Sat"] = "Fails"
 
 # Create df of sites that fail BC saturation
@@ -487,21 +488,24 @@ if all(x in image_df.columns.tolist() for x in bc_sat_cols):
         temp = image_df[image_df[col] > 0.2]
         bc_sat_df = bc_sat_df.append(temp)
     if len(bc_sat_df) != 0:
+        bc_sat_df = bc_sat_df.drop_duplicates()
         bc_sat_df.loc[:, "Fails_BC_Sat"] = "Fails"
+
+idcols = list(image_cols["plate"], image_cols["well"], image_cols["site"])
 
 if len(cp_sat_df) > 0 and len(bc_sat_df) > 0:
     sat_df = (
         cp_sat_df.set_index("Metadata_Site_Full")
-        .combine_first(bc_sat_df.set_index("Metadata_Site_Full"))
+        .combine_first(bc_sat_df.set_index(idcols))
         .reset_index()
     )
-    addn_cols = ["Metadata_Site_Full", "Fails_CP_Sat", "Fails_BC_Sat"]
+    addn_cols = idcols + ["Fails_CP_Sat", "Fails_BC_Sat"]
 elif len(cp_sat_df) > 0:
     sat_df = cp_sat_df
-    addn_cols = ["Metadata_Site_Full", "Fails_CP_Sat"]
+    addn_cols = idcols + ["Fails_CP_Sat"]
 elif len(bc_sat_df) > 0:
     sat_df = bc_sat_df
-    addn_cols = ["Metadata_Site_Full", "Fails_BC_Sat"]
+    addn_cols = idcols + ["Fails_BC_Sat"]
 
 if not sat_df.empty:
     sat_df_cols = cp_sat_cols + bc_sat_cols + addn_cols
