@@ -43,13 +43,15 @@ options_config_file = args.options_config_file
 experiment_config_file = args.experiment_config_file
 split_step = args.split_step
 
-config = process_configuration(
+config, incomplete_sites, errored_sites = process_configuration(
     batch_id,
     step="profile--aggregate",
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
 logging.info(f"Config used:{config}")
+logging.info(f"Skipped incomplete sites during config processing: {incomplete_sites}")
+logging.info(f"Skipped errored sites during config processing: {errored_sites}")
 
 # Extract config arguments
 split_info = config["experiment"]["split"][split_step]

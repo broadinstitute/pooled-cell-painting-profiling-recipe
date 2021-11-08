@@ -50,13 +50,15 @@ batch_id = args.batch_id
 options_config_file = args.options_config_file
 experiment_config_file = args.experiment_config_file
 
-config = process_configuration(
+config, incomplete_sites, errored_sites = process_configuration(
     batch_id,
     step="preprocess--prefilter",
     options_config=options_config_file,
     experiment_config=experiment_config_file,
 )
 logging.info(f"Config used:{config}")
+logging.info(f"Skipped incomplete sites during config processing: {incomplete_sites}")
+logging.info(f"Skipped errored sites during config processing: {errored_sites}")
 
 # Set constants
 experiment_args = config["experiment"]
