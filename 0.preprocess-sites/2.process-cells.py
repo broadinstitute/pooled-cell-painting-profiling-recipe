@@ -269,18 +269,31 @@ for data_split_site in site_info_dict:
                     "Output files likely exist. If they do, NOT overwriting..."
                 )
                 logging.warning("Output files likely exist. NOT Overwriting.")
-        os.makedirs(output_folder, exist_ok=True)
+        if len(metadata_df) > 0 or len(cell_count_df) > 0:
+            os.makedirs(output_folder, exist_ok=True)
+        else:
+            print(f"Metadata and Cell Count files empty. Nothing to save for {site}")
+            logging.warning(f"Metadata and Cell Count files empty. Nothing to save for {site}")
+            continue
 
         meta_output_file = pathlib.Path(output_folder, f"metadata_{site}.tsv.gz")
         count_output_file = pathlib.Path(output_folder, f"cell_counts_{site}.tsv")
 
         # Save files
         if check_if_write(meta_output_file, force):
-            metadata_df.to_csv(meta_output_file, sep="\t", index=False)
+            if len(metadata_df) > 0:
+                metadata_df.to_csv(meta_output_file, sep="\t", index=False)
+            else:
+                print(f"Metadata file empty. Nothing to save for {site}")
+                logging.warning(f"Metadata file empty. Nothing to save for {site}")
         if check_if_write(count_output_file, force):
-            cell_count_df.to_csv(
-                count_output_file, sep="\t", index_label="Cell_Quality"
-            )
+            if len(cell_count_df) > 0:
+                cell_count_df.to_csv(
+                    count_output_file, sep="\t", index_label="Cell_Quality"
+                )
+            else:
+                print(f"Cell Count file empty. Nothing to save for {site}")
+                logging.warning(f"Cell Count file empty. Nothing to save for {site}")
 
 print("Finished 2.process-cells.")
 logging.info(f"Finished 2.process-cells.")
