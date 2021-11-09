@@ -173,6 +173,8 @@ for data_split_site in site_info_dict:
 
         if sanitize_genes:
             metadata_df = sanitize_gene_col(metadata_df, gene_col, control_barcodes)
+            if len(metadata_df) == 0:
+                continue
 
         # Load csv files for prespecified compartments
         compartment_csvs = {}
