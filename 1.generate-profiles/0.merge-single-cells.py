@@ -162,9 +162,14 @@ for data_split_site in site_info_dict:
 
         # Load cell metadata after cell quality determined in 0.preprocess-sites
         metadata_file = pathlib.Path(site_metadata_dir, f"metadata_{site}.tsv.gz")
-        metadata_df = read_csvs_with_chunksize(metadata_file, sep="\t").query(
-            f"{cell_quality_col} in @cell_filter"
-        )
+        try:
+            metadata_df = read_csvs_with_chunksize(metadata_file, sep="\t").query(
+                f"{cell_quality_col} in @cell_filter"
+            )
+        except:
+            print(f"Error loading metadata file for {site}. Skipping.")
+            logging.info(f"Error loading metadata file for {site}. Skipping.")
+            continue
 
         if sanitize_genes:
             metadata_df = sanitize_gene_col(metadata_df, gene_col, control_barcodes)
