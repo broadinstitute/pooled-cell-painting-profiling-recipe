@@ -491,7 +491,7 @@ if all(x in image_df.columns.tolist() for x in bc_sat_cols):
         bc_sat_df = bc_sat_df.drop_duplicates()
         bc_sat_df.loc[:, "Fails_BC_Sat"] = "Fails"
 
-idcols = image_cols["plate"] + image_cols["well"] + image_cols["site"]
+idcols = [image_cols["plate"], image_cols["well"], image_cols["site"]]
 
 if len(cp_sat_df) > 0 and len(bc_sat_df) > 0:
     sat_df = (
