@@ -86,6 +86,7 @@ merge_info = sc_config["merge_columns"]
 single_file_only = sc_config["output_one_single_cell_file_only"]
 force = sc_config["force_overwrite"]
 perform = sc_config["perform"]
+allowed_skips = sc_config["allowed_skips"]
 
 gene_col = config["options"]["profile"]["aggregate"]["levels"]["gene"]
 
@@ -122,107 +123,128 @@ site_info_dict = get_split_aware_site_info(
     config["experiment"], sites, split_info, separator="___"
 )
 
+allowed_skip_counter = 0
 for data_split_site in site_info_dict:
     split_sites = site_info_dict[data_split_site]
 
     sc_df = []
     for site in split_sites:
-        # Define single cell output directory and files
-        site_output_dir = pathlib.Path(single_cell_output_dir, site)
-        site_output_dir.mkdir(parents=True, exist_ok=True)
-        sc_output_file = pathlib.Path(site_output_dir, f"{site}_single_cell.csv.gz")
+        if allowed_skips >= allowed_skip_counter:
+            # Define single cell output directory and files
+            site_output_dir = pathlib.Path(single_cell_output_dir, site)
+            site_output_dir.mkdir(parents=True, exist_ok=True)
+            sc_output_file = pathlib.Path(site_output_dir, f"{site}_single_cell.csv.gz")
 
-        # Define options based on input flags
-        if single_file_only:
-            print(
-                f"Building single file for dataset {data_split_site}; combining single cells from site: {site}..."
-            )
-            logging.info(
-                f"Building single file for dataset {data_split_site}; combining single cells from site: {site}..."
-            )
-        else:
-            # If the output file already exists, only overwrite if --force is provided
-            if sc_output_file.exists():
-                if not force:
-                    print(
-                        f"Skipping reprocessing single cells for site: {site}... use --force to overwrite"
-                    )
-                    logging.info(f"Skipped reprocessing single cells for site: {site}")
-                    continue
-                else:
-                    print(f"Now overwriting single cells for site: {site}...")
-                    logging.info(f"Overwrote single cells for site: {site}")
-            else:
-                print(f"Now processing single cells for site: {site}...")
-                logging.info(f"Processed single cells for site: {site}")
-
-        # Point to appropriate directories
-        site_metadata_dir = pathlib.Path(input_paintdir, site)
-        site_compartment_dir = pathlib.Path(input_batchdir, site)
-
-        # Load cell metadata after cell quality determined in 0.preprocess-sites
-        metadata_file = pathlib.Path(site_metadata_dir, f"metadata_{site}.tsv.gz")
-        try:
-            metadata_df = read_csvs_with_chunksize(metadata_file, sep="\t").query(
-                f"{cell_quality_col} in @cell_filter"
-            )
-        except:
-            print(f"Error loading metadata file for {site}. Skipping.")
-            logging.info(f"Error loading metadata file for {site}. Skipping.")
-            continue
-
-        if sanitize_genes:
-            metadata_df = sanitize_gene_col(metadata_df, gene_col, control_barcodes)
-            if len(metadata_df) == 0:
-                continue
-
-        # Load csv files for prespecified compartments
-        compartment_csvs = {}
-        for compartment in compartments:
-            try:
-                metadata_cols = parent_col_info[compartment.lower()] + id_cols
-            except KeyError:
-                metadata_cols = id_cols
-            try:
-                compartment_csvs[compartment] = load_single_cell_compartment_csv(
-                    site_compartment_dir, compartment, metadata_cols
+            # Define options based on input flags
+            if single_file_only:
+                print(
+                    f"Building single file for dataset {data_split_site}; combining single cells from site: {site}..."
                 )
-            except FileNotFoundError:
+                logging.info(
+                    f"Building single file for dataset {data_split_site}; combining single cells from site: {site}..."
+                )
+            else:
+                # If the output file already exists, only overwrite if --force is provided
+                if sc_output_file.exists():
+                    if not force:
+                        print(
+                            f"Skipping reprocessing single cells for site: {site}... use --force to overwrite"
+                        )
+                        logging.info(f"Skipped reprocessing single cells for site: {site}")
+                        continue
+                    else:
+                        print(f"Now overwriting single cells for site: {site}...")
+                        logging.info(f"Overwrote single cells for site: {site}")
+                else:
+                    print(f"Now processing single cells for site: {site}...")
+                    logging.info(f"Processed single cells for site: {site}")
+
+            # Point to appropriate directories
+            site_metadata_dir = pathlib.Path(input_paintdir, site)
+            site_compartment_dir = pathlib.Path(input_batchdir, site)
+
+            # Load cell metadata after cell quality determined in 0.preprocess-sites
+            metadata_file = pathlib.Path(site_metadata_dir, f"metadata_{site}.tsv.gz")
+            try:
+                metadata_df = read_csvs_with_chunksize(metadata_file, sep="\t").query(
+                    f"{cell_quality_col} in @cell_filter"
+                )
+            except:
+                print(f"Error loading metadata file for {site}. Skipping.")
+                logging.info(f"Error loading metadata file for {site}. Skipping.")
+                allowed_skip_counter += 1
+                print(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                logging.warning(f"Now at {allowed_skip_counter} sites skipped from errors.")
                 continue
 
-        if len(compartment_csvs) != len(compartments):
-            warnings.warn(
-                f"Not all compartments are present in site: {site}\nCheck CellProfiler output path: {site_compartment_dir}. Skipping this site."
-            )
-            logging.warning(
-                f"{site} skipped because of missing compartments in {site_compartment_dir}."
-            )
-            continue
+            if sanitize_genes:
+                try:
+                    metadata_df = sanitize_gene_col(metadata_df, gene_col, control_barcodes)
+                    if len(metadata_df) == 0:
+                        print(f"Metadata file empty for {site}. Skipping.")
+                        logging.info(f"Metadata file empty for {site}. Skipping.")
+                        allowed_skip_counter += 1
+                        print(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                        logging.warning(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                        continue
+                except:
+                    print(f"Sanitizing genes failed for {site}. Skipping.")
+                    logging.info(f"Sanitizing genes failed for {site}. Skipping.")
+                    allowed_skip_counter += 1
+                    print(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                    logging.warning(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                    continue
 
-        # Merge single cell compartments together
-        sc_merged_df = merge_single_cell_compartments(
-            compartment_csvs, merge_info, id_cols
-        )
-        sc_merged_df = sc_merged_df.assign(Metadata_Foci_site=site).reindex(
-            ["Metadata_Foci_site"] + all_feature_df.feature_name.tolist(),
-            axis="columns",
-        )
+            # Load csv files for prespecified compartments
+            compartment_csvs = {}
+            for compartment in compartments:
+                try:
+                    metadata_cols = parent_col_info[compartment.lower()] + id_cols
+                except KeyError:
+                    metadata_cols = id_cols
+                try:
+                    compartment_csvs[compartment] = load_single_cell_compartment_csv(
+                        site_compartment_dir, compartment, metadata_cols
+                    )
+                except FileNotFoundError:
+                    continue
 
-        # Merge single cell profiles and metadata
-        sc_merged_df = metadata_df.merge(
-            sc_merged_df, on=merge_info["metadata_linking_columns"], how="left"
-        ).reset_index(drop=True)
+            if len(compartment_csvs) != len(compartments):
+                warnings.warn(
+                    f"Not all compartments are present in site: {site}\nCheck CellProfiler output path: {site_compartment_dir}. Skipping this site."
+                )
+                logging.warning(
+                    f"{site} skipped because of missing compartments in {site_compartment_dir}."
+                )
+                allowed_skip_counter += 1
+                print(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                logging.warning(f"Now at {allowed_skip_counter} sites skipped from errors.")
+                continue
 
-        if single_file_only:
-            sc_df.append(sc_merged_df)
-        else:
-            sc_merged_df.to_csv(
-                sc_output_file,
-                sep=",",
-                index=False,
-                compression=compression,
-                float_format=float_format,
+            # Merge single cell compartments together
+            sc_merged_df = merge_single_cell_compartments(
+                compartment_csvs, merge_info, id_cols
             )
+            sc_merged_df = sc_merged_df.assign(Metadata_Foci_site=site).reindex(
+                ["Metadata_Foci_site"] + all_feature_df.feature_name.tolist(),
+                axis="columns",
+            )
+
+            # Merge single cell profiles and metadata
+            sc_merged_df = metadata_df.merge(
+                sc_merged_df, on=merge_info["metadata_linking_columns"], how="left"
+            ).reset_index(drop=True)
+
+            if single_file_only:
+                sc_df.append(sc_merged_df)
+            else:
+                sc_merged_df.to_csv(
+                    sc_output_file,
+                    sep=",",
+                    index=False,
+                    compression=compression,
+                    float_format=float_format,
+                )
 
     if single_file_only:
         # Define a dataset specific file
