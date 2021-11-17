@@ -118,13 +118,19 @@ for data_split_site in site_info_dict:
             if site_file.exists():
                 site_df = read_csvs_with_chunksize(site_file, sep=",")
                 single_cell_df.append(site_df)
+                print(f"Appended {site}")
+                logging.info(f"Appended {site}")
             else:
                 warnings.warn(
                     f"{site_file} does not exist. There must have been an error in processing"
                 )
                 logging.warning(f"{site_file} does not exist.")
 
+        print(f"Making single cell dataframe.")
+        logging.info(f"Making single cell dataframe.")
         single_cell_df = pd.concat(single_cell_df, axis="rows").reset_index(drop=True)
+        print(f"Made single cell dataframe.")
+        logging.info(f"Made single cell dataframe.")
 
     # Perform the aggregation based on the defined levels and columns
     aggregate_output_dir.mkdir(parents=True, exist_ok=True)
