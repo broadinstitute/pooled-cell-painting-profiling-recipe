@@ -26,7 +26,7 @@ sys.path.append(os.path.join(recipe_path, "scripts"))
 from io_utils import check_if_write
 
 # Configure logging
-logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+logfolder = os.path.join(os.path.dirname(recipe_path), "logs")
 if not os.path.isdir(logfolder):
     os.mkdir(logfolder)
 logging.basicConfig(

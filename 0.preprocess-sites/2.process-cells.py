@@ -35,7 +35,7 @@ from paint_utils import load_single_cell_compartment_csv, merge_single_cell_comp
 from io_utils import check_if_write, read_csvs_with_chunksize
 
 # Configure logging
-logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+logfolder = os.path.join(os.path.dirname(recipe_path), "logs")
 if not os.path.isdir(logfolder):
     os.mkdir(logfolder)
 logging.basicConfig(

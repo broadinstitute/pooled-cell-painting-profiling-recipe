@@ -23,7 +23,7 @@ from profile_utils import sanitize_gene_col
 from io_utils import read_csvs_with_chunksize
 
 # Configure logging
-logfolder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+logfolder = os.path.join(os.path.dirname(recipe_path), "logs")
 if not os.path.isdir(logfolder):
     os.mkdir(logfolder)
 logging.basicConfig(
