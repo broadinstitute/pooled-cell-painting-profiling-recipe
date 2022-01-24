@@ -75,6 +75,7 @@ sc_config = config["options"]["profile"]["single_cell"]
 normalize_singlecell_from_single_file = sc_config["output_one_single_cell_file_only"]
 
 normalize_args = config["options"]["profile"]["normalize"]
+output_single_cell_by_guide = normalize_args["output_single_cell_by_guide"]
 normalize_levels = normalize_args["levels"]
 normalize_by_samples = normalize_args["by_samples"]
 normalize_these_features = normalize_args["features"]
@@ -128,5 +129,22 @@ for data_split_site in site_info_dict:
             compression_options=compression,
             float_format=float_format,
         )
+
+        if data_level == "single_cell":
+            if output_single_cell_by_guide:
+                sc_by_guide_folder = os.path.join(single_cell_input_dir, "single_cell_by_guide")
+                if not os.path.isdir(sc_by_guide_folder):
+                    os.mkdir(sc_by_guide_folder)
+                df = read_csvs_with_chunksize(output_file)
+                for guide in df['Metadata_Foci_Barcode_MatchedTo_Barcode']:
+                    guide_file_name = f"{output_file.split('__')[0].split('/')[-1]}__{guide}.csv.gz"
+                    guide_path = os.path.join(sc_by_guide_folder, guide_file_name)
+                    if not os.path.exists(guide_path):
+                        guide_df = pd.DataFrame()
+                    else:
+                        guide_df = read_csvs_with_chunksize(guide_path)
+                    guide_df = guide_df.append(df.loc[df['Metadata_Foci_Barcode_MatchedTo_Barcode'] == guide])
+                    guide_df.to_csv(guide_path, index=False)
+
 print("Finished 2.normalize.")
 logging.info("Finished 2.normalize.")
