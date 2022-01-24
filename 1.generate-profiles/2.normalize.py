@@ -70,6 +70,7 @@ single_cell_input_dir = config["directories"]["profile"]["single_cell"]
 normalize_input_files = config["files"]["aggregate_files"]
 normalize_output_files = config["files"]["normalize_files"]
 single_cell_file = config["files"]["single_file_only_output_file"]
+image_file = config["files"]["image_file"]
 
 sc_config = config["options"]["profile"]["single_cell"]
 normalize_singlecell_from_single_file = sc_config["output_one_single_cell_file_only"]
@@ -132,6 +133,14 @@ for data_split_site in site_info_dict:
 
         if data_level == "single_cell":
             if output_single_cell_by_guide:
+                image_df = pd.read_csv(image_file, sep='\t')
+                keep_columns = []
+                for col in image_df.columns:
+                    if 'Align_' in col:
+                        keep_columns.append(col)
+                keep_columns.append('Metadata_site')
+                image_df = image_df.loc[:, keep_columns]
+
                 sc_by_guide_folder = os.path.join(single_cell_input_dir, "single_cell_by_guide")
                 if not os.path.isdir(sc_by_guide_folder):
                     os.mkdir(sc_by_guide_folder)
@@ -143,7 +152,9 @@ for data_split_site in site_info_dict:
                         guide_df = pd.DataFrame()
                     else:
                         guide_df = read_csvs_with_chunksize(guide_path)
-                    guide_df = guide_df.append(df.loc[df['Metadata_Foci_Barcode_MatchedTo_Barcode'] == guide])
+                    append_df = df.loc[df['Metadata_Foci_Barcode_MatchedTo_Barcode'] == guide]
+                    append_df = append_df.merge(image_df, left_on='Metadata_Foci_site', right_on='Metadata_site', validate='1:1')
+                    guide_df = guide_df.append(append_df)
                     guide_df.to_csv(guide_path, index=False)
 
 print("Finished 2.normalize.")
