@@ -133,6 +133,8 @@ for data_split_site in site_info_dict:
 
         if data_level == "single_cell":
             if output_single_cell_by_guide:
+                print (f"Now outputting normalized single cell profiles by guide for split {data_split_site}")
+                logging.info(f"Now outputting normalized single cell profiles by guide for split {data_split_site}")
                 image_df = pd.read_csv(image_file, sep='\t')
                 keep_columns = []
                 for col in image_df.columns:
@@ -146,14 +148,14 @@ for data_split_site in site_info_dict:
                     os.mkdir(sc_by_guide_folder)
                 df = read_csvs_with_chunksize(output_file)
                 for guide in df['Metadata_Foci_Barcode_MatchedTo_Barcode']:
-                    guide_file_name = f"{output_file.split('__')[0].split('/')[-1]}__{guide}.csv.gz"
+                    guide_file_name = f"{str(output_file).split('__')[0].split('/')[-1]}__{guide}.csv.gz"
                     guide_path = os.path.join(sc_by_guide_folder, guide_file_name)
                     if not os.path.exists(guide_path):
                         guide_df = pd.DataFrame()
                     else:
                         guide_df = read_csvs_with_chunksize(guide_path)
                     append_df = df.loc[df['Metadata_Foci_Barcode_MatchedTo_Barcode'] == guide]
-                    append_df = append_df.merge(image_df, left_on='Metadata_Foci_site', right_on='Metadata_site', validate='1:1')
+                    append_df = append_df.merge(image_df, left_on='Metadata_Foci_site', right_on='Metadata_site')
                     guide_df = guide_df.append(append_df)
                     guide_df.to_csv(guide_path, index=False)
 
