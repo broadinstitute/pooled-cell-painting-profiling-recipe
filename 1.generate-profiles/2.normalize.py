@@ -148,7 +148,8 @@ for data_split_site in site_info_dict:
                     os.mkdir(sc_by_guide_folder)
                 df = read_csvs_with_chunksize(output_file)
                 for guide in set(df['Metadata_Foci_Barcode_MatchedTo_Barcode']):
-                    guide_file_name = f"{str(output_file).split('__')[0].split('/')[-1]}__{guide}.csv.gz"
+                    gene = df[df['Metadata_Foci_Barcode_MatchedTo_Barcode']==guide]['Metadata_Foci_Barcode_MatchedTo_GeneCode'].tolist()[0]
+                    guide_file_name = f"{str(output_file).split('__')[0].split('/')[-1]}__{guide}_{gene}.csv.gz"
                     guide_path = os.path.join(sc_by_guide_folder, guide_file_name)
                     if not os.path.exists(guide_path):
                         guide_df = pd.DataFrame()
