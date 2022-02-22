@@ -6,7 +6,6 @@ import warnings
 import logging
 import traceback
 import pandas as pd
-from joblib import Parallel, delayed
 
 from pycytominer import normalize
 
@@ -92,25 +91,6 @@ site_info_dict = get_split_aware_site_info(
     config["experiment"], sites, split_info, separator="___"
 )
 
-def append_to_guide_csv(guide, image_df):
-    append_df = df.loc[
-        df["Metadata_Foci_Barcode_MatchedTo_Barcode"] == guide
-    ]
-    gene = list(append_df["Metadata_Foci_Barcode_MatchedTo_Barcode"])[0]
-    guide_file_name = f"{str(output_file).split('__')[0].split('/')[-1]}__{guide}_{gene}.csv.gz"
-    guide_path = os.path.join(sc_by_guide_folder, guide_file_name)
-    if not os.path.exists(guide_path):
-        guide_df = pd.DataFrame()
-    else:
-        guide_df = read_csvs_with_chunksize(guide_path)
-
-    append_df = append_df.merge(
-        image_df, left_on="Metadata_Foci_site", right_on="Metadata_site"
-    )
-    guide_df = guide_df.append(append_df)
-    guide_df.to_csv(guide_path, index=False)
-
-
 for data_split_site in site_info_dict:
     for data_level in normalize_levels:
         if data_level == "single_cell":
@@ -127,17 +107,16 @@ for data_split_site in site_info_dict:
                 file_to_normalize.name.replace(".csv.gz", f"_{data_split_site}.csv.gz"),
             )
 
+        output_file = normalize_output_files[data_level]
+        output_file = pathlib.Path(
+            normalize_output_files[data_level].parents[0],
+            output_file.name.replace(".csv.gz", f"_{data_split_site}.csv.gz"),
+        )
         print(
             f"Now normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
         )
         logging.info(
             f"Normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
-        )
-
-        output_file = normalize_output_files[data_level]
-        output_file = pathlib.Path(
-            normalize_output_files[data_level].parents[0],
-            output_file.name.replace(".csv.gz", f"_{data_split_site}.csv.gz"),
         )
         df = read_csvs_with_chunksize(file_to_normalize)
 
@@ -174,7 +153,24 @@ for data_split_site in site_info_dict:
                 if not os.path.isdir(sc_by_guide_folder):
                     os.mkdir(sc_by_guide_folder)
                 df = read_csvs_with_chunksize(output_file)
-                Parallel(n_jobs=-2)(delayed(append_to_guide_csv)(guide, image_df) for guide in set(df["Metadata_Foci_Barcode_MatchedTo_Barcode"]))
+                for guide in set(df["Metadata_Foci_Barcode_MatchedTo_Barcode"]):
+                     gene = df[df["Metadata_Foci_Barcode_MatchedTo_Barcode"] == guide][
+                         "Metadata_Foci_Barcode_MatchedTo_GeneCode"
+                     ].tolist()[0]
+                     guide_file_name = f"{str(output_file).split('__')[0].split('/')[-1]}__{guide}_{gene}.csv.gz"
+                     guide_path = os.path.join(sc_by_guide_folder, guide_file_name)
+                     if not os.path.exists(guide_path):
+                         guide_df = pd.DataFrame()
+                     else:
+                         guide_df = read_csvs_with_chunksize(guide_path)
+                     append_df = df.loc[
+                         df["Metadata_Foci_Barcode_MatchedTo_Barcode"] == guide
+                     ]
+                     append_df = append_df.merge(
+                         image_df, left_on="Metadata_Foci_site", right_on="Metadata_site"
+                     )
+                     guide_df = guide_df.append(append_df)
+                     guide_df.to_csv(guide_path, index=False)
 
 print("Finished 2.normalize.")
 logging.info("Finished 2.normalize.")
