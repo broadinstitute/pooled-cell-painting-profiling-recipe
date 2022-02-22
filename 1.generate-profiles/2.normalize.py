@@ -112,6 +112,7 @@ for data_split_site in site_info_dict:
             normalize_output_files[data_level].parents[0],
             output_file.name.replace(".csv.gz", f"_{data_split_site}.csv.gz"),
         )
+
         if os.path.exists(output_file):
             if force:
                 print(f"Force overwriting {output_file}")
@@ -124,9 +125,16 @@ for data_split_site in site_info_dict:
                 )
                 df = read_csvs_with_chunksize(file_to_normalize)
 
+                # Don't normalize locations
+                meta_cols=list(df.columns[df.columns.str.contains("Metadata")])
+                remove_locs = list(filter(lambda x: "_Location_Center_X" in x or "_Location_Center_Y" in x , df.columns))
+                remove_cents = list(filter(lambda x: "AreaShape_Center_X" in x or "AreaShape_Center_Y" in x , df.columns))
+                meta_cols = meta_cols + remove_locs + remove_cents
+
                 normalize(
                     profiles=df,
                     features=normalize_these_features,
+                    meta_features=meta_cols,
                     samples=normalize_by_samples,
                     method=normalize_method,
                     output_file=output_file,
@@ -142,9 +150,16 @@ for data_split_site in site_info_dict:
             )
             df = read_csvs_with_chunksize(file_to_normalize)
 
+            # Don't normalize locations
+            meta_cols=list(df.columns[df.columns.str.contains("Metadata")])
+            remove_locs = list(filter(lambda x: "_Location_Center_X" in x or "_Location_Center_Y" in x , df.columns))
+            remove_cents = list(filter(lambda x: "AreaShape_Center_X" in x or "AreaShape_Center_Y" in x , df.columns))
+            meta_cols = meta_cols + remove_locs + remove_cents
+
             normalize(
                 profiles=df,
                 features=normalize_these_features,
+                meta_features=meta_cols,
                 samples=normalize_by_samples,
                 method=normalize_method,
                 output_file=output_file,
