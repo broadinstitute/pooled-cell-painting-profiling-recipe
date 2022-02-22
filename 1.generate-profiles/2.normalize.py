@@ -112,23 +112,45 @@ for data_split_site in site_info_dict:
             normalize_output_files[data_level].parents[0],
             output_file.name.replace(".csv.gz", f"_{data_split_site}.csv.gz"),
         )
-        print(
-            f"Now normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
-        )
-        logging.info(
-            f"Normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
-        )
-        df = read_csvs_with_chunksize(file_to_normalize)
+        if os.path.exists(output_file):
+            if force:
+                print(f"Force overwriting {output_file}")
+                logging.info(f"Force overwriting {output_file}")
+                print(
+                    f"Now normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
+                )
+                logging.info(
+                    f"Normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
+                )
+                df = read_csvs_with_chunksize(file_to_normalize)
 
-        normalize(
-            profiles=df,
-            features=normalize_these_features,
-            samples=normalize_by_samples,
-            method=normalize_method,
-            output_file=output_file,
-            compression_options=compression,
-            float_format=float_format,
-        )
+                normalize(
+                    profiles=df,
+                    features=normalize_these_features,
+                    samples=normalize_by_samples,
+                    method=normalize_method,
+                    output_file=output_file,
+                    compression_options=compression,
+                    float_format=float_format,
+                )
+        else:
+            print(
+                f"Now normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
+            )
+            logging.info(
+                f"Normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
+            )
+            df = read_csvs_with_chunksize(file_to_normalize)
+
+            normalize(
+                profiles=df,
+                features=normalize_these_features,
+                samples=normalize_by_samples,
+                method=normalize_method,
+                output_file=output_file,
+                compression_options=compression,
+                float_format=float_format,
+            )
 
         if data_level == "single_cell":
             if output_single_cell_by_guide:
