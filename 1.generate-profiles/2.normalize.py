@@ -70,11 +70,13 @@ single_cell_input_dir = config["directories"]["profile"]["single_cell"]
 normalize_input_files = config["files"]["aggregate_files"]
 normalize_output_files = config["files"]["normalize_files"]
 single_cell_file = config["files"]["single_file_only_output_file"]
+image_file = config["files"]["image_file"]
 
 sc_config = config["options"]["profile"]["single_cell"]
 normalize_singlecell_from_single_file = sc_config["output_one_single_cell_file_only"]
 
 normalize_args = config["options"]["profile"]["normalize"]
+output_single_cell_by_guide = normalize_args["output_single_cell_by_guide"]
 normalize_levels = normalize_args["levels"]
 normalize_by_samples = normalize_args["by_samples"]
 normalize_these_features = normalize_args["features"]
@@ -105,28 +107,107 @@ for data_split_site in site_info_dict:
                 file_to_normalize.name.replace(".csv.gz", f"_{data_split_site}.csv.gz"),
             )
 
-        print(
-            f"Now normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
-        )
-        logging.info(
-            f"Normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
-        )
-
         output_file = normalize_output_files[data_level]
         output_file = pathlib.Path(
             normalize_output_files[data_level].parents[0],
             output_file.name.replace(".csv.gz", f"_{data_split_site}.csv.gz"),
         )
-        df = read_csvs_with_chunksize(file_to_normalize)
 
-        normalize(
-            profiles=df,
-            features=normalize_these_features,
-            samples=normalize_by_samples,
-            method=normalize_method,
-            output_file=output_file,
-            compression_options=compression,
-            float_format=float_format,
-        )
+        if os.path.exists(output_file):
+            if force:
+                print(f"Force overwriting {output_file}")
+                logging.info(f"Force overwriting {output_file}")
+                print(
+                    f"Now normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
+                )
+                logging.info(
+                    f"Normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
+                )
+                df = read_csvs_with_chunksize(file_to_normalize)
+
+                # Don't normalize locations
+                meta_cols=list(df.columns[df.columns.str.contains("Metadata")])
+                remove_locs = list(filter(lambda x: "_Location_Center_X" in x or "_Location_Center_Y" in x , df.columns))
+                remove_cents = list(filter(lambda x: "AreaShape_Center_X" in x or "AreaShape_Center_Y" in x , df.columns))
+                meta_cols = meta_cols + remove_locs + remove_cents
+
+                normalize(
+                    profiles=df,
+                    features=normalize_these_features,
+                    meta_features=meta_cols,
+                    samples=normalize_by_samples,
+                    method=normalize_method,
+                    output_file=output_file,
+                    compression_options=compression,
+                    float_format=float_format,
+                )
+        else:
+            print(
+                f"Now normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
+            )
+            logging.info(
+                f"Normalizing {data_level}...with operation: {normalize_method} for split {data_split_site}"
+            )
+            df = read_csvs_with_chunksize(file_to_normalize)
+
+            # Don't normalize locations
+            meta_cols=list(df.columns[df.columns.str.contains("Metadata")])
+            remove_locs = list(filter(lambda x: "_Location_Center_X" in x or "_Location_Center_Y" in x , df.columns))
+            remove_cents = list(filter(lambda x: "AreaShape_Center_X" in x or "AreaShape_Center_Y" in x , df.columns))
+            meta_cols = meta_cols + remove_locs + remove_cents
+
+            normalize(
+                profiles=df,
+                features=normalize_these_features,
+                meta_features=meta_cols,
+                samples=normalize_by_samples,
+                method=normalize_method,
+                output_file=output_file,
+                compression_options=compression,
+                float_format=float_format,
+            )
+
+        if data_level == "single_cell":
+            if output_single_cell_by_guide:
+                print(
+                    f"Now outputting normalized single cell profiles by guide for split {data_split_site}"
+                )
+                logging.info(
+                    f"Now outputting normalized single cell profiles by guide for split {data_split_site}"
+                )
+                # Load image alignment information for appending to single_cell_by_guide csvs
+                image_df = pd.read_csv(image_file, sep="\t")
+                keep_columns = []
+                for col in image_df.columns:
+                    if "Align_" in col:
+                        keep_columns.append(col)
+                keep_columns.append("Metadata_site")
+                image_df = image_df.loc[:, keep_columns]
+
+                sc_by_guide_folder = os.path.join(
+                    single_cell_input_dir, "single_cell_by_guide"
+                )
+                if not os.path.isdir(sc_by_guide_folder):
+                    os.mkdir(sc_by_guide_folder)
+                df = read_csvs_with_chunksize(output_file)
+                for guide in set(df["Metadata_Foci_Barcode_MatchedTo_Barcode"]):
+                     gene = df[df["Metadata_Foci_Barcode_MatchedTo_Barcode"] == guide][
+                         "Metadata_Foci_Barcode_MatchedTo_GeneCode"
+                     ].tolist()[0]
+                     guide_file_name = f"{str(output_file).split('__')[0].split('/')[-1]}__{guide}_{gene}.csv.gz"
+                     guide_path = os.path.join(sc_by_guide_folder, guide_file_name)
+                     if not os.path.exists(guide_path):
+                         guide_df = pd.DataFrame()
+                     else:
+                         guide_df = read_csvs_with_chunksize(guide_path)
+                     append_df = df.loc[
+                         df["Metadata_Foci_Barcode_MatchedTo_Barcode"] == guide
+                     ]
+                     append_df = append_df.merge(
+                         image_df, left_on="Metadata_Foci_site", right_on="Metadata_site"
+                     )
+                     guide_df = guide_df.append(append_df)
+                     guide_df.to_csv(guide_path, index=False)
+
 print("Finished 2.normalize.")
 logging.info("Finished 2.normalize.")
