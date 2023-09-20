@@ -28,6 +28,24 @@ This is the same as the "Simple" method, but splits Imperfect into two categorie
 5 - Bad Cell
   * Same as "Simple" method
 
+# Method: Salvage
+
+This method is meant to salvage as many cells as possible.
+1 - Perfect 
+  * This cell has a single or multiple of the same barcodes mapped, all with 100% score
+2 - Great Cell
+  * This cell has multiple of the same barcodes mapped
+  * An average score less than 100%
+3 - Salvage High
+  * This cell has many different barcodes mapped with various scores
+  * There is at least one perfect barcode
+  * There are not different barcodes of (n-1)/n% score or greater
+4 - Salvage Low
+  * This cell has many different barcodes mapped with various scores
+  * There is at least one barcode of (n-2)/n% or (n-1)/n%
+  * There are not different barcodes of (n-2)/n% score or greater
+5 - Bad Cell
+  * This cell doesn't have any spots called with (n-2)/n% or higher
 """
 
 import pathlib
@@ -53,6 +71,8 @@ class CellQuality:
             self.categorize = simple_categorize
         elif self.method == "simple_plus":
             self.categorize = simple_plus_categorize
+        elif self.method == "salvage":
+            self.categorize = salvage_categorize
 
         category_dict = self.define_cell_quality()
         self.category_df = (
@@ -133,6 +153,13 @@ def get_cell_quality_dict(method):
             4: "Imperfect-Low",
             5: "Bad",
         },
+        "salvage": {
+            1: "Perfect",
+            2: "Great",
+            3: "Salvage-High",
+            4: "Salvage-Low",
+            5: "Bad",
+        },
     }
 
     return cell_quality_dict[method]
@@ -148,8 +175,8 @@ def simple_categorize(parent_cell, score_col, avg_col="mean", count_col="count")
     )
 
     num_barcodes = parent_cell.shape[0]
-    max_score = max(parent_cell.Barcode_MatchedTo_Score_mean)
-    max_count = max(parent_cell.Barcode_MatchedTo_Score_count)
+    max_score = max(parent_cell[score_col_avg])
+    max_count = max(parent_cell[count_col_avg])
 
     if num_barcodes == 1:
         if max_score == 1:
@@ -187,8 +214,8 @@ def simple_plus_categorize(parent_cell, score_col, avg_col="mean", count_col="co
     )
 
     num_barcodes = parent_cell.shape[0]
-    max_score = max(parent_cell.Barcode_MatchedTo_Score_mean)
-    max_count = max(parent_cell.Barcode_MatchedTo_Score_count)
+    max_score = max(parent_cell[score_col_avg])
+    max_count = max(parent_cell[count_col_avg])
 
     if num_barcodes == 1:
         if max_score == 1:
@@ -216,4 +243,37 @@ def simple_plus_categorize(parent_cell, score_col, avg_col="mean", count_col="co
                         score = 4
                 else:
                     score = 5
+    return score
+
+def salvage_categorize(parent_cell, score_col, avg_col="mean", count_col="count"):
+
+    score_col_avg = f"{score_col}_{avg_col}"
+
+    parent_cell = parent_cell.sort_values(score_col_avg, ascending=False).reset_index(
+        drop=True
+    )
+
+    num_barcodes = parent_cell.shape[0]
+    max_score = max(parent_cell[score_col_avg])
+    count_perfect = len(parent_cell.loc[parent_cell[score_col_avg]==1])
+    count_salvage = len(parent_cell.loc[parent_cell[score_col_avg]>=10/12])
+
+    if num_barcodes == 1:
+        if max_score == 1:
+            score = 1
+        else:
+            score = 2
+    else:
+        if max_score == 1:
+            if count_perfect == 1:
+                score = 3
+            else:
+                score = 5
+        elif 1 > max_score >= 10/12:
+            if count_salvage == 1:
+                score = 4
+            else:
+                score = 5
+        else:
+            score = 5
     return score
