@@ -120,6 +120,7 @@ foci_cols = spot_config["foci_cols"]
 force = spot_config["force_overwrite"]
 perform = spot_config["perform"]
 allowed_skips = spot_config["allowed_skips"]
+drop_barcodes = spot_config["drop_barcodes"]
 
 # check if this step should be performed
 if not perform:
@@ -251,6 +252,10 @@ for data_split_site in site_info_dict:
                 right_on=id_cols + location_cols,
                 how="inner",
             )
+
+            if drop_barcodes:
+                complete_foci_df.loc[complete_foci_df[foci_cols[0]].isin(drop_barcodes), gene_cols+barcode_cols] = 'dropped'
+                complete_foci_df.loc[complete_foci_df[foci_cols[0]].isin(drop_barcodes), spot_score_cols+foci_cols[1:]] = 0
 
             null_spot_df = complete_foci_df.loc[
                 (complete_foci_df.loc[:, spot_parent_cols] == 0).squeeze(), :

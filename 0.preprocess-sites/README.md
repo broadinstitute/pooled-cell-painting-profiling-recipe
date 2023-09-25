@@ -11,6 +11,8 @@ The `preprocessing_config.yaml` controls all the pertinent details for this modu
 
 Many CellProfiler features per cell are not true morphology features.
 This step flags all of these features for downstream removal.
+It removes all features that have the string in them.
+(e.g. `Count` will remove `Count_Children_Foci`, `Count_Children_BarcodeFoci`, etc.)
 
 ## Step 1 - Process Spots
 
