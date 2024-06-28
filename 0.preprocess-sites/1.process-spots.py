@@ -251,17 +251,28 @@ for data_split_site in site_info_dict:
                 right_on=id_cols + location_cols,
                 how="inner",
             )
-
-            null_spot_df = complete_foci_df.loc[
-                (complete_foci_df.loc[:, spot_parent_cols] == 0).squeeze(), :
-            ]
-            cell_spot_df = complete_foci_df.loc[
-                (complete_foci_df.loc[:, spot_parent_cols] != 0).squeeze(), :
-            ]
+           
+            try:
+               null_spot_df = complete_foci_df.loc[
+                   (complete_foci_df.loc[:, spot_parent_cols] == 0).squeeze(), :
+               ]
+               num_unassigned_spots = null_spot_df.shape[0]
+            except:
+               num_unassigned_spots = 0
+            
+            try:
+               cell_spot_df = complete_foci_df.loc[
+                   (complete_foci_df.loc[:, spot_parent_cols] != 0).squeeze(), :
+               ]
+            except:
+               warnings.warn(f"{site} has no foci in cells. Skiping.")
+               logging.warning(f"{site} has no foci in cells. Skipping.")   
+               continue
+               
             num_assigned_cells = len(
                 cell_spot_df.loc[:, spot_parent_cols].squeeze().unique()
             )
-            num_unassigned_spots = null_spot_df.shape[0]
+            
             num_assigned_spots = cell_spot_df.shape[0]
 
             # Figure 1 - histogram of barcode counts per cell
