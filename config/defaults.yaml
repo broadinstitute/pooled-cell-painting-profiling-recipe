@@ -1,0 +1,68 @@
+directory_structure:
+  root: data/
+  SBS: SBS/
+  phenotyping: phenotyping/
+  data: summary_data/
+  figures: summary_figures/
+  profiles: profiles/
+  single_cell: single_cell/
+core:
+  cell_quality_column: Metadata_Quality_Name
+  cell_quality_index: Metadata_Quality_Index
+  cell_id_cols:
+    - ImageNumber
+    - ObjectNumber
+  compression: gzip
+  float_format: "%.5g"
+  ignore_files:
+    - .DS_Store
+process:
+  qc:
+    allowed_skips: 10
+    infer_empty_sites: true
+    stack_alignment_chans:
+      - DAPI_Painting
+      - Cycle01_DAPI
+  process_SBS:
+    allowed_skips: 10
+    barcode_col: Barcode_MatchedTo_Barcode
+    gene_col: Barcode_MatchedTo_GeneCode
+    SBS_score_col: Barcode_MatchedTo_Score
+    location_cols:
+      - Location_Center_X
+      - Location_Center_Y
+    foci_cols:
+      - Barcode_BarcodeCalled
+      - Barcode_MatchedTo_ID
+  single_cell:
+    allowed_skips: 10
+    flag_cols:
+      - Barcode
+      - Location
+      - Count
+      - Resize
+    save_single_file: false
+    save_per_site_file: true
+  summarize_SBS:
+    allowed_skips: 10
+  aggregate:
+    allowed_skips: 10
+    operation: median
+    features: infer
+  normalize:
+    output_bygene: true
+    method: standardize
+    by_samples: control_genes
+    features: infer
+  feature_select:
+    group: all
+    operations:
+      - variance_threshold
+      - correlation_threshold
+      - drop_na_columns
+      - blocklist
+      - drop_outliers
+    use_samples: all
+    features: infer
+    na_cutoff: 0
+    corr_threshold: 0.9

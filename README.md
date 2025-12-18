@@ -1,59 +1,71 @@
-# Pooled Cell Painting - Image-based Profiling Pipeline Recipe :woman_cook: :man_cook:
+# Pooled Morphological Profiling Workflow
 
-A step-by-step data processing pipeline for Pooled Cell Painting data.
+A step-by-step data processing pipeline for pooled morphological profiling (including Cell Painting) data.
 
-## Ingredients
+## Overview
 
-Data are the primary ingredients of science.
-Here, our data come from a Pooled Cell Painting experiment.
+### Inputs
 
-In these experiments, the data are thousands of `.csv` files storing metadata and morphology measurements from millions of single cells.
+This worfkflow inputs morphological measurements from single cell objects and in situ sequencing (ISS, also referred to as sequencing by synthesis or SBS) measurements/barcode calls from a pooled screens.
+Measurements are made by CellProfiler software using a [template pipeline](https://github.com/broadinstitute/pooled-cell-painting-image-processing/tree/master/pipelines/12cycles) (that can be modified as needed) including custom CellProfiler plugin modules for [channel balancing](https://github.com/CellProfiler/CellProfiler-plugins/blob/master/active_plugins/compensatecolors.py) and [barcode calling](https://github.com/CellProfiler/CellProfiler-plugins/blob/master/active_plugins/callbarcodes.py).
 
-There are two fundamental kinds of data ingredients:
+Example datasets for use with this workflow can be found on the [Cell Painting Gallery](https://broadinstitute.github.io/cellpainting-gallery/overview.html) and include `cpg0021-periscope` and `cpg0032-pooled-rare`.
 
-1. Cells
-2. Spots
+### Recipe Steps
 
-The `Cells` ingredients represent morphology measurements for various cellular compartments for each segmented single cell.
-The `Spots` ingredients represent in situ sequencing (ISS) results used for "cell calling".
-Cell calling is the procedure that assigns a specific CRISPR perturbation to an individual cell using barcode sequences read within `Spots` in the cell by ISS.
-Because the experiment is "pooled", there are thousands of CRISPR barcodes present in a single well.
+The workflow consists of six steps:
 
-These measurements for both data ingredients are currently made by CellProfiler software (using customized Pooled Cell Painting plugins).
+0. [Image QC](scripts/0.image-qc.py).
+Image metrics from CellProfiler outputs are used to generate QC plots and reports.
+Includes checking for cell confluency, image focus, image saturation, and phenotyping images to genotyping images alignment.
+1. [Processing of SBS data](scripts/1.process-SBS.py).
+Reads in SBS foci data from CellProfiler outputs and generates per-cell barcode/gene assignment and per-site SBS metrics.
+2. [Merging SBS data and morphology data](scripts/2.merge-single-cells.py).
+Reads in phenotyping data from CellProfiler outputs and merges it with SBS data to generate a single-cell level dataset.
+Outputs a list of folders/sites that were used for single-cell dataset so that subsequent steps do not need access to the CellProfiler output data.
+3. [Summarizing SBS data](scripts/3.summarize-SBS.py).
+Creates QC pltos and reports for SBS data and cell assignment.
+Generates a total barcode count summary for comparison to NGS.
+4. [Aggregating single cell profiles](scripts/4.aggregate.py).
+Creates guide- and gene-level profiles by aggregating single-cell profiles using Pycytominer.
+5. [Normalizing profiles](scripts/5.normalize.py).
+Normalizes all profiles on a per-plate basis using Pycytominer.
+6. [Feature selection](scripts/6.feature-selection.py).
+Performs feature selection on normalized profiles using Pycytominer.
 
-## Recipe Steps
-
-All cookbooks also include specific instructions, or steps, for each recipe.
-
-Our recipe includes two modules:
-
-1. [Preprocessing](0.preprocess-sites/)
-2. [Profile generation](1.generate-profiles/)
-
-The output data are structured in a way that includes measurements from many individual "sites" across a single plate.
-Each site can be thought of as a single field of view that consists of many different images from the five Cell Painting channels, and four ISS channels across `n` cycles.
-The number of cycles is determined as part of experimental design and is typically selected to ensure zero collisions between CRISPR barcodes.
-
-The recipe steps first preprocess spots and cells, output quality control (QC) metrics, and perform filtering.
-Next, in profile generation, single cell profiles are merged, aggregated, normalized and feature selected.
-The final output of the pipeline are QC metrics, summary figures, and morphology profiles for each CRISPR guide.
-These profiles will be used in downstream analyses for biological discovery.
-
-## Usage
-
-This recipe is designed to be used as a critical component of a Data Pipeline Welding procedure.
-
-More specifically, this recipe will be linked together, via a [GitHub submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules), to a Pooled Cell Painting data repository.
-The data repositories will be derived from the [Pooled Cell Painting template](https://github.com/broadinstitute/pooled-cell-painting-profiling-template).
-
-More usage instructions can be found in the template repo linked above.
-Briefly, the goal of the weld is to tightly couple the Pooled Cell Painting processed data to versioned code that performed the processing.
-This recipe is the versioned code and a GitHub submodule links the recipe by commit hash.
-
-The recipe is interacted with via a series of configuration yaml files defined in the data repository.
-
-## Logging
+### Logging
 
 The recipe includes creation of a log file for each step.
-The file is named after the step (e.g. 0.prefilter-features.log) and saves in a log/ folder within each module.
+The file is named after the step (e.g. 0.prefilter-features.log) and saves in a logs/ folder.
 The file logs progress information, warnings, and uncaught exceptions.
+
+## Step 1: Initialize the computational environment
+
+Install [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/).
+We use conda as an environment manager.
+
+```bash
+# Install computational environment
+conda env create --force --file environment.yml
+
+# Initialize the environment
+conda activate pooled-profiling
+```
+
+## Step 2: Configure the workflow
+
+Edit the [Experiment configuration file](config/experiment.json) to set parameters specific to your experiment.
+More information about the parameters can be found in the [config documentation](config/docs/experiment_README.md).
+
+Note that there is also a [Defaults configuration file](config/defaults.json) that contains parameters that are less likely to need changing between experiments.
+These include default assumptions about the structure of this repository and CellProfiler naming conventions.
+
+## Step 3: Run the workflow
+
+`python run.py`
+
+If you would like to pass configuration files that have custom location or naming, you can do so with the following command:
+
+```python
+python run.py --defaults_config_path path/to/defaults.json --experiment_config_path path/to/experiment.json
+```

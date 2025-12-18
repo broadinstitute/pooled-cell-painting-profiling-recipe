@@ -1,0 +1,21 @@
+{
+"_commenton_file_location":"parent_folder/batch_folder/plate-well-site_folder/csvs",
+"file_location":"/Users/eweisbar/Desktop/analysis",
+"control_genes":["NT","nontargeting"],
+"drop_barcodes":[],
+"_commenton_data_sets":"{SETNAME:{BATCH:{PLATE:[WELL1,WELL2]}}}",
+"data_sets":{"DMSO":{"2025_06_23_Batch3":{"Plate_A":["A1","B1","C1"],"Plate_B":["A1","B1","C1"]}},"Lofarnib":{"2025_06_23_Batch3":{"Plate_A":["A2","B2","C2"],"Plate_B":["A2","B2","C2"]}},"SB-505124":{"2025_06_23_Batch3":{"Plate_A":["A3","B3","C3"],"Plate_B":["A3","B3","C3"]}},"Brefeldin-A":{"2025_06_23_Batch3":{"Plate_A":["A4","B4","C4"],"Plate_B":["A4","B4","C4"]}}},
+"_commenton_compartments": "List compartments in experiment. First in list should be experimental unit and Parent object for Foci e.g. Cells",
+"_commenton_compartments2": "All compartments must have a Parent or Child relationship to the experimental unit so that cell_id_cols (default ImageNumber and ObjectNumber) can be used to merge them.",
+"compartments":["Cells","Nuclei","Cytoplasm"],
+"cell_quality_method":"simple",
+"keep_cell_qualities":["Perfect","Great"],
+"overwrite_files":true,
+"perform_process_qc":false,
+"perform_process_SBS":false,
+"perform_process_single_cells":false,
+"perform_summarize_SBS":false,
+"perform_aggregate":false,
+"perform_normalize":true,
+"perform_feature_select":false
+}
