@@ -1,0 +1,13 @@
+name: vis_pooled
+channels:
+- conda-forge
+dependencies:
+- conda-forge::pandas==2.2.3
+- conda-forge::matplotlib==3.10.3
+- conda-forge::notebook==7.4.2
+- conda-forge::ipykernel==6.29.5
+- conda-forge::numpy==2.2.6
+- conda-forge::scikit-image==0.25.2
+- conda-forge::scikit-learn==1.6.1
+- conda-forge::seaborn==0.13.2
+- conda-forge::boto3
