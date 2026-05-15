@@ -28,6 +28,9 @@ Functions to determine cell quality
 """
 
 import pandas as pd
+import numpy as np
+import sys
+from functools import reduce
 
 
 class CellQuality:
@@ -51,6 +54,8 @@ class CellQuality:
             self.categorize = simple_T7_categorize
         elif self.method == "simple_plus":
             self.categorize = simple_plus_categorize
+        elif self.method == "multiples_T7":
+            self.categorize = multiples_T7_categorize
 
         category_dict = get_cell_quality_dict(self.method)
         self.category_df = (
@@ -60,20 +65,66 @@ class CellQuality:
             .rename({"index": self.category_col_index}, axis="columns")
         )
 
-    def assign_cell_quality(self, count_df, parent_col, score_col, SBScycles=12):
-        quality_df = (
-            pd.DataFrame(
-                count_df.groupby(parent_col).apply(
-                    lambda x: self.categorize(
-                        x, score_col=score_col, SBScycles=SBScycles
+    def assign_cell_quality(self, assigned_spot_df, parent_col, score_col, gene_col, barcode_col, SBScycles=12, match_to_library=False, library_structure=None):
+        if len(library_structure) > 1:
+            crispr_barcode_gene_dict = {}
+            for col_to_match in library_structure.keys():
+                barcode_group = assigned_spot_df.groupby(
+                    [parent_col] + [f"{gene_col}_{col_to_match}", f"{barcode_col}_{col_to_match}"]
+                )[f"{score_col}_{col_to_match}"]
+                mergedf = pd.merge(
+                    barcode_group.mean().reset_index(),
+                    barcode_group.count().reset_index(),
+                    on=[parent_col] + [f"{gene_col}_{col_to_match}", f"{barcode_col}_{col_to_match}"],
+                    suffixes=["_mean", "_count"],
+                )
+                crispr_barcode_gene_dict[col_to_match] = mergedf
+            crispr_barcode_gene_df = reduce(lambda left, right: pd.merge(left, right, how='outer'), crispr_barcode_gene_dict.values())
+            
+            cols_to_match = [f"{gene_col}_{col_to_match}" for col_to_match in library_structure.keys()]
+            # Note if the genes matched to each iBAR match
+            assigned_spot_df[f'GeneCallsMatch'] = assigned_spot_df[cols_to_match].eq(assigned_spot_df[cols_to_match[0]], axis=0).all(axis=1)
+            # Assign a consensus barcode and gene if iBARs match
+            assigned_spot_df['Barcode_MatchedTo_Barcode'] = "Unmatched" #TODO abstract col name
+            assigned_spot_df['Barcode_MatchedTo_GeneCode'] = "Unmatched"
+            assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_Barcode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[0]]
+            assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_GeneCode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[0].replace("GeneCode","Barcode")]
+            quality_df = (
+                pd.DataFrame(
+                    assigned_spot_df.groupby(parent_col).apply(
+                        lambda x: self.categorize(x, cols_to_match[1]),
+                        include_groups=False,
                     ),
-                    include_groups=False,
-                ),
-                columns=[self.category_col_index],
+                    columns=[self.category_col_index],
+                )
+                .reset_index()
+                .merge(crispr_barcode_gene_df, on=parent_col)
+                .merge(assigned_spot_df[[parent_col, "Barcode_MatchedTo_Barcode", "Barcode_MatchedTo_GeneCode"]], on=parent_col)
+            ).assign(Quality_Method=self.method)
+        else:
+            barcode_group = assigned_spot_df.groupby(
+                [parent_col] + [gene_col, barcode_col]
+            )[score_col]
+
+            crispr_barcode_gene_df = pd.merge(
+                barcode_group.mean().reset_index(),
+                barcode_group.count().reset_index(),
+                on=[parent_col] + [gene_col, barcode_col],
+                suffixes=["_mean", "_count"],
             )
-            .reset_index()
-            .merge(count_df, on=parent_col)
-        ).assign(Quality_Method=self.method)
+            quality_df = (
+                pd.DataFrame(
+                    crispr_barcode_gene_df.groupby(parent_col).apply(
+                        lambda x: self.categorize(
+                            x, score_col=score_col, SBScycles=SBScycles
+                        ),
+                        include_groups=False,
+                    ),
+                    columns=[self.category_col_index],
+                )
+                .reset_index()
+                .merge(crispr_barcode_gene_df, on=parent_col)
+            ).assign(Quality_Method=self.method)
 
         cell_quality_dict = get_cell_quality_dict(self.method)
         quality_df[self.category_class_name] = quality_df[self.category_col_index].map(
@@ -137,6 +188,12 @@ def get_cell_quality_dict(method):
             4: "Imperfect-Low",
             5: "Bad",
         },
+        "multiples_T7": {
+            1: "Perfect",
+            2: "Good",
+            3: "Acceptable",
+            4: "Bad"
+        },
     }
     return cell_quality_dict[method]
 
@@ -151,6 +208,9 @@ def filter_to_top_BC(SBS_df, parent_compartment, SBS_score_col):
 def simple_categorize(
     parent_cell, score_col, avg_col="mean", count_col="count", SBScycles=12
 ):
+    if len(score_col) > 1:
+        print(f"simple_categorize method incompatible with matching multiple barcodes")
+        sys.exit(1)
     # Written for SBS methods that produce many SBS foci/cell
     score_col_avg = f"{score_col}_{avg_col}"
     count_col_avg = f"{score_col}_{count_col}"
@@ -199,6 +259,9 @@ def simple_categorize(
 
 
 def simple_T7_categorize(parent_cell, score_col, avg_col="mean", SBScycles=12):
+    if len(score_col) > 1:
+        print(f"simple_T7_categorize method incompatible with matching multiple barcodes")
+        sys.exit(1)
     # Written for SBS methods that produce median of 1 SBS focus/cell
     score_col_avg = f"{score_col}_{avg_col}"
     parent_cell = parent_cell.sort_values(score_col_avg, ascending=False).reset_index(
@@ -236,6 +299,9 @@ def simple_T7_categorize(parent_cell, score_col, avg_col="mean", SBScycles=12):
 def simple_plus_categorize(
     parent_cell, score_col, avg_col="mean", count_col="count", SBScycles=12
 ):
+    if len(score_col) > 1:
+        print(f"simple_plus_categorize method incompatible with matching multiple barcodes")
+        sys.exit(1)
     score_col_avg = f"{score_col}_{avg_col}"
     count_col_avg = f"{score_col}_{count_col}"
 
@@ -273,4 +339,22 @@ def simple_plus_categorize(
                         score = 4
                 else:
                     score = 5
+    return score
+
+def multiples_T7_categorize(parent_cell,gene_col1):
+    # Written for SBS methods that produce median of 1 SBS focus/cell AND have multiple barcodes (iBARs)
+
+    # TODO this should be abstracted more
+    if parent_cell[gene_col1].nunique() == 1:
+        if all(parent_cell['Spot_Category'] == "Perfect"):
+            score = 1
+        elif all(parent_cell['Spot_Category'].isin(["Perfect", "Good"])):
+            score = 2
+        elif all(parent_cell['Spot_Category'].isin(["Perfect", "Good", "Acceptable"])):
+            score = 3
+        # any bad spots, any recombinant spots
+        else:
+            score = 4
+    else:
+        score = 4
     return score

@@ -24,7 +24,10 @@ def check_experiment_config(experiment_config):
         'perform_summarize_SBS',
         'perform_aggregate',
         'perform_normalize',
-        'perform_feature_select'
+        'perform_feature_select',
+        'match_to_library',
+        'library_structure',
+        'library_location',
     ]
     for key in required_keys:
         if key not in experiment_config:

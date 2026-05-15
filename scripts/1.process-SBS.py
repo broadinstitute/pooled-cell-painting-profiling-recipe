@@ -11,6 +11,7 @@ import json
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
+import barcode_calling_utils
 from io_utils import load_configs, parse_data_set, read_csvs_with_chunksize
 from cell_quality_utils import CellQuality
 
@@ -76,6 +77,9 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
     overwrite_files = experiment_config["overwrite_files"]
     compartments = experiment_config["compartments"]
     cell_quality_method = experiment_config["cell_quality_method"]
+    match_to_library = experiment_config["match_to_library"]
+    library_structure = experiment_config["library_structure"]
+    library_location = experiment_config["library_location"]
 
     # define defaults variables
     out_root = defaults_config["directory_structure"]["root"]
@@ -90,6 +94,8 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
     SBS_score_col = defaults_config["process"]["process_SBS"]["SBS_score_col"]
     barcode_col = defaults_config["process"]["process_SBS"]["barcode_col"]
     gene_col = defaults_config["process"]["process_SBS"]["gene_col"]
+    call_col = defaults_config["process"]["process_SBS"]["call_col"]
+    spot_quality_method = defaults_config["process"]["process_SBS"]["spot_quality_method"]
 
     cell_quality = CellQuality(
         cell_quality_method,
@@ -147,56 +153,78 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
 
                     # SBS DATA HANDLING
                     try:
-                        barcode_file = os.path.join(
-                            file_location,
-                            batch,
-                            plate_well_site_folder,
-                            "BarcodeFoci.csv",
-                        )
-                        barcodefoci_df = read_csvs_with_chunksize(barcode_file)
-                        # most columns from BarcodeFoci.csv are dropped
-                        barcodefoci_df = barcodefoci_df[
-                            id_cols
-                            + location_cols
-                            + [x for x in barcodefoci_df.columns if "Parent" in x]
-                            + [x for x in barcodefoci_df.columns if "Child" in x]
-                        ]
-
+                        if not match_to_library:
+                            barcode_file = os.path.join(
+                                file_location,
+                                batch,
+                                plate_well_site_folder,
+                                "BarcodeFoci.csv",
+                            )
+                            barcodefoci_df = read_csvs_with_chunksize(barcode_file)
+                            # most columns from BarcodeFoci.csv are dropped
+                            barcodefoci_df = barcodefoci_df[
+                                id_cols
+                                + location_cols
+                                + [x for x in barcodefoci_df.columns if "Parent" in x]
+                                + [x for x in barcodefoci_df.columns if "Child" in x]
+                            ]
                         foci_file = os.path.join(
                             file_location, batch, plate_well_site_folder, "Foci.csv"
                         )
                         foci_df = read_csvs_with_chunksize(foci_file)
+
+                        if len(foci_df) == 0:
+                            printandlog(f"{plate_well_site_folder} does not have any foci")
+                            no_SBS_foci_sites.append(plate_well_site_folder)
+                            continue
+
+                        if match_to_library:
+                            matchdict = barcode_calling_utils.match_barcode_to_library(library_location, library_structure, call_col, foci_df)
+                            for col_to_match in library_structure.keys():
+                                if len(library_structure) > 1:
+                                    foci_df[f"{SBS_score_col}_{col_to_match}"] = matchdict[col_to_match][0]
+                                    foci_df[f"{barcode_col}_{col_to_match}"] = matchdict[col_to_match][1]
+                                    foci_df[f"{gene_col}_{col_to_match}"] = matchdict[col_to_match][2]
+                                    foci_df[f"{foci_cols[1]}_{col_to_match}"] = matchdict[col_to_match][3]
+                                else:
+                                    foci_df[SBS_score_col] = matchdict[col_to_match][0]
+                                    foci_df[barcode_col] = matchdict[col_to_match][1]
+                                    foci_df[gene_col] = matchdict[col_to_match][2]
+                                    foci_df[foci_cols[1]] = matchdict[col_to_match][3]
                         # most columns from Foci.csv are dropped
                         foci_df = foci_df[
                             list(
                                 set(
                                     id_cols
                                     + location_cols
-                                    + foci_cols
-                                    + [SBS_score_col, barcode_col, gene_col]
+                                    + [x for x in foci_df.columns if any(y in x for y in foci_cols)]
+                                    + [x for x in foci_df.columns if any(y in x for y in [SBS_score_col, barcode_col, gene_col])]
                                 )
                             )
                             + [x for x in foci_df.columns if "Parent" in x]
                             + [x for x in foci_df.columns if "Child" in x]
                         ]
-                        if foci_df[foci_cols[0]].astype(str).str.len().nunique() == 1:
-                            SBScycles = foci_df[foci_cols[0]].str.len()[0]
-                            foundSBS = True
-                        if foci_df[foci_cols[1]].astype(str).str.len().nunique() == 1:
-                            if foundSBS:
-                                printandlog(
-                                    f"Failed to parse number SBS cycles in {plate_well_site_folder}",
-                                    type="warning",
-                                )
-                                allowed_skip_counter = fail_site(
-                                    plate_well_site_folder,
-                                    barcode_file,
-                                    allowed_skip_counter,
-                                    allowed_skips,
-                                )
-                                continue
-                            else:
-                                SBScycles = foci_df[foci_cols[1]].str.len()[0]
+
+                        # get length of barcode calls and confirm they are all the same length
+                        if foci_df[call_col].astype(str).str.len().nunique() == 1:
+                            SBScycles = foci_df[call_col].str.len()[0]
+                        else:
+                            printandlog(
+                                f"Failed to parse number SBS cycles in {plate_well_site_folder}",
+                                type="warning",
+                            )
+                            allowed_skip_counter = fail_site(
+                                plate_well_site_folder,
+                                barcode_file,
+                                allowed_skip_counter,
+                                allowed_skips,
+                            )
+                            continue
+                        
+                        # Add foci quality categories. Used for barcode calling if multiple barcodes. Detects recombination.
+                        if len(library_structure) > 1:
+                            foci_df = barcode_calling_utils.categorize_spots(foci_df, [x for x in foci_df.columns if SBS_score_col in x], SBScycles, spot_quality_method)
+
                     except:
                         allowed_skip_counter = fail_site(
                             plate_well_site_folder,
@@ -206,48 +234,50 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         )
                         continue
 
-                    # File checking
-                    if len(barcodefoci_df) == 0 or len(foci_df) == 0:
-                        printandlog(f"{plate_well_site_folder} does not have any foci")
-                        no_SBS_foci_sites.append(plate_well_site_folder)
-                        continue
+                    if not match_to_library:
+                        try:
+                            # Confirm that image number and object number are aligned
+                            pd.testing.assert_frame_equal(
+                                barcodefoci_df.loc[:, id_cols],
+                                foci_df.loc[:, id_cols],
+                                check_names=True,
+                            )
+                            # Confirm that X and Y locations are aligned
+                            pd.testing.assert_frame_equal(
+                                barcodefoci_df.loc[:, location_cols],
+                                foci_df.loc[:, location_cols],
+                                check_names=True,
+                            )
+                        except AssertionError:
+                            allowed_skip_counter = fail_site(
+                                plate_well_site_folder,
+                                barcode_file,
+                                allowed_skip_counter,
+                                allowed_skips,
+                            )
+                            continue
 
-                    try:
-                        # Confirm that image number and object number are aligned
-                        pd.testing.assert_frame_equal(
-                            barcodefoci_df.loc[:, id_cols],
-                            foci_df.loc[:, id_cols],
-                            check_names=True,
+                        image_number = foci_df.ImageNumber.unique()[0]
+
+                        # Merge SBS files
+                        complete_foci_df = barcodefoci_df.merge(
+                            foci_df,
+                            left_on=id_cols + location_cols,
+                            right_on=id_cols + location_cols,
+                            how="inner",
                         )
-                        # Confirm that X and Y locations are aligned
-                        pd.testing.assert_frame_equal(
-                            barcodefoci_df.loc[:, location_cols],
-                            foci_df.loc[:, location_cols],
-                            check_names=True,
-                        )
-                    except AssertionError:
-                        allowed_skip_counter = fail_site(
-                            plate_well_site_folder,
-                            barcode_file,
-                            allowed_skip_counter,
-                            allowed_skips,
-                        )
-                        continue
+                    else:
+                        complete_foci_df = foci_df.copy()
+                        
 
-                    image_number = foci_df.ImageNumber.unique()[0]
-
-                    # Merge SBS files
-                    complete_foci_df = barcodefoci_df.merge(
-                        foci_df,
-                        left_on=id_cols + location_cols,
-                        right_on=id_cols + location_cols,
-                        how="inner",
-                    )
-
-                    # Drop foci from droplist
-                    complete_foci_df = complete_foci_df.loc[
-                        ~complete_foci_df[barcode_col].isin(drop_barcodes)
-                    ]
+                    if len(library_structure) == 1:
+                        # Drop foci from droplist
+                        complete_foci_df = complete_foci_df.loc[
+                            ~complete_foci_df[barcode_col].isin(drop_barcodes)
+                        ]
+                    else:
+                        # TODO - support dropping specific barcodes with multi-matches
+                        printandlog("Dropping specific barcodes not currently supported for multiple library segments. Skipping barcode dropping.")
 
                     # Count foci outside of parent compartment (e.g. Cells)
                     try:
@@ -291,24 +321,16 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
 
                     num_assigned_spots = assigned_spot_df.shape[0]
 
-                    # Barcodes: Get counts of initial calls
-                    barcode_group = assigned_spot_df.groupby(
-                        [f"Parent_{compartments[0]}"] + [gene_col, barcode_col]
-                    )[SBS_score_col]
-
-                    crispr_barcode_gene_df = pd.merge(
-                        barcode_group.mean().reset_index(),
-                        barcode_group.count().reset_index(),
-                        on=[f"Parent_{compartments[0]}"] + [gene_col, barcode_col],
-                        suffixes=["_mean", "_count"],
-                    )
-
                     # Assign Cell Quality scores based on gene and barcode assignments
                     crispr_barcode_gene_df = cell_quality.assign_cell_quality(
-                        count_df=crispr_barcode_gene_df,
+                        assigned_spot_df,
                         parent_col=f"Parent_{compartments[0]}",
                         score_col=SBS_score_col,
+                        gene_col = gene_col,
+                        barcode_col = barcode_col,
                         SBScycles=SBScycles,
+                        match_to_library=match_to_library,
+                        library_structure=library_structure,
                     ).assign(
                         Metadata_ImageNumber=image_number,
                         Metadata_Batch=batch,

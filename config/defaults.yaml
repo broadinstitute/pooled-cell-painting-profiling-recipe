@@ -26,6 +26,7 @@ process:
   process_SBS:
     allowed_skips: 10
     barcode_col: Barcode_MatchedTo_Barcode
+    call_col: Barcode_BarcodeCalled
     gene_col: Barcode_MatchedTo_GeneCode
     SBS_score_col: Barcode_MatchedTo_Score
     location_cols:
@@ -34,6 +35,7 @@ process:
     foci_cols:
       - Barcode_BarcodeCalled
       - Barcode_MatchedTo_ID
+    spot_quality_method: simple
   single_cell:
     allowed_skips: 10
     flag_cols:
