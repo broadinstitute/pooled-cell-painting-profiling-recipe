@@ -268,7 +268,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         )
                     else:
                         complete_foci_df = foci_df.copy()
-                        
+                        image_number = complete_foci_df.ImageNumber.unique()[0]
 
                     if len(library_structure) == 1:
                         # Drop foci from droplist
@@ -307,10 +307,9 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         )
                         continue
 
-                    num_assigned_cells = len(
+                    num_assigned_cells = len(set(
                         assigned_spot_df.loc[:, f"Parent_{compartments[0]}"]
-                        .squeeze()
-                        .unique()
+                        )
                     )
 
                     if num_assigned_cells == 0:
@@ -350,10 +349,10 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
 
                     # Create additional data summaries for subsequent qc
                     num_unique_guides = len(
-                        crispr_barcode_gene_df.loc[:, barcode_col].squeeze().unique()
+                        set(crispr_barcode_gene_df.loc[:, barcode_col].to_list())
                     )
                     num_unique_genes = len(
-                        crispr_barcode_gene_df.loc[:, gene_col].squeeze().unique()
+                        set(crispr_barcode_gene_df.loc[:, gene_col].to_list())
                     )
                     gene_category_count_df = (
                         cell_quality.summarize_perturbation_quality_counts(
@@ -404,8 +403,8 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                     )
 
                     passed_gene_df.loc[:, gene_col] = pd.Categorical(
-                        passed_gene_df.loc[:, gene_col].squeeze(),
-                        categories=passed_gene_df.loc[:, gene_col].squeeze(),
+                        passed_gene_df.loc[:, gene_col].to_list(),
+                        categories=passed_gene_df.loc[:, gene_col].to_list(),
                     )
 
                     # Number of non-targetting controls
