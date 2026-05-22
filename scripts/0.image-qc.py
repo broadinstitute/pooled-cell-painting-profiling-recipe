@@ -120,8 +120,10 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
         batch, plate_list, list_plate_well_tuples = parse_data_set(
             data_sets[data_set_name]
         )
-
-        folderlist = os.listdir(os.path.join(file_location, batch))
+        try:
+            folderlist = os.listdir(os.path.join(file_location, batch))
+        except:
+            printandlog(f"Failed to find list of folders in {os.path.join(file_location, batch)}. Likely need to correct 'file_location' in config.")
         inferred_empty_sites = []
         all_image_dfs = []
         for plate in plate_list:
