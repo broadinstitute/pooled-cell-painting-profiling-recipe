@@ -140,8 +140,6 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                     output_dir = os.path.join(
                         out_root, sbs_folder, plate_well_site_folder
                     )
-                    if not os.path.exists(output_dir):
-                        os.makedirs(output_dir, exist_ok=True)
                     site = plate_well_site_folder.rsplit("-", 1)[1]
 
                     if not overwrite_files:
@@ -341,6 +339,8 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                     )
 
                     # SAVE OUT PROCESSED SBS DATA
+                    if not os.path.exists(output_dir):
+                        os.makedirs(output_dir, exist_ok=True)
                     # Used in subsequent steps to make profiles
                     out_file = os.path.join(output_dir, "processed_SBS.tsv.gz")
                     crispr_barcode_gene_df.to_csv(
