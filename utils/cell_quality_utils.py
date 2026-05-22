@@ -198,9 +198,9 @@ def get_cell_quality_dict(method):
     return cell_quality_dict[method]
 
 
-def filter_to_top_BC(SBS_df, parent_compartment, SBS_score_col):
+def filter_to_top_BC(SBS_df, parent_compartment, SBS_score_col_mean):
     SBS_df = SBS_df.loc[
-        SBS_df.groupby(f"Parent_{parent_compartment}")[f"{SBS_score_col}_mean"].idxmax()
+        SBS_df.groupby(f"Parent_{parent_compartment}")[SBS_score_col_mean].idxmax()
     ].reset_index(drop=True)
     return SBS_df
 
