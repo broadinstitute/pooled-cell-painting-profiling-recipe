@@ -127,6 +127,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
             inferred_empty_sites = []
             printandlog(f"No inferred empty sites file found for {data_set_name}.")
         no_SBS_foci_sites = []
+        no_assigned_cells_sites = []
         for plate in plate_list:
             for plate_well_tuple in [x for x in list_plate_well_tuples if plate in x]:
                 well = plate_well_tuple[1]
@@ -314,6 +315,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         printandlog(
                             f"{plate_well_site_folder} has no assigned cells. Skipping."
                         )
+                        no_assigned_cells_sites.append(plate_well_site_folder)
                         continue
 
                     num_assigned_spots = assigned_spot_df.shape[0]
@@ -447,6 +449,18 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                     with open(output_file, "w") as f:
                         json.dump(descriptive_results, f, indent=4)
 
+        if no_assigned_cells_sites:
+            no_assigned_cells_sites = pd.DataFrame(
+                no_assigned_cells_sites, columns=["No_Assigned_Cells_Site_Folder"]
+            )
+            no_assigned_cells_sites.to_csv(
+                os.path.join(
+                    out_root,
+                    data_folder,
+                    f"No_Assigned_Cells_Sites_{data_set_name}.csv",
+                ),
+                index=False,
+            )
         if no_SBS_foci_sites:
             no_SBS_foci_sites = pd.DataFrame(
                 no_SBS_foci_sites, columns=["No_SBS_Foci_Site_Folder"]

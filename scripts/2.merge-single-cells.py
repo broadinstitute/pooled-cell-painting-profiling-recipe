@@ -156,6 +156,21 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
         except:
             no_SBS_foci_sites = []
             printandlog(f"No SBS foci-less file found for {data_set_name}.")
+        try:
+            no_assigned_cells_sites = (
+                pd.read_csv(
+                    os.path.join(
+                        out_root,
+                        data_folder,
+                        f"No_Assigned_Cells_Sites_{data_set_name}.csv",
+                    )
+                )
+                .squeeze()
+                .tolist()
+            )
+        except:
+            no_assigned_cells_sites = []
+            printandlog(f"No assigned cells-less file found for {data_set_name}.")
 
         all_usefolders = []
         for plate in plate_list:
@@ -164,6 +179,7 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
                 usefolders = [x for x in folderlist if f"{plate}-{well}" in x]
                 usefolders = [x for x in usefolders if x not in inferred_empty_sites]
                 usefolders = [x for x in usefolders if x not in no_SBS_foci_sites]
+                usefolders = [x for x in usefolders if x not in no_assigned_cells_sites]
                 all_usefolders += usefolders
                 single_file_df = []
                 for plate_well_site_folder in usefolders:
