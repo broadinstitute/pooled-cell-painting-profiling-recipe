@@ -248,7 +248,7 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
                 outdir_figs, f"plate_layout_PassToFailRatio_{data_set_name}.png"
             )
             make_plate_layout_plots(
-                ratio_df,
+                ratio_df.reset_index(),
                 "Pass_Fail_withempty",
                 "Pass:Fail (with empty cells)",
                 outpath,
@@ -259,7 +259,7 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
                 outdir_figs, f"plate_layout_PassToFailRatio_0empty_{data_set_name}.png"
             )
             make_plate_layout_plots(
-                ratio_df,
+                ratio_df.reset_index(),
                 "Pass_Fail_0empty",
                 "Pass:Fail (without empty cells)",
                 outpath,
@@ -270,7 +270,7 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
                 outdir_figs, f"plate_layout_PercentEmpty_{data_set_name}.png"
             )
             make_plate_layout_plots(
-                ratio_df, "PercentEmpty", "Percent Empty Cells", outpath, legend=True
+                ratio_df.reset_index(), "PercentEmpty", "Percent Empty Cells", outpath, legend=True
             )
         except:
             printandlog(f"Failed to create Pass/Fail plots for {data_set_name}")
