@@ -9,7 +9,7 @@ import logging
 import traceback
 import pandas as pd
 
-from pycytominer import aggregate
+from pycytominer import aggregate as pycytominer_aggregate
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
@@ -119,8 +119,7 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
             printandlog(
                 f"Now aggregating {plate} to guide level with operation: {operation}"
             )
-
-            aggregate_df = aggregate(
+            aggregate_df = pycytominer_aggregate(
                 population_df=single_file_df,
                 strata=[f"Metadata_{gene_col}", f"Metadata_{barcode_col}"],
                 features=features,
@@ -139,7 +138,7 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
             # Aggregate to gene level
             printandlog(f"Now aggregating to gene level with operation: {operation}")
 
-            aggregate_df = aggregate(
+            aggregate_df = pycytominer_aggregate(
                 population_df=single_file_df,
                 strata=[f"Metadata_{gene_col}"],
                 features=features,
