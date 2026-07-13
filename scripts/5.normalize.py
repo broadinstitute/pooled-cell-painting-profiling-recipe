@@ -4,7 +4,7 @@ import logging
 import traceback
 import pandas as pd
 
-from pycytominer import normalize
+from pycytominer import normalize as pycytominer_normalize
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
@@ -37,7 +37,7 @@ def printandlog(msg, type="info"):
         logging.info(msg)
 
 
-def aggregate(path_to_defaults_config, path_to_experiment_config):
+def normalize(path_to_defaults_config, path_to_experiment_config):
     printandlog("Starting 5.normalize.")
     defaults_config, experiment_config = load_configs(
         path_to_defaults_config, path_to_experiment_config
@@ -111,7 +111,7 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
                 output_file = os.path.join(
                     profiles_out, f"{plate}_{data_set_name}_{normby}_normalized.csv.gz"
                 )
-                normalize(
+                pycytominer_normalize(
                     profiles=df,
                     features=features,
                     meta_features=meta_cols,
@@ -166,4 +166,4 @@ if __name__ == "__main__":
         sys.exit()
     path_to_defaults_config = sys.argv[1]
     path_to_experiment_config = sys.argv[2]
-    aggregate(path_to_defaults_config, path_to_experiment_config)
+    normalize(path_to_defaults_config, path_to_experiment_config)
