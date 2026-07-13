@@ -53,7 +53,7 @@ def fail_site(plate_well_site_folder, file, allowed_skip_counter, allowed_skips)
         f"Now at {allowed_skip_counter} sites skipped from errors.",
         type="warning",
     )
-    if allowed_skips <= allowed_skip_counter:
+    if allowed_skips < allowed_skip_counter:
         printandlog(
             f"Allowed skip limit of {allowed_skips} reached. Stopping 1.process-SBS.",
             type="warning",
@@ -167,6 +167,8 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                                 + [x for x in barcodefoci_df.columns if "Parent" in x]
                                 + [x for x in barcodefoci_df.columns if "Child" in x]
                             ]
+                        else:
+                            barcode_file = "barcode calls made in recipe"
                         foci_file = os.path.join(
                             file_location, batch, plate_well_site_folder, "Foci.csv"
                         )
@@ -299,7 +301,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                                 != 0
                             ).squeeze(),
                             :,
-                        ]
+                        ].copy()
                     except:
                         printandlog(
                             f"{plate_well_site_folder} has no foci in cells. Skipping."
