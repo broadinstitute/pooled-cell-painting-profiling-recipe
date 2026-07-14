@@ -103,6 +103,9 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
         category_class_name=cell_quality_column,
     )
 
+    if len(library_structure) > 1:
+        printandlog("Dropping specific barcodes not currently supported for multiple library segments. Skipping barcode dropping.")
+
     allowed_skip_counter = 0
     for data_set_name in data_sets.keys():
         printandlog(f"Starting {data_set_name}")
@@ -276,9 +279,8 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         complete_foci_df = complete_foci_df.loc[
                             ~complete_foci_df[barcode_col].isin(drop_barcodes)
                         ]
-                    else:
+                    #else:
                         # TODO - support dropping specific barcodes with multi-matches
-                        printandlog("Dropping specific barcodes not currently supported for multiple library segments. Skipping barcode dropping.")
 
                     # Count foci outside of parent compartment (e.g. Cells)
                     try:
