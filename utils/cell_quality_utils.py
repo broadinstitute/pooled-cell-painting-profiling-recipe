@@ -87,8 +87,8 @@ class CellQuality:
             # Assign a consensus barcode and gene if iBARs match
             assigned_spot_df['Barcode_MatchedTo_Barcode'] = "Unmatched" #TODO abstract col name
             assigned_spot_df['Barcode_MatchedTo_GeneCode'] = "Unmatched"
-            assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_Barcode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[0]]
-            assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_GeneCode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[0].replace("GeneCode","Barcode")]
+            assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_GeneCode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[0]]
+            assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_Barcode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[0].replace("GeneCode","Barcode")]
             quality_df = (
                 pd.DataFrame(
                     assigned_spot_df.groupby(parent_col).apply(
