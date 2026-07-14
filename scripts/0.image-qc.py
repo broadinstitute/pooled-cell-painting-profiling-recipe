@@ -123,7 +123,9 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
         try:
             folderlist = os.listdir(os.path.join(file_location, batch))
         except:
-            printandlog(f"Failed to find list of folders in {os.path.join(file_location, batch)}. Likely need to correct 'file_location' in config.")
+            printandlog(
+                f"Failed to find list of folders in {os.path.join(file_location, batch)}. Likely need to correct file_location in config."
+            )
         inferred_empty_sites = []
         all_image_dfs = []
         for plate in plate_list:
@@ -309,13 +311,20 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
         # Any point too high or too low may have focus issues
         try:
             df = images_df.set_index(
-                ["Metadata_Identifier","Metadata_Plate","Metadata_Site", "Metadata_Well"]
+                [
+                    "Metadata_Identifier",
+                    "Metadata_Plate",
+                    "Metadata_Site",
+                    "Metadata_Well",
+                ]
             )[[x for x in image_df.columns if "ImageQuality_PowerLogLogSlope_" in x]]
             df.columns = df.columns.str.replace("ImageQuality_", "")
             df.columns = df.columns.str.split("_", n=1, expand=True)
             df = df.stack(level=1, future_stack=True)
             df = df.reset_index().rename(columns={"level_4": "Channel"})
-            df['Plate|Well'] = df['Metadata_Plate'] + "|" + df['Metadata_Well'].astype(str)
+            df["Plate|Well"] = (
+                df["Metadata_Plate"] + "|" + df["Metadata_Well"].astype(str)
+            )
             outpath = os.path.join(outdir_figs, f"Image_Focus_{data_set_name}.png")
             p = (
                 (

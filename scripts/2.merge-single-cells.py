@@ -214,7 +214,15 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
                         continue
 
                     # Filter SBS to top quality barcode/Cell
-                    SBS_df = filter_to_top_BC(SBS_df, compartments[0], [x for x in SBS_df.columns if SBS_score_col in x and '_mean' in x][0])
+                    SBS_df = filter_to_top_BC(
+                        SBS_df,
+                        compartments[0],
+                        [
+                            x
+                            for x in SBS_df.columns
+                            if SBS_score_col in x and "_mean" in x
+                        ][0],
+                    )
                     # Rename columns in preparation for merge
                     SBS_df.columns = [
                         f"Metadata_{x}" if "Metadata" not in x else x

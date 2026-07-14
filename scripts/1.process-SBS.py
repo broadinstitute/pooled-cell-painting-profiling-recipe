@@ -95,7 +95,9 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
     barcode_col = defaults_config["process"]["process_SBS"]["barcode_col"]
     gene_col = defaults_config["process"]["process_SBS"]["gene_col"]
     call_col = defaults_config["process"]["process_SBS"]["call_col"]
-    spot_quality_method = defaults_config["process"]["process_SBS"]["spot_quality_method"]
+    spot_quality_method = defaults_config["process"]["process_SBS"][
+        "spot_quality_method"
+    ]
 
     cell_quality = CellQuality(
         cell_quality_method,
@@ -104,7 +106,9 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
     )
 
     if len(library_structure) > 1:
-        printandlog("Dropping specific barcodes not currently supported for multiple library segments. Skipping barcode dropping.")
+        printandlog(
+            "Dropping specific barcodes not currently supported for multiple library segments. Skipping barcode dropping."
+        )
 
     allowed_skip_counter = 0
     for data_set_name in data_sets.keys():
@@ -178,18 +182,30 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         foci_df = read_csvs_with_chunksize(foci_file)
 
                         if len(foci_df) == 0:
-                            printandlog(f"{plate_well_site_folder} does not have any foci")
+                            printandlog(
+                                f"{plate_well_site_folder} does not have any foci"
+                            )
                             no_SBS_foci_sites.append(plate_well_site_folder)
                             continue
 
                         if match_to_library:
-                            matchdict = barcode_calling_utils.match_barcode_to_library(library_location, library_structure, call_col, foci_df)
+                            matchdict = barcode_calling_utils.match_barcode_to_library(
+                                library_location, library_structure, call_col, foci_df
+                            )
                             for col_to_match in library_structure.keys():
                                 if len(library_structure) > 1:
-                                    foci_df[f"{SBS_score_col}_{col_to_match}"] = matchdict[col_to_match][0]
-                                    foci_df[f"{barcode_col}_{col_to_match}"] = matchdict[col_to_match][1]
-                                    foci_df[f"{gene_col}_{col_to_match}"] = matchdict[col_to_match][2]
-                                    foci_df[f"{foci_cols[1]}_{col_to_match}"] = matchdict[col_to_match][3]
+                                    foci_df[f"{SBS_score_col}_{col_to_match}"] = (
+                                        matchdict[col_to_match][0]
+                                    )
+                                    foci_df[f"{barcode_col}_{col_to_match}"] = (
+                                        matchdict[col_to_match][1]
+                                    )
+                                    foci_df[f"{gene_col}_{col_to_match}"] = matchdict[
+                                        col_to_match
+                                    ][2]
+                                    foci_df[f"{foci_cols[1]}_{col_to_match}"] = (
+                                        matchdict[col_to_match][3]
+                                    )
                                 else:
                                     foci_df[SBS_score_col] = matchdict[col_to_match][0]
                                     foci_df[barcode_col] = matchdict[col_to_match][1]
@@ -201,8 +217,23 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                                 set(
                                     id_cols
                                     + location_cols
-                                    + [x for x in foci_df.columns if any(y in x for y in foci_cols)]
-                                    + [x for x in foci_df.columns if any(y in x for y in [SBS_score_col, barcode_col, gene_col])]
+                                    + [
+                                        x
+                                        for x in foci_df.columns
+                                        if any(y in x for y in foci_cols)
+                                    ]
+                                    + [
+                                        x
+                                        for x in foci_df.columns
+                                        if any(
+                                            y in x
+                                            for y in [
+                                                SBS_score_col,
+                                                barcode_col,
+                                                gene_col,
+                                            ]
+                                        )
+                                    ]
                                 )
                             )
                             + [x for x in foci_df.columns if "Parent" in x]
@@ -224,10 +255,15 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                                 allowed_skips,
                             )
                             continue
-                        
+
                         # Add foci quality categories. Used for barcode calling if multiple barcodes. Detects recombination.
                         if len(library_structure) > 1:
-                            foci_df = barcode_calling_utils.categorize_spots(foci_df, [x for x in foci_df.columns if SBS_score_col in x], SBScycles, spot_quality_method)
+                            foci_df = barcode_calling_utils.categorize_spots(
+                                foci_df,
+                                [x for x in foci_df.columns if SBS_score_col in x],
+                                SBScycles,
+                                spot_quality_method,
+                            )
 
                     except:
                         allowed_skip_counter = fail_site(
@@ -279,8 +315,8 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         complete_foci_df = complete_foci_df.loc[
                             ~complete_foci_df[barcode_col].isin(drop_barcodes)
                         ]
-                    #else:
-                        # TODO - support dropping specific barcodes with multi-matches
+                    # else:
+                    # TODO - support dropping specific barcodes with multi-matches
 
                     # Count foci outside of parent compartment (e.g. Cells)
                     try:
@@ -310,9 +346,8 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         )
                         continue
 
-                    num_assigned_cells = len(set(
-                        assigned_spot_df.loc[:, f"Parent_{compartments[0]}"]
-                        )
+                    num_assigned_cells = len(
+                        set(assigned_spot_df.loc[:, f"Parent_{compartments[0]}"])
                     )
 
                     if num_assigned_cells == 0:
@@ -329,8 +364,8 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         assigned_spot_df,
                         parent_col=f"Parent_{compartments[0]}",
                         score_col=SBS_score_col,
-                        gene_col = gene_col,
-                        barcode_col = barcode_col,
+                        gene_col=gene_col,
+                        barcode_col=barcode_col,
                         SBScycles=SBScycles,
                         match_to_library=match_to_library,
                         library_structure=library_structure,

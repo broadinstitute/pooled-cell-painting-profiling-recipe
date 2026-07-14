@@ -219,7 +219,9 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
         )
         ratio_df = ratio_df.assign(
             Sum=ratio_df.sum(axis=1),
-            Pass_Filter=ratio_df[[x for x in keep_cell_qualities if x in ratio_df.columns]].sum(axis=1),
+            Pass_Filter=ratio_df[
+                [x for x in keep_cell_qualities if x in ratio_df.columns]
+            ].sum(axis=1),
         )
         fail_filter = [
             cat
@@ -233,9 +235,15 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
             if cat != "Empty"
         ]
         ratio_df = ratio_df.assign(
-            Fail_Filter=ratio_df[[x for x in fail_filter if x in ratio_df.columns]].sum(axis=1),
-            Fail_Filter_noempty=ratio_df[[x for x in fail_filter_noempty if x in ratio_df.columns]].sum(axis=1),
-            NotEmpty=ratio_df[[x for x in not_empty if x in ratio_df.columns]].sum(axis=1),
+            Fail_Filter=ratio_df[[x for x in fail_filter if x in ratio_df.columns]].sum(
+                axis=1
+            ),
+            Fail_Filter_noempty=ratio_df[
+                [x for x in fail_filter_noempty if x in ratio_df.columns]
+            ].sum(axis=1),
+            NotEmpty=ratio_df[[x for x in not_empty if x in ratio_df.columns]].sum(
+                axis=1
+            ),
         )
         ratio_df = ratio_df.assign(
             Pass_Fail_withempty=ratio_df["Pass_Filter"] / ratio_df["Fail_Filter"],
@@ -270,7 +278,11 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
                 outdir_figs, f"plate_layout_PercentEmpty_{data_set_name}.png"
             )
             make_plate_layout_plots(
-                ratio_df.reset_index(), "PercentEmpty", "Percent Empty Cells", outpath, legend=True
+                ratio_df.reset_index(),
+                "PercentEmpty",
+                "Percent Empty Cells",
+                outpath,
+                legend=True,
             )
         except:
             printandlog(f"Failed to create Pass/Fail plots for {data_set_name}")

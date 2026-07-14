@@ -110,7 +110,7 @@ def normalize(path_to_defaults_config, path_to_experiment_config):
                         type="warning",
                     )
                     return
-                if len(df.loc[df['Metadata_Norm'] == 'True']) == 0:
+                if len(df.loc[df["Metadata_Norm"] == "True"]) == 0:
                     printandlog(
                         f"No samples were selected for normalization for {data_set_name} {plate} {normby}. Check your control_genes and that your sample contains the control.",
                         type="warning",
