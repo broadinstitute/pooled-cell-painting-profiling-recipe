@@ -69,6 +69,8 @@ def normalize(path_to_defaults_config, path_to_experiment_config):
 
         for plate in plate_list:
             for normby in ["gene", "guide"]:
+                skip_group = False
+                printandlog(f"Normalizing {data_set_name} {plate} by {normby}.")
                 df = read_csvs_with_chunksize(
                     os.path.join(
                         profiles_out, f"{plate}_{data_set_name}_{normby}.csv.gz"
@@ -104,10 +106,17 @@ def normalize(path_to_defaults_config, path_to_experiment_config):
                     df["Metadata_Norm"] = "True"
                 else:
                     printandlog(
-                        "Failed to parse appropriate normalization by_samples.",
+                        "Failed to parse appropriate normalization by_samples. Check your by_samples value.",
                         type="warning",
                     )
                     return
+                if len(df.loc[df['Metadata_Norm'] == 'True']) == 0:
+                    printandlog(
+                        f"No samples were selected for normalization for {data_set_name} {plate} {normby}. Check your control_genes and that your sample contains the control.",
+                        type="warning",
+                    )
+                    skip_group = True
+                    continue
                 output_file = os.path.join(
                     profiles_out, f"{plate}_{data_set_name}_{normby}_normalized.csv.gz"
                 )
@@ -121,7 +130,7 @@ def normalize(path_to_defaults_config, path_to_experiment_config):
                     compression_options=compression,
                     float_format=float_format,
                 )
-            if output_bygene:
+            if output_bygene and not skip_group:
                 image_df = pd.read_csv(
                     os.path.join(
                         out_root,
