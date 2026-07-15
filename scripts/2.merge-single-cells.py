@@ -4,8 +4,8 @@ List of folders used is saved out for future steps.
 Last step that files are read from CellProfiler outputs.
 
 Outputs the following files:
-- {SBS}/{plate_well_site_folder}/{plate_well_site_folder}_cell_quality_summary.csv
-- {single_cell}/by_site/{plate_well_site_folder}/{plate_well_site_folder}_single_cell.csv.gz
+- {SBS}/{plate_well_site}/{plate_well_site}_cell_quality_summary.csv
+- {single_cell}/by_site/{plate_well_site}/{plate_well_site}_single_cell.csv.gz
 - {single_cell}/{plate}_single_cell_{data_set_name}.csv.gz
 - summary_data/{data_set_name}_sitelist.json
 """
