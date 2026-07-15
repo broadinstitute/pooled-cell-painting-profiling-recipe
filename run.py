@@ -116,3 +116,12 @@ if __name__ == "__main__":
         if p.returncode != 0:
             print(f"Step 6.feature_select failed unexpectedly")
             sys.exit(1)
+
+    if experiment_config['perform_explore']:
+        p = subprocess.Popen(
+            ["python", os.path.join(script_location, "7.explore.py"),args.defaults_config_path, args.experiment_config_path],
+        )
+        p.communicate()
+        if p.returncode != 0:
+            print(f"Step 7.explore failed unexpectedly")
+            sys.exit(1)

@@ -6,6 +6,7 @@ directory_structure:
   figures: summary_figures/
   profiles: profiles/
   single_cell: single_cell/
+  exploration: data_exploration/
 core:
   cell_quality_column: Metadata_Quality_Name
   cell_quality_index: Metadata_Quality_Index
