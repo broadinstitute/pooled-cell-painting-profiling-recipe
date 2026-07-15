@@ -90,8 +90,8 @@ def feature_select(path_to_defaults_config, path_to_experiment_config):
                         na_cutoff=na_cutoff,
                         corr_threshold=corr_threshold,
                         output_file=os.path.join(
-                            out_root,
-                            f"{plate}_{data_set_name}_{normby}_normalized_{group}_feature_selected.csv.gz",
+                            profiles_out,
+                            f"{plate}_{data_set_name}_{normby}_normalized_feature_selected_by{group}.csv.gz",
                         ),
                         compression_options=compression,
                         float_format=float_format,
@@ -99,36 +99,53 @@ def feature_select(path_to_defaults_config, path_to_experiment_config):
                 else:
                     group_normed = pd.concat([group_normed, df])
             if group == "group":
-                pycytominer_feature_select(
+                selected = pycytominer_feature_select(
                     profiles=group_normed,
                     features=features,
                     samples=use_samples,
                     operation=operations,
                     na_cutoff=na_cutoff,
                     corr_threshold=corr_threshold,
-                    output_file=os.path.join(
-                        out_root,
-                        f"{plate}_{data_set_name}_{normby}_normalized_{group}_feature_selected.csv.gz",
-                    ),
                     compression_options=compression,
                     float_format=float_format,
                 )
+                for plate in selected["Metadata_Plate"].unique():
+                    perplate = selected.loc[selected["Metadata_Plate"] == plate, :]
+                    perplate.to_csv(
+                        os.path.join(
+                            profiles_out,
+                            f"{plate}_{data_set_name}_{normby}_normalized_feature_selected_by{group}.csv.gz",
+                        ),
+                        index=False,
+                        compression=compression,
+                        float_format=float_format,
+                    )
             elif group == "all":
                 all_normed = pd.concat([all_normed, df])
-        pycytominer_feature_select(
-            profiles=all_normed,
-            features=features,
-            samples=use_samples,
-            operation=operations,
-            na_cutoff=na_cutoff,
-            corr_threshold=corr_threshold,
-            output_file=os.path.join(
-                out_root,
-                f"{plate}_{data_set_name}_{normby}_normalized_{group}_feature_selected.csv.gz",
-            ),
-            compression_options=compression,
-            float_format=float_format,
-        )
+        if group == "all":
+            selected = pycytominer_feature_select(
+                profiles=all_normed,
+                features=features,
+                samples=use_samples,
+                operation=operations,
+                na_cutoff=na_cutoff,
+                corr_threshold=corr_threshold,
+                compression_options=compression,
+                float_format=float_format,
+            )
+            for plate in selected["Metadata_Plate"].unique():
+                for data_set_name in data_sets.keys():
+                    perplate = selected.loc[selected["Metadata_Plate"] == plate, :]
+                    perplate = perplate.loc[perplate["Metadata_Dataset_Split"] == data_set_name, :]
+                    perplate.to_csv(
+                        os.path.join(
+                            profiles_out,
+                            f"{plate}_{data_set_name}_{normby}_normalized_feature_selected_by{group}.csv.gz",
+                        ),
+                        index=False,
+                        compression=compression,
+                        float_format=float_format,
+                    )
     printandlog("Done with 6.feature_select")
 
 
