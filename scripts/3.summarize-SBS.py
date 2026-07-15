@@ -1,5 +1,17 @@
 """
 Does not allow for selection of overwrite.
+
+Outputs the following files:
+- {figures}/plate_layout_PassToFailRatio_{data_set_name}.png
+- {figures}/plate_layout_PassToFailRatio_0empty_{data_set_name}.png
+- {figures}/plate_layout_PercentEmpty_{data_set_name}.png
+- {figures}/Quality_by_data_split
+- {figures}/Quality_by_well
+- {figures}/Quality_all_data
+- summary_data/Total_Barcode_Calls_Counts_{data_set_name}.tsv
+- summary_data/Total_Barcode_Calls_Counts_WholeExperiment.tsv
+- summary_data/Data_Stats_{data_set_name}.json
+- summary_data/Data_Stats_WholeExperiment.json
 """
 
 import os

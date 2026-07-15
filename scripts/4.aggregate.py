@@ -1,5 +1,9 @@
 """
 Does not respect overwrite
+
+Outputs the following files:
+- {profiles}/{plate}_{data_set_name}_guide.csv.gz
+- {profiles}/{plate}_{data_set_name}_gene.csv.gz
 """
 
 import os

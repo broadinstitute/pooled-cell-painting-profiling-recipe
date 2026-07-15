@@ -1,5 +1,12 @@
 """
 Allows for resuming and either overwriting or not.
+
+Outputs the following files:
+- {site_output_dir}/processed_SBS.tsv.gz
+- {site_output_dir}/cell_perturbation_category_summary_counts.tsv
+- {site_output_dir}/site_stats.json
+- summary_data/No_Assigned_Cells_Sites_{data_set_name}.csv
+- summary_data/No_SBS_Foci_Sites_{data_set_name}.csv
 """
 
 import os

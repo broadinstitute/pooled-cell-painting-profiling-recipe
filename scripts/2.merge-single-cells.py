@@ -2,6 +2,12 @@
 Allows for resuming and either overwriting or not.
 List of folders used is saved out for future steps.
 Last step that files are read from CellProfiler outputs.
+
+Outputs the following files:
+- {SBS}/{plate_well_site_folder}/{plate_well_site_folder}_cell_quality_summary.csv
+- {single_cell}/by_site/{plate_well_site_folder}/{plate_well_site_folder}_single_cell.csv.gz
+- {single_cell}/{plate}_single_cell_{data_set_name}.csv.gz
+- summary_data/{data_set_name}_sitelist.json
 """
 
 import os
@@ -273,7 +279,7 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
                                 sc_merged_df,
                                 df,
                                 on=[f"Metadata_{x}" for x in cell_id_cols],
-                                how="outer",
+                                how="left", # In case compartments aren't 1:1
                             )
 
                     assert (

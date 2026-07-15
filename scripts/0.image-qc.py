@@ -1,5 +1,17 @@
 """
 Does not allow for selection of overwrite.
+
+Outputs the following files:
+- {single_cell}/{plate}_alignments_{data_set_name}.csv
+- {figures}/plate_layout_cells_count_{data_set_name}.png
+- {figures}/plate_layout_image_stack_alignment_{data_set_name}.png
+- {figures}/plate_layout_compartment_threshold_{compartment}_{data_set_name}.png
+- {figures}/Image_Focus_{data_set_name}.png
+- {figures}/Image_Saturation_phenotyping_{data_set_name}.png
+- {figures}/Image_Saturation_SBS_Cycle{cycle}_{data_set_name}.png
+- summary_data/Inferred_Empty_Sites_{data_set_name}.csv
+- summary_data/Sites_With_Confluent_Regions_{data_set_name}.csv
+- summary_data/Sites_With_Saturation_{data_set_name}.csv
 """
 
 import os

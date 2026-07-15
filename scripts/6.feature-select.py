@@ -1,3 +1,8 @@
+"""
+Outputs the following files:
+- profiles/{plate}_{data_set_name}_{gene|guide}_normalized_{group}_feature_selected.csv.gz
+"""
+
 import os
 import sys
 import warnings
@@ -5,7 +10,7 @@ import logging
 import traceback
 import pandas as pd
 
-from pycytominer import feature_select
+from pycytominer import feature_select as pycytominer_feature_select
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
@@ -16,7 +21,7 @@ logfolder = os.path.join(recipe_path, "logs")
 if not os.path.isdir(logfolder):
     os.mkdir(logfolder)
 logging.basicConfig(
-    filename=os.path.join(logfolder, "5.normalize.log"),
+    filename=os.path.join(logfolder, "6.feature-select.log"),
     level=logging.INFO,
 )
 
@@ -38,7 +43,7 @@ def printandlog(msg, type="info"):
         logging.info(msg)
 
 
-def aggregate(path_to_defaults_config, path_to_experiment_config):
+def feature_select(path_to_defaults_config, path_to_experiment_config):
     printandlog("Starting 6.feature_select.")
     defaults_config, experiment_config = load_configs(
         path_to_defaults_config, path_to_experiment_config
@@ -77,7 +82,7 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
                     )
                 )
                 if group == "plate":
-                    feature_select(
+                    pycytominer_feature_select(
                         profiles=df,
                         features=features,
                         samples=use_samples,
@@ -94,7 +99,7 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
                 else:
                     group_normed = pd.concat([group_normed, df])
             if group == "group":
-                feature_select(
+                pycytominer_feature_select(
                     profiles=group_normed,
                     features=features,
                     samples=use_samples,
@@ -110,7 +115,7 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
                 )
             elif group == "all":
                 all_normed = pd.concat([all_normed, df])
-        feature_select(
+        pycytominer_feature_select(
             profiles=all_normed,
             features=features,
             samples=use_samples,
@@ -137,4 +142,4 @@ if __name__ == "__main__":
         sys.exit()
     path_to_defaults_config = sys.argv[1]
     path_to_experiment_config = sys.argv[2]
-    aggregate(path_to_defaults_config, path_to_experiment_config)
+    feature_select(path_to_defaults_config, path_to_experiment_config)

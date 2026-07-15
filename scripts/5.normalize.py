@@ -1,3 +1,9 @@
+"""
+Outputs the following files:
+- {profiles}/{plate}_{data_set_name}_{gene|guide}_normalized.csv.gz
+- {single_cell}/{single_cell}/single_cell_by_gene/{data_set_name}_{gene|guide}_normalized_{gene}_{gene}.csv.gz
+"""
+
 import os
 import sys
 import logging
