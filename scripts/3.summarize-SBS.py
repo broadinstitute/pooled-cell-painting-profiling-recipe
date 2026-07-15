@@ -5,9 +5,9 @@ Outputs the following files:
 - {figures}/plate_layout_PassToFailRatio_{data_set_name}.png
 - {figures}/plate_layout_PassToFailRatio_0empty_{data_set_name}.png
 - {figures}/plate_layout_PercentEmpty_{data_set_name}.png
-- {figures}/Quality_by_data_split
-- {figures}/Quality_by_well
-- {figures}/Quality_all_data
+- {figures}/Quality_by_data_split.png
+- {figures}/Quality_by_well.png
+- {figures}/Quality_all_data.png
 - summary_data/Total_Barcode_Calls_Counts_{data_set_name}.tsv
 - summary_data/Total_Barcode_Calls_Counts_WholeExperiment.tsv
 - summary_data/Data_Stats_{data_set_name}.json
