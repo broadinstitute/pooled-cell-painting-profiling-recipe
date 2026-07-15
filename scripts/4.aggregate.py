@@ -129,6 +129,11 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
                 features=features,
                 operation=operation,
             )
+            aggregate_df = aggregate_df.assign(
+                        Metadata_Batch=batch,
+                        Metadata_Plate=plate,
+                        Metadata_Dataset_Split=data_set_name,
+                    )
             filepath = os.path.join(
                 profiles_out, f"{plate}_{data_set_name}_guide.csv.gz"
             )
@@ -148,6 +153,11 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
                 features=features,
                 operation=operation,
             )
+            aggregate_df = aggregate_df.assign(
+                        Metadata_Batch=batch,
+                        Metadata_Plate=plate,
+                        Metadata_Dataset_Split=data_set_name,
+                    )
             filepath = os.path.join(
                 profiles_out, f"{plate}_{data_set_name}_gene.csv.gz"
             )
