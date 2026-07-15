@@ -137,14 +137,6 @@ def normalize(path_to_defaults_config, path_to_experiment_config):
                     float_format=float_format,
                 )
             if output_bygene and not skip_group:
-                image_df = pd.read_csv(
-                    os.path.join(
-                        out_root,
-                        single_cell_folder,
-                        f"{plate}_alignments_{data_set_name}.csv",
-                    )
-                )
-
                 sc_by_gene_folder = os.path.join(
                     out_root, single_cell_folder, "single_cell_by_gene"
                 )
@@ -153,10 +145,7 @@ def normalize(path_to_defaults_config, path_to_experiment_config):
 
                 df = read_csvs_with_chunksize(output_file)
                 for gene in df[f"Metadata_{gene_col}"].unique():
-                    slice = df.loc[df[f"Metadata_{gene_col}"] == gene].merge(
-                        image_df,
-                        on="Metadata_Site",
-                    )
+                    slice = df.loc[df[f"Metadata_{gene_col}"] == gene]
                     gene_file_name = (
                         f"{data_set_name}_{normby}_normalized_{gene}_{gene}.csv.gz"
                     )
