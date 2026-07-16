@@ -82,6 +82,7 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
     compartments = experiment_config["compartments"]
     cell_quality_method = experiment_config["cell_quality_method"]
     overwrite_files = experiment_config["overwrite_files"]
+    keep_cell_qualities = experiment_config["keep_cell_qualities"]
 
     # define defaults variables
     out_root = defaults_config["directory_structure"]["root"]
@@ -360,6 +361,12 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
                         ),
                         index=False,
                     )
+
+                    ######################
+                    # Only keep cells of desired quality
+                    ######################
+                    sc_merged_df = sc_merged_df.loc[sc_merged_df['Metadata_Quality_Name'].isin(keep_cell_qualities)]
+
                     if save_single_file:
                         single_file_df.append(sc_merged_df)
                     if save_per_site_file:
