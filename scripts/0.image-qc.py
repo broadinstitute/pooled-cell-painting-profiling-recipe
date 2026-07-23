@@ -8,7 +8,7 @@ Outputs the following files:
 - {figures}/plate_layout_compartment_threshold_{compartment}_{data_set_name}.png
 - {figures}/Image_Focus_{data_set_name}.png
 - {figures}/Image_Saturation_phenotyping_{data_set_name}.png
-- {figures}/Image_Saturation_SBS_Cycle{cycle}_{data_set_name}.png
+- {figures}/Image_Saturation_SBS_{data_set_name}.png
 - summary_data/Inferred_Empty_Sites_{data_set_name}.csv
 - summary_data/Sites_With_Confluent_Regions_{data_set_name}.csv
 - summary_data/Sites_With_Saturation_{data_set_name}.csv
@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
 from io_utils import load_configs, parse_data_set, read_csvs_with_chunksize
-from plotting_utils import make_loc_df, make_plate_layout_plots
+from plotting_utils import make_loc_df, make_plate_layout_plots, apply_margin_titles
 
 # Configure logging
 logfolder = os.path.join(recipe_path, "logs")
@@ -84,16 +84,73 @@ def make_intensity_plot(images_df, cols, outpath):
     df.columns = df.columns.str.split("_", n=1, expand=True)
     df = df.stack(level=1, future_stack=True)
     df = df.reset_index().rename(columns={"level_3": "Channel"})
-    p = (
+    wells = sorted(df["Metadata_Well"].unique())
+    channels = sorted(df["Channel"].unique())
+    fig = plt.figure(figsize=(len(wells) * 3, len(channels) * 3))
+    (
         so.Plot(df, x="PercentMaximal", y="StdIntensity", text="Metadata_Site")
-        .facet(col="Metadata_Well", row="Channel")
+        .facet(col="Metadata_Well", row="Channel", order={"col": wells, "row": channels})
+        .share(y="row")
         .add(so.Text())
         .label(
             y="Percent Image Saturated",
-            x="StdDev of Intensity (unusally bright spots)",
+            x="StdDev of Intensity\n(unusally bright spots)",
         )
-    ).theme({"axes.facecolor": "w", "axes.edgecolor": "black"})
-    p.save(outpath, dpi=300)
+    ).on(fig).theme({"axes.facecolor": "w", "axes.edgecolor": "black"}).plot()
+    for ax in fig.axes:
+        ax.set_box_aspect(1)
+    apply_margin_titles(fig, wells, channels)
+    fig.savefig(outpath, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+def make_sbs_intensity_plot(images_df, image_df_columns, cycles, outpath):
+    cycle_order = sorted(cycles, key=int)
+    dfs = []
+    for cycle in cycle_order:
+        cols = [
+            x
+            for x in image_df_columns
+            if "ImageQuality_StdIntensity_" in x and f"Cycle{cycle}" in x
+        ] + [
+            x
+            for x in image_df_columns
+            if "ImageQuality_PercentMaximal_" in x and f"Cycle{cycle}" in x
+        ]
+        df = images_df.set_index(
+            ["Metadata_Identifier", "Metadata_Site", "Metadata_Well"]
+        )[cols]
+        df.columns = df.columns.str.replace("ImageQuality_", "").str.replace(
+            f"Cycle{cycle}_", ""
+        )
+        df.columns = df.columns.str.split("_", n=1, expand=True)
+        df = df.stack(level=1, future_stack=True)
+        df = df.reset_index().rename(columns={"level_3": "Channel"})
+        df["Cycle"] = cycle
+        dfs.append(df)
+    df = pd.concat(dfs, ignore_index=True)
+
+    wells = sorted(df["Metadata_Well"].unique())
+    channels = sorted(df["Channel"].unique())
+    df["Well_Channel"] = df["Metadata_Well"] + " - " + df["Channel"]
+    row_order = [f"{well} - {channel}" for well in wells for channel in channels]
+
+    fig = plt.figure(figsize=(len(cycle_order) * 3, len(row_order) * 3))
+    (
+        so.Plot(df, x="PercentMaximal", y="StdIntensity", text="Metadata_Site")
+        .facet(col="Cycle", row="Well_Channel", order={"col": cycle_order, "row": row_order})
+        .share(y="row")
+        .add(so.Text())
+        .label(
+            y="Percent Image Saturated",
+            x="StdDev of Intensity\n(unusally bright spots)",
+        )
+    ).on(fig).theme({"axes.facecolor": "w", "axes.edgecolor": "black"}).plot()
+    for ax in fig.axes:
+        ax.set_box_aspect(1)
+    apply_margin_titles(fig, [f"Cycle {cycle}" for cycle in cycle_order], row_order)
+    fig.savefig(outpath, dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 
 def process_qc(path_to_defaults_config, path_to_experiment_config):
@@ -262,7 +319,9 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
             outpath = os.path.join(
                 outdir_figs, f"plate_layout_cells_count_{data_set_name}.png"
             )
-            make_plate_layout_plots(images_df, "Count_Cells", "Cell Count", outpath)
+            make_plate_layout_plots(
+                images_df, "Count_Cells", "Cell Count", outpath, legend=True
+            )
         except:
             printandlog(f"Failed to create Cell Count plot for {data_set_name}")
 
@@ -304,20 +363,24 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                     outdir_figs,
                     f"plate_layout_compartment_threshold_{compartment}_{data_set_name}.png",
                 )
+                # column will typically be "Threshold_FinalThreshold_{compartment}" but this allows for more complicated object finding naming workflows
+                threshcol = [x for x in images_df.columns if "Threshold_FinalThreshold_" in x and compartment in x][0]
                 make_plate_layout_plots(
                     images_df,
-                    f"Threshold_FinalThreshold_{compartment}",
+                    threshcol,
                     f"{compartment} threshold",
                     outpath,
                     legend=True,
                 )
             except:
-                printandlog(
-                    f"Failed to create compartment threshold plot for {compartment} in {data_set_name}"
-                )
-                printandlog(
-                    f"Failure is expected for compartments defined outside of IdentifyPrimaryObjects and IdentifySecondaryObjects modules.\n Cytoplasm is one such example as it is typically a tertiary object.",
-                )
+                # Cytoplasm is typically from IdentifyTertiaryObjects
+                if compartment.lower() != 'cytoplasm':
+                    printandlog(
+                        f"Failed to create compartment threshold plot for {compartment} in {data_set_name}"
+                    )
+                    printandlog(
+                        f"Failure is expected for compartments defined outside of IdentifyPrimaryObjects and IdentifySecondaryObjects modules.",
+                    )
 
         # Power Log Log Slope on Cell Painting images (proxy for focus)
         # Any point too high or too low may have focus issues
@@ -338,21 +401,32 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                 df["Metadata_Plate"] + "|" + df["Metadata_Well"].astype(str)
             )
             outpath = os.path.join(outdir_figs, f"Image_Focus_{data_set_name}.png")
-            p = (
-                (
-                    so.Plot(
-                        df,
-                        x="Metadata_Site",
-                        y="PowerLogLogSlope",
-                        text="Metadata_Site",
-                    )
-                    .facet(row=("Plate|Well"), col="Channel")
-                    .add(so.Text())
+            channels = sorted(df["Channel"].unique())
+            platewells = sorted(df["Plate|Well"].unique())
+            fig = plt.figure(figsize=(len(channels) * 3, len(platewells) * 3))
+            (
+                so.Plot(
+                    df,
+                    x="Metadata_Site",
+                    y="PowerLogLogSlope",
+                    text="Metadata_Site",
                 )
-                .theme({"axes.facecolor": "w", "axes.edgecolor": "black"})
-                .plot()
-            )
-            p.save(outpath, dpi=300)
+                .facet(
+                    row="Plate|Well",
+                    col="Channel",
+                    order={"row": platewells, "col": channels},
+                )
+                .add(so.Text())
+            ).on(fig).theme({"axes.facecolor": "w", "axes.edgecolor": "black"}).plot()
+            for ax in fig.axes:
+                ax.set_box_aspect(1)
+                ax.set_xlabel("")
+                ax.set_ylabel("")
+            apply_margin_titles(fig, channels, platewells)
+            fig.supxlabel("site")
+            fig.supylabel("PowerLogLogSlope")
+            fig.savefig(outpath, dpi=300, bbox_inches="tight")
+            plt.close(fig)
         except:
             printandlog(f"Failed to create Power Log Log Slope plot in {data_set_name}")
 
@@ -458,28 +532,18 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
         try:
             if len(sat_SBS_df) > 0:
                 try:
-                    cycles = [
+                    cycles = list(set([
                         x.split("Cycle")[1].split("_")[0]
                         for x in image_df.columns
                         if "ImageQuality_StdIntensity_Cycle" in x
-                    ]
-                    for cycle in cycles:
-                        cols = [
-                            x
-                            for x in image_df.columns
-                            if "ImageQuality_StdIntensity_" in x
-                            and f"Cycle{cycle}" in x
-                        ] + [
-                            x
-                            for x in image_df.columns
-                            if "ImageQuality_PercentMaximal_" in x
-                            and f"Cycle{cycle}" in x
-                        ]
-                        outpath = os.path.join(
-                            outdir_figs,
-                            f"Image_Saturation_SBS_Cycle{cycle}_{data_set_name}.png",
-                        )
-                        make_intensity_plot(images_df, cols, outpath)
+                    ]))
+                    outpath = os.path.join(
+                        outdir_figs,
+                        f"Image_Saturation_SBS_{data_set_name}.png",
+                    )
+                    make_sbs_intensity_plot(
+                        images_df, image_df.columns, cycles, outpath
+                    )
                 except:
                     printandlog(
                         f"Failed to create SBS image intensity plots in {data_set_name}"
