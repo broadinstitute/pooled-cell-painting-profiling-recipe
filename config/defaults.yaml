@@ -22,7 +22,7 @@ process:
     allowed_skips: 10
     infer_empty_sites: true
     stack_alignment_chans:
-      - DAPI_Painting
+      - DNA
       - Cycle01_DAPI
   process_SBS:
     allowed_skips: 10
