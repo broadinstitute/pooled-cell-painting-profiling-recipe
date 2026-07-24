@@ -267,11 +267,11 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         if len(library_structure) > 1:
                             foci_df = barcode_calling_utils.categorize_spots(
                                 foci_df,
+                                SBS_score_col,
                                 [x for x in foci_df.columns if SBS_score_col in x],
-                                SBScycles,
+                                library_structure,
                                 spot_quality_method,
                             )
-
                     except:
                         allowed_skip_counter = fail_site(
                             plate_well_site_folder,
@@ -484,7 +484,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                     )
 
                     for quality in cell_quality_summary_df[cell_quality_column]:
-                        descriptive_results[f"num_quality_{quality}"] = int(
+                        descriptive_results[f"num_quality_{quality}_spots"] = int(
                             cell_quality_summary_df.loc[
                                 cell_quality_summary_df[cell_quality_column] == quality,
                                 "Cell_Count",
