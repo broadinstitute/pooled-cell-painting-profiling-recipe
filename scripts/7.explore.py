@@ -199,9 +199,9 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                         cos_sim_df.to_csv(
                             os.path.join(
                                 outdir_exploration,
-                                f"{plate}_{data_set_name}_{agg}_normalized_{group}_feature_selected_{gene}_cosine_similarity.csv.gz",
+                                f"{plate}_{data_set_name}_{agg}_normalized_{group}_feature_selected_{gene}_cosine_similarity.csv",
                             ),
-                            index=True,
+                            index=False,
                         )
 
                 #
