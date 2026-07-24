@@ -1,7 +1,7 @@
 """
 Outputs the following files:
 - {profiles}/{plate}_{data_set_name}_{gene|guide}_normalized.csv.gz
-- {single_cell}/{single_cell}/single_cell_by_gene/{data_set_name}_{gene|guide}_normalized_{gene}_{gene}.csv.gz
+- {single_cell}/{single_cell}/single_cell_by_gene/{data_set_name}_{gene|guide}_normalized_{gene}.csv.gz
 """
 
 import os
@@ -147,7 +147,7 @@ def normalize(path_to_defaults_config, path_to_experiment_config):
                 for gene in df[f"Metadata_{gene_col}"].unique():
                     slice = df.loc[df[f"Metadata_{gene_col}"] == gene]
                     gene_file_name = (
-                        f"{data_set_name}_{normby}_normalized_{gene}_{gene}.csv.gz"
+                        f"{data_set_name}_{normby}_normalized_{gene}.csv.gz"
                     )
                     gene_path = os.path.join(sc_by_gene_folder, gene_file_name)
                     if not os.path.exists(gene_path):
