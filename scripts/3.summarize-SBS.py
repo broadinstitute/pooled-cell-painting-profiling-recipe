@@ -74,26 +74,46 @@ def make_summary_graph(df, id_var, categories, outpath):
         melt["variable"], categories=categories, ordered=True
     )
 
-    fig = plt.figure()
+    # Size the figure so each facet stays a legible fixed size no matter how
+    # many facets there are, and so there's dedicated room for the legend
+    # (otherwise it gets squeezed off the right edge of the figure).
+    subplot_size = 3
+    legend_width = 2.5
+    wrap = 3
     if id_var:
+        n_facets = melt[id_var].nunique()
+        ncols = min(wrap, n_facets)
+        nrows = math.ceil(n_facets / ncols)
+        fig = plt.figure(
+            figsize=(ncols * subplot_size + legend_width, nrows * subplot_size)
+        )
         (
             so.Plot(melt, x="Metadata_Quality_Name", y="value", color="variable")
-            .facet(col=id_var, wrap=3)
+            .facet(col=id_var, wrap=wrap)
             .add(so.Bar(alpha=1))
-            .label(x="Quality Category", y="Cell count", color="Cell Quality") # <--- Updated here
+            .label(x="", y="Cell count", color="Cell Quality")
+            .layout(engine="constrained")
             .on(fig)
             .plot()
         )
     else:
+        fig = plt.figure(figsize=(subplot_size + legend_width, subplot_size))
         (
             so.Plot(melt, x="Metadata_Quality_Name", y="value", color="variable")
             .add(so.Bar(alpha=1), so.Stack())
-            .label(x="Quality Category", y="Cell count", color="Cell Quality") # <--- Updated here
+            .label(x="", y="Cell count", color="Cell Quality")
+            .layout(engine="constrained")
             .on(fig)
             .plot()
         )
     for ax in fig.axes:
-        ax.tick_params(axis='x', labelrotation=45)
+        ax.set_box_aspect(1)
+        ax.tick_params(axis='x', labelrotation=90)
+    # seaborn.objects anchors the legend using a bbox_transform that goes stale
+    # during the bbox_inches="tight" save pass, which pushes it off the right
+    # edge of the saved image. Re-anchoring to the figure's live transform fixes it.
+    for legend in fig.legends:
+        legend.set_bbox_to_anchor((0.98, 0.55), transform=fig.transFigure)
     fig.savefig(outpath, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
@@ -150,6 +170,7 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
     all_called_barcodes = []
     all_site_stats = []
     allowed_skip_counter = 0
+    ratio_dict = {}
     for data_set_name in data_sets.keys():
         per_set_called_quality = pd.DataFrame()
         printandlog(f"Starting {data_set_name}")
@@ -308,6 +329,10 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
             )
         except:
             printandlog(f"Failed to create Pass/Fail plots for {data_set_name}")
+        
+        ratio_dict[data_set_name] = ratio_df
+
+    ratio_df = pd.concat(ratio_dict)
 
     # Create total barcode count summary for easy NGS comparison
     barcode_count_summary_df = make_bc_counts(all_called_barcodes)
