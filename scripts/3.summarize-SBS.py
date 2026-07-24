@@ -22,6 +22,7 @@ import pandas as pd
 import json
 import math
 import seaborn.objects as so
+import matplotlib.pyplot as plt
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
@@ -66,26 +67,35 @@ def make_bc_counts(barcode_list):
 def make_summary_graph(df, id_var, categories, outpath):
     melt = df.melt(
         id_vars=id_var,
-        value_vars=[x for x in df.columns if "num_quality" in x],
+        value_vars=categories,
     )
-    melt["variable"] = melt["variable"].str.replace("num_quality_", "")
+    melt["variable"] = melt["Metadata_Quality_Name"].str.replace("num_quality_", "")
     melt["variable"] = pd.Categorical(
         melt["variable"], categories=categories, ordered=True
     )
+
+    fig = plt.figure()
     if id_var:
-        p = (
-            so.Plot(melt, x="variable", y="value", color="variable")
+        (
+            so.Plot(melt, x="Metadata_Quality_Name", y="value", color="variable")
             .facet(col=id_var, wrap=3)
-            .add(so.Bar())
-            .label(x="Quality Category", y="count")
+            .add(so.Bar(alpha=1))
+            .label(x="Quality Category", y="Cell count", color="Cell Quality") # <--- Updated here
+            .on(fig)
+            .plot()
         )
     else:
-        p = (
-            so.Plot(melt, x="variable", y="value", color="variable")
-            .add(so.Bar(), so.Stack())
-            .label(x="Quality Category", y="count")
+        (
+            so.Plot(melt, x="Metadata_Quality_Name", y="value", color="variable")
+            .add(so.Bar(alpha=1), so.Stack())
+            .label(x="Quality Category", y="Cell count", color="Cell Quality") # <--- Updated here
+            .on(fig)
+            .plot()
         )
-    p.save(outpath, dpi=300)
+    for ax in fig.axes:
+        ax.tick_params(axis='x', labelrotation=45)
+    fig.savefig(outpath, dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 
 def fail_site(plate_well_site_folder, file, allowed_skip_counter, allowed_skips):
@@ -258,9 +268,9 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
             ),
         )
         ratio_df = ratio_df.assign(
-            Pass_Fail_withempty=ratio_df["Pass_Filter"] / ratio_df["Fail_Filter"],
-            Pass_Fail_0empty=ratio_df["Pass_Filter"] / ratio_df["Fail_Filter_noempty"],
-            PercentEmpty=ratio_df["Empty"] / ratio_df["NotEmpty"] * 100,
+            Ratio_PassToFail_WithEmptyCells=ratio_df["Pass_Filter"] / ratio_df["Fail_Filter"],
+            Ratio_PassToFail_WithoutEmptyCells=ratio_df["Pass_Filter"] / ratio_df["Fail_Filter_noempty"],
+            PercentEmptyCells=ratio_df["Empty"] / ratio_df["Sum"] * 100,
         )
 
         try:
@@ -269,7 +279,7 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
             )
             make_plate_layout_plots(
                 ratio_df.reset_index(),
-                "Pass_Fail_withempty",
+                "Ratio_PassToFail_WithEmptyCells",
                 "Pass:Fail (with empty cells)",
                 outpath,
                 legend=True,
@@ -280,7 +290,7 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
             )
             make_plate_layout_plots(
                 ratio_df.reset_index(),
-                "Pass_Fail_0empty",
+                "Ratio_PassToFail_WithoutEmptyCells",
                 "Pass:Fail (without empty cells)",
                 outpath,
                 legend=True,
@@ -291,7 +301,7 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
             )
             make_plate_layout_plots(
                 ratio_df.reset_index(),
-                "PercentEmpty",
+                "PercentEmptyCells",
                 "Percent Empty Cells",
                 outpath,
                 legend=True,
@@ -307,33 +317,48 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
     barcode_count_summary_df.to_csv(output_file, sep="\t", index=False)
 
     # Create summary data stats
+    ratio_df = ratio_df.reset_index()
     stats_df = pd.DataFrame(all_site_stats)
-    stats_df[[x for x in stats_df.columns if "Metadata" not in x]].sum().to_json(
-        os.path.join(outdir_data, "Data_Stats_WholeExperiment.json"), indent=4
-    )
     for data_set_name in data_sets.keys():
         df = stats_df.groupby("Metadata_Dataset_Split").sum().reset_index()
-        df[[x for x in df.columns if "Metadata" not in x]].iloc[0].to_json(
+        df = df[[x for x in df.columns if "Metadata" not in x]].iloc[0]
+        df['num_empty_cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name]['Empty'].sum()
+        df['num_not_empty_cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name]['NotEmpty'].sum()
+        df['num_total_cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name]['Sum'].sum()
+        df['percent_empty_cells'] = df['num_empty_cells'] / df['num_total_cells']
+        for cell_cat in cell_quality_dict.values():
+            df[f'num_quality_{cell_cat}_Cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name][cell_cat].sum()
+        df.to_json(
             os.path.join(outdir_data, f"Data_Stats_{data_set_name}.json"),
             index=False,
             indent=4,
         )
+    stats_df = stats_df[[x for x in stats_df.columns if "Metadata" not in x]].sum()
+    stats_df['num_empty_cells'] = ratio_df['Empty'].sum()
+    stats_df['num_not_empty_cells'] = ratio_df['NotEmpty'].sum()
+    stats_df['num_total_cells'] = ratio_df['Sum'].sum()
+    stats_df['percent_empty_cells'] = stats_df['num_empty_cells'] / stats_df['num_total_cells']
+    for cell_cat in cell_quality_dict.values():
+        stats_df[f'num_quality_{cell_cat}_Cells'] = ratio_df[cell_cat].sum()
+    stats_df.to_json(
+        os.path.join(outdir_data, "Data_Stats_WholeExperiment.json"), indent=4
+    )
 
     # Graph summary stats
     make_summary_graph(
-        df,
+        ratio_df[[x for x in cell_quality_dict.values()]+["Metadata_Dataset_Split"]],
         id_var="Metadata_Dataset_Split",
         categories=cell_quality_dict.values(),
         outpath=os.path.join(outdir_figs, "Quality_by_data_split"),
     )
     make_summary_graph(
-        df,
+        ratio_df[[x for x in cell_quality_dict.values()]+["Metadata_Well"]],
         id_var="Metadata_Well",
         categories=cell_quality_dict.values(),
         outpath=os.path.join(outdir_figs, "Quality_by_well"),
     )
     make_summary_graph(
-        df,
+        ratio_df[[x for x in cell_quality_dict.values()]],
         id_var=[],  # All data
         categories=cell_quality_dict.values(),
         outpath=os.path.join(outdir_figs, "Quality_all_data"),
