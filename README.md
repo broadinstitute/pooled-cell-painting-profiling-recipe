@@ -67,5 +67,5 @@ These include default assumptions about the structure of this repository and Cel
 If you would like to pass configuration files that have custom location or naming, you can do so with the following command:
 
 ```python
-python run.py --defaults_config_path path/to/defaults.json --experiment_config_path path/to/experiment.json
+python run.py --defaults-config path/to/defaults.json --experiment-config path/to/experiment.json
 ```
