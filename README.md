@@ -24,7 +24,7 @@ Reads in SBS foci data from CellProfiler outputs and generates per-cell barcode/
 Reads in phenotyping data from CellProfiler outputs and merges it with SBS data to generate a single-cell level dataset.
 Outputs a list of folders/sites that were used for single-cell dataset so that subsequent steps do not need access to the CellProfiler output data.
 3. [Summarizing SBS data](scripts/3.summarize-SBS.py).
-Creates QC pltos and reports for SBS data and cell assignment.
+Creates QC plots and reports for SBS data and cell assignment.
 Generates a total barcode count summary for comparison to NGS.
 4. [Aggregating single cell profiles](scripts/4.aggregate.py).
 Creates guide- and gene-level profiles by aggregating single-cell profiles using Pycytominer.
