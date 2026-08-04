@@ -1,0 +1,17 @@
+name: pooled-profiling
+channels:
+- conda-forge
+dependencies:
+- conda-forge::python<3.13
+- conda-forge::pandas==2.3.3
+- conda-forge::numpy==2.3.3
+- conda-forge::matplotlib==3.10.6
+- conda-forge::seaborn==0.13.2
+- conda-forge::black==25.1.0
+- conda-forge::pyyaml
+- conda-forge::ipykernel
+- conda-forge::pip
+- pip:
+  - pycytominer==1.6.1
+  - umap-learn
+  - copairs==0.5.4
