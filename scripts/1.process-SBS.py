@@ -365,6 +365,17 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         continue
 
                     num_assigned_spots = assigned_spot_df.shape[0]
+                    num_cells_one_spot = len(complete_foci_df.loc[complete_foci_df['Parent_Cells']!=0,'Parent_Cells'].unique())
+                    perfect_spot_dict = {}
+                    if len(library_structure) > 1:
+                        for col in [x for x in complete_foci_df.columns if SBS_score_col in x]:
+                            num_spots = len(complete_foci_df.loc[complete_foci_df[col]==1])
+                            perfect_spot_dict[f"percent_perfect_spots{col.replace(SBS_score_col,'')}"] = num_spots/len(complete_foci_df)
+                            perfect_spot_dict[f"percent_perfect_spots{col.replace(SBS_score_col,'')}_in_cells"] = num_spots/num_assigned_spots
+                    else:
+                        num_spots = len(complete_foci_df.loc[complete_foci_df[col]==1])
+                        percent_perfect_spots = num_spots/len(complete_foci_df)
+                        percent_perfect_spots_in_cells = num_spots/num_assigned_spots
 
                     # Assign Cell Quality scores based on gene and barcode assignments
                     crispr_barcode_gene_df = cell_quality.assign_cell_quality(
@@ -474,7 +485,16 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         "num_unique_guides": int(num_unique_guides),
                         "num_assigned_cells": int(num_assigned_cells),
                         "num_nontarget_controls_kept_cells": int(num_nt),
+                        "num_cells_one_spot": int(num_cells_one_spot)
                     }
+                    if len(library_structure) > 1:
+                        for col in [x for x in foci_df.columns if SBS_score_col in x]:
+                            suffix = col.replace(SBS_score_col,'')
+                            descriptive_results[f"percent_perfect_spots{suffix}"] = perfect_spot_dict[f"percent_perfect_spots{suffix}"]
+                            descriptive_results[f"percent_perfect_spots{suffix}_in_cells"] = perfect_spot_dict[f"percent_perfect_spots{suffix}_in_cells"]
+                    else:
+                        descriptive_results["percent_perfect_spots"] = percent_perfect_spots
+                        descriptive_results["percent_perfect_spots_in_cells"] = percent_perfect_spots_in_cells
 
                     cell_quality_summary_df = (
                         cell_quality.summarize_cell_quality_counts(
@@ -484,10 +504,18 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                     )
 
                     for quality in cell_quality_summary_df[cell_quality_column]:
-                        descriptive_results[f"num_quality_{quality}_spots"] = int(
+                        descriptive_results[f"num_quality_{quality}_cells"] = int(
                             cell_quality_summary_df.loc[
                                 cell_quality_summary_df[cell_quality_column] == quality,
                                 "Cell_Count",
+                            ].squeeze()
+                        )
+
+                    for quality in foci_df['Spot_Category'].unique():
+                        descriptive_results[f"num_quality_{quality}_spots"] = len(
+                            foci_df.loc[
+                                foci_df["Spot_Category"] == quality,
+                                "Spot_Category",
                             ].squeeze()
                         )
 

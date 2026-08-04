@@ -84,20 +84,19 @@ def categorize_spots(df, SBS_score_col, score_cols, library_structure, spot_qual
             if gene1 == gene2:
                 if score1 == 1.0 and score2 == 1.0:
                     return "Perfect"
-                # 2. Use standard Python 'in' instead of pandas '.isin()' for single floats
                 elif score1 in [1.0, hamperfect_score1] and score2 in [1.0, hamperfect_score2]:
                     return "Good"
                 elif (score1 == 1.0 and score2 < hamperfect_score2) or (score1 < hamperfect_score1 and score2 == 1.0):
                     return "Acceptable"
                 elif (score1 < hamperfect_score1 or score2 < hamperfect_score2) and (score1 != 1.0 and score2 != 1.0):
-                    return "Bad"
+                    return "BadSameGene"
                 else:
                     return "Uncategorized"
             else:
                 if score1 in [1.0, hamperfect_score1] and score2 in [1.0, hamperfect_score2]:
                     return "Recombinant"
                 else:
-                    return "Bad"
+                    return "BadDiffGene"
                     
         # Apply the function. No need for 'args=' if you don't add them to the inner function
         df['Spot_Category'] = df.apply(do_spot_cats, axis=1)

@@ -5,9 +5,7 @@ Outputs the following files:
 - {figures}/plate_layout_PassToFailRatio_{data_set_name}.png
 - {figures}/plate_layout_PassToFailRatio_0empty_{data_set_name}.png
 - {figures}/plate_layout_PercentEmpty_{data_set_name}.png
-- {figures}/Quality_by_data_split.png
-- {figures}/Quality_by_well.png
-- {figures}/Quality_all_data.png
+- {figures}/Quality_Cells_by_{data_split/well/all_data}.png
 - summary_data/Total_Barcode_Calls_Counts_{data_set_name}.tsv
 - summary_data/Total_Barcode_Calls_Counts_WholeExperiment.tsv
 - summary_data/Data_Stats_{data_set_name}.json
@@ -64,14 +62,20 @@ def make_bc_counts(barcode_list):
     return df
 
 
-def make_summary_graph(df, id_var, categories, outpath):
+def make_summary_graph(df, id_var, categories, outpath, object):
     melt = df.melt(
         id_vars=id_var,
         value_vars=categories,
     )
-    melt["variable"] = melt["Metadata_Quality_Name"].str.replace("num_quality_", "")
-    melt["variable"] = pd.Categorical(
-        melt["variable"], categories=categories, ordered=True
+    if 'Metadata_Quality_Name' in melt.columns:
+        variable = "Metadata_Quality_Name"
+    else:
+        variable = "variable"
+    melt[variable] = melt[variable].str.replace("num_quality_", "")
+    melt[variable] = melt[variable].str.replace("_spots", "")
+    categories=melt[variable].unique()
+    melt[variable] = pd.Categorical(
+        melt[variable], categories=categories, ordered=True
     )
 
     # Size the figure so each facet stays a legible fixed size no matter how
@@ -88,10 +92,10 @@ def make_summary_graph(df, id_var, categories, outpath):
             figsize=(ncols * subplot_size + legend_width, nrows * subplot_size)
         )
         (
-            so.Plot(melt, x="Metadata_Quality_Name", y="value", color="variable")
+            so.Plot(melt, x=variable, y="value", color=variable)
             .facet(col=id_var, wrap=wrap)
             .add(so.Bar(alpha=1))
-            .label(x="", y="Cell count", color="Cell Quality")
+            .label(x="", y=f"{object} count", color=f"{object} Quality")
             .layout(engine="constrained")
             .on(fig)
             .plot()
@@ -99,9 +103,9 @@ def make_summary_graph(df, id_var, categories, outpath):
     else:
         fig = plt.figure(figsize=(subplot_size + legend_width, subplot_size))
         (
-            so.Plot(melt, x="Metadata_Quality_Name", y="value", color="variable")
+            so.Plot(melt, x=variable, y="value", color=variable)
             .add(so.Bar(alpha=1), so.Stack())
-            .label(x="", y="Cell count", color="Cell Quality")
+            .label(x="", y=f"{object} count", color=f"{object} Quality")
             .layout(engine="constrained")
             .on(fig)
             .plot()
@@ -341,52 +345,79 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
     )
     barcode_count_summary_df.to_csv(output_file, sep="\t", index=False)
 
+    stats_df = pd.DataFrame(all_site_stats)
+
+    # Plot summary barcode stats
+    make_summary_graph(
+        stats_df[[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x]+["Metadata_Dataset_Split"]],
+        id_var="Metadata_Dataset_Split",
+        categories=[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x],
+        outpath=os.path.join(outdir_figs, "Quality_Spots_by_data_split"),
+        object="Foci"
+    )
+    make_summary_graph(
+        stats_df[[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x]+["Metadata_Well"]],
+        id_var="Metadata_Well",
+        categories=[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x],
+        outpath=os.path.join(outdir_figs, "Quality_Spots_by_well"),
+        object="Foci"
+    )
+    make_summary_graph(
+        stats_df[[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x]],
+        id_var=[],  # All data
+        categories=[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x],
+        outpath=os.path.join(outdir_figs, "Quality_Spots_all_data"),
+        object="Foci"
+    )
+
     # Create summary data stats
     ratio_df = ratio_df.reset_index()
-    stats_df = pd.DataFrame(all_site_stats)
     for data_set_name in data_sets.keys():
-        df = stats_df.groupby("Metadata_Dataset_Split").sum().reset_index()
-        df = df[[x for x in df.columns if "Metadata" not in x]].iloc[0]
+        df_sum = stats_df.loc[stats_df['Metadata_Dataset_Split']==data_set_name][[x for x in stats_df.columns if 'percent' not in x]].groupby("Metadata_Dataset_Split").sum().reset_index()
+        df_pct = stats_df.loc[stats_df['Metadata_Dataset_Split']==data_set_name][[x for x in stats_df.columns if 'percent' in x]+["Metadata_Dataset_Split"]].groupby("Metadata_Dataset_Split").mean().reset_index()
+        df = pd.concat([df_sum[[x for x in df_sum.columns if "Metadata" not in x]], df_pct[[x for x in df_pct.columns if "Metadata" not in x]]], axis=1).iloc[0]
         df['num_empty_cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name]['Empty'].sum()
         df['num_not_empty_cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name]['NotEmpty'].sum()
         df['num_total_cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name]['Sum'].sum()
         df['percent_empty_cells'] = df['num_empty_cells'] / df['num_total_cells']
-        for cell_cat in cell_quality_dict.values():
-            df[f'num_quality_{cell_cat}_Cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name][cell_cat].sum()
         df.to_json(
             os.path.join(outdir_data, f"Data_Stats_{data_set_name}.json"),
             index=False,
             indent=4,
         )
-    stats_df = stats_df[[x for x in stats_df.columns if "Metadata" not in x]].sum()
+    df_sum = stats_df[[x for x in stats_df.columns if 'percent' not in x if 'Metadata' not in x]].sum()
+    df_pct = stats_df[[x for x in stats_df.columns if 'percent' in x if 'Metadata' not in x]].mean()
+    stats_df = pd.concat([df_sum, df_pct])
     stats_df['num_empty_cells'] = ratio_df['Empty'].sum()
     stats_df['num_not_empty_cells'] = ratio_df['NotEmpty'].sum()
     stats_df['num_total_cells'] = ratio_df['Sum'].sum()
     stats_df['percent_empty_cells'] = stats_df['num_empty_cells'] / stats_df['num_total_cells']
-    for cell_cat in cell_quality_dict.values():
-        stats_df[f'num_quality_{cell_cat}_Cells'] = ratio_df[cell_cat].sum()
+    stats_df["num_spots_per_cell"] = stats_df["num_assigned_spots"]/stats_df["num_not_empty_cells"]
     stats_df.to_json(
         os.path.join(outdir_data, "Data_Stats_WholeExperiment.json"), indent=4
     )
 
-    # Graph summary stats
+    # Graph cell quality summary stats
     make_summary_graph(
         ratio_df[[x for x in cell_quality_dict.values()]+["Metadata_Dataset_Split"]],
         id_var="Metadata_Dataset_Split",
         categories=cell_quality_dict.values(),
-        outpath=os.path.join(outdir_figs, "Quality_by_data_split"),
+        outpath=os.path.join(outdir_figs, "Quality_Cells_by_data_split"),
+        object="Cell"
     )
     make_summary_graph(
         ratio_df[[x for x in cell_quality_dict.values()]+["Metadata_Well"]],
         id_var="Metadata_Well",
         categories=cell_quality_dict.values(),
-        outpath=os.path.join(outdir_figs, "Quality_by_well"),
+        outpath=os.path.join(outdir_figs, "Quality_Cells_by_well"),
+        object="Cell"
     )
     make_summary_graph(
         ratio_df[[x for x in cell_quality_dict.values()]],
         id_var=[],  # All data
         categories=cell_quality_dict.values(),
-        outpath=os.path.join(outdir_figs, "Quality_all_data"),
+        outpath=os.path.join(outdir_figs, "Quality_Cells_all_data"),
+        object="Cell"
     )
 
     printandlog("Done with 3.summarize-SBS")
