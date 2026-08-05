@@ -380,6 +380,9 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
         df['num_not_empty_cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name]['NotEmpty'].sum()
         df['num_total_cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name]['Sum'].sum()
         df['percent_empty_cells'] = df['num_empty_cells'] / df['num_total_cells']
+        # remove data that shouldn't be summed or averaged
+        df.pop("num_unique_genes")
+        df.pop("num_unique_guides")
         df.to_json(
             os.path.join(outdir_data, f"Data_Stats_{data_set_name}.json"),
             index=False,
@@ -392,7 +395,11 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
     stats_df['num_not_empty_cells'] = ratio_df['NotEmpty'].sum()
     stats_df['num_total_cells'] = ratio_df['Sum'].sum()
     stats_df['percent_empty_cells'] = stats_df['num_empty_cells'] / stats_df['num_total_cells']
-    stats_df["num_spots_per_cell"] = stats_df["num_assigned_spots"]/stats_df["num_not_empty_cells"]
+    stats_df["num_spots_per_cell"] = stats_df["num_spots_in_cells"]/stats_df["num_not_empty_cells"]
+    stats_df["num_unique_guides_called"] = barcode_count_summary_df.loc[barcode_count_summary_df['All_Called_Barcodes'] != "Unmatched","count"].sum()
+    # remove data that shouldn't be summed or averaged
+    stats_df.pop("num_unique_genes")
+    stats_df.pop("num_unique_guides")
     stats_df.to_json(
         os.path.join(outdir_data, "Data_Stats_WholeExperiment.json"), indent=4
     )

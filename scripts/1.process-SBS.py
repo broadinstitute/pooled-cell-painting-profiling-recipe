@@ -365,7 +365,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         continue
 
                     num_assigned_spots = assigned_spot_df.shape[0]
-                    num_cells_one_spot = len(complete_foci_df.loc[complete_foci_df['Parent_Cells']!=0,'Parent_Cells'].unique())
+                    num_cells_one_spot = (complete_foci_df.loc[complete_foci_df['Parent_Cells']!=0, 'Parent_Cells'].value_counts() == 1).sum()
                     perfect_spot_dict = {}
                     if len(library_structure) > 1:
                         for col in [x for x in complete_foci_df.columns if SBS_score_col in x]:
@@ -466,10 +466,6 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         categories=passed_gene_df.loc[:, gene_col].to_list(),
                     )
 
-                    # Number of non-targetting controls
-                    nt_gene_df = passed_gene_df.query(f"{gene_col} in @control_genes")
-                    num_nt = nt_gene_df.Cell_Count_Per_Gene.sum()
-
                     # Output descriptive stats/site
                     descriptive_results = {
                         "Metadata_ImageNumber": int(image_number),
@@ -479,13 +475,12 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         "Metadata_Site": int(site),
                         "Metadata_Identifier": f"{batch}-{plate}-{well}-{site}",
                         "Metadata_Dataset_Split": data_set_name,
-                        "num_unassigned_spots": int(num_unassigned_spots),
-                        "num_assigned_spots": int(num_assigned_spots),
+                        "num_spots_outside_cells": int(num_unassigned_spots),
+                        "num_spots_in_cells": int(num_assigned_spots),
                         "num_unique_genes": int(num_unique_genes),
                         "num_unique_guides": int(num_unique_guides),
                         "num_assigned_cells": int(num_assigned_cells),
-                        "num_nontarget_controls_kept_cells": int(num_nt),
-                        "num_cells_one_spot": int(num_cells_one_spot)
+                        "num_cells_with_one_spot": int(num_cells_one_spot)
                     }
                     if len(library_structure) > 1:
                         for col in [x for x in foci_df.columns if SBS_score_col in x]:
