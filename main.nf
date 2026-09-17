@@ -29,8 +29,26 @@ if (!experimentConfig.exists()) {
 
 def experiment = new JsonSlurper().parse(experimentConfig)
 
+// Directories that must be visible inside a container at their original host
+// path, since the scripts read/write absolute paths taken from the configs
+// rather than through Nextflow's own file staging. Only used when a
+// container engine (e.g. -profile docker) is enabled; harmless otherwise.
+def mountDirs = [
+    params.recipe_dir,
+    defaultsConfig.parent.toString(),
+    experimentConfig.parent.toString(),
+] as Set
+if (experiment.file_location) {
+    mountDirs << file(experiment.file_location).toAbsolutePath().toString()
+}
+if (experiment.match_to_library && experiment.library_location) {
+    mountDirs << file(experiment.library_location).toAbsolutePath().parent.toString()
+}
+def dockerMounts = mountDirs.collect { "-v ${it}:${it}" }.join(' ')
+
 process IMAGE_QC {
     tag "0.image-qc"
+    containerOptions dockerMounts
 
     input:
     val ready
@@ -49,6 +67,7 @@ process IMAGE_QC {
 
 process PROCESS_SBS {
     tag "1.process-SBS"
+    containerOptions dockerMounts
 
     input:
     val ready
@@ -67,6 +86,7 @@ process PROCESS_SBS {
 
 process MERGE_SINGLE_CELLS {
     tag "2.merge-single-cells"
+    containerOptions dockerMounts
 
     input:
     val ready
@@ -85,6 +105,7 @@ process MERGE_SINGLE_CELLS {
 
 process SUMMARIZE_SBS {
     tag "3.summarize-SBS"
+    containerOptions dockerMounts
 
     input:
     val ready
@@ -103,6 +124,7 @@ process SUMMARIZE_SBS {
 
 process AGGREGATE {
     tag "4.aggregate"
+    containerOptions dockerMounts
 
     input:
     val ready
@@ -121,6 +143,7 @@ process AGGREGATE {
 
 process NORMALIZE {
     tag "5.normalize"
+    containerOptions dockerMounts
 
     input:
     val ready
@@ -139,6 +162,7 @@ process NORMALIZE {
 
 process FEATURE_SELECT {
     tag "6.feature-select"
+    containerOptions dockerMounts
 
     input:
     val ready
@@ -157,6 +181,7 @@ process FEATURE_SELECT {
 
 process EXPLORE {
     tag "7.explore"
+    containerOptions dockerMounts
 
     input:
     val ready

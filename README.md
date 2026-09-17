@@ -32,6 +32,8 @@ Creates guide- and gene-level profiles by aggregating single-cell profiles using
 Normalizes all profiles on a per-plate basis using Pycytominer.
 6. [Feature selection](scripts/6.feature-selection.py).
 Performs feature selection on normalized profiles using Pycytominer.
+7. [Explore](scripts/7.explore.py).
+Performs preliminary exploration of biological relationships in the profiles output by the recipe.
 
 ### Logging
 
@@ -39,7 +41,13 @@ The recipe includes creation of a log file for each step.
 The file is named after the step (e.g. 0.prefilter-features.log) and saves in a logs/ folder.
 The file logs progress information, warnings, and uncaught exceptions.
 
-## Step 1: Initialize the computational environment
+## Running the Recipe
+
+The recipe supports running the workflow using Python in a conda environment or using Nextflow in either a conda environment or in a Docker.
+
+### Step 1: Initialize the computational environment
+
+This step can be skipped if you are using Nextflow with Docker.
 
 Install [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/).
 We use conda as an environment manager.
@@ -52,7 +60,7 @@ conda env create --force --file environment.yml
 conda activate pooled-profiling
 ```
 
-## Step 2: Configure the workflow
+### Step 2: Configure the workflow
 
 Edit the [Experiment configuration file](config/experiment.json) to set parameters specific to your experiment.
 More information about the parameters can be found in the [config documentation](config/docs/experiment_README.md).
@@ -60,7 +68,9 @@ More information about the parameters can be found in the [config documentation]
 Note that there is also a [Defaults configuration file](config/defaults.json) that contains parameters that are less likely to need changing between experiments.
 These include default assumptions about the structure of this repository and CellProfiler naming conventions.
 
-## Step 3: Run the workflow
+### Step 3: Run the workflow
+
+#### Run the workflow with Python
 
 `python run.py`
 
@@ -70,7 +80,9 @@ If you would like to pass configuration files that have custom location or namin
 python run.py --defaults-config path/to/defaults.json --experiment-config path/to/experiment.json
 ```
 
-### Running with Nextflow
+#### Run the workflow with Nextflow
+
+##### Nextflow and Python
 
 The same recipe steps can be run as a [Nextflow](https://www.nextflow.io/) pipeline (`main.nf`) instead of `run.py`.
 Each step is still one of the `scripts/N.*.py` files above; Nextflow just orchestrates which steps run and in what order, based on the `perform_*` flags in your experiment config.
@@ -86,3 +98,19 @@ To use custom configuration file locations:
 ```bash
 nextflow run main.nf --defaults_config path/to/defaults.yaml --experiment_config path/to/experiment.json
 ```
+
+##### Nextflow and Docker
+
+Instead of installing the `pooled-profiling` conda environment locally (Step 1), you can run every step inside a Docker container built from the same `environment.yml`. Install [Docker](https://docs.docker.com/get-docker/) and make sure the daemon is running, then build the image once:
+
+```bash
+docker build -t pooled-profiling .
+```
+
+Then run the workflow with the `docker` profile instead of activating a conda environment:
+
+```bash
+nextflow run main.nf -profile docker
+```
+
+The container only contains the Python environment; your repo checkout and data directories (`file_location`, `library_location`) are bind-mounted in automatically based on your config files, so editing scripts or configs never requires rebuilding the image — only changes to `environment.yml` do.
