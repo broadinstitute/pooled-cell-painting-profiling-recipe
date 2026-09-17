@@ -78,6 +78,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
 
     # define experiment variables
     file_location = experiment_config["file_location"]
+    foci_location = experiment_config["external_foci_location"]
     drop_barcodes = experiment_config["drop_barcodes"]
     control_genes = experiment_config["control_genes"]
     data_sets = experiment_config["data_sets"]
@@ -167,12 +168,20 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                     # SBS DATA HANDLING
                     try:
                         if not match_to_library:
-                            barcode_file = os.path.join(
-                                file_location,
-                                batch,
-                                plate_well_site_folder,
-                                "BarcodeFoci.csv",
-                            )
+                            if not foci_location:
+                                barcode_file = os.path.join(
+                                    file_location,
+                                    batch,
+                                    plate_well_site_folder,
+                                    "BarcodeFoci.csv",
+                                )
+                            else:
+                                barcode_file = os.path.join(
+                                    foci_location,
+                                    batch,
+                                    plate_well_site_folder,
+                                    "BarcodeFoci.csv",
+                                )
                             barcodefoci_df = read_csvs_with_chunksize(barcode_file)
                             # most columns from BarcodeFoci.csv are dropped
                             barcodefoci_df = barcodefoci_df[
@@ -183,19 +192,49 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                             ]
                         else:
                             barcode_file = "barcode calls made in recipe"
-                        foci_file = os.path.join(
-                            file_location, batch, plate_well_site_folder, "Foci.csv"
-                        )
-                        foci_df = read_csvs_with_chunksize(foci_file)
 
+                        if not foci_location:
+                            foci_file = os.path.join(
+                                file_location, batch, plate_well_site_folder, "Foci.csv"
+                            )
+                        else:
+                            foci_file = os.path.join(
+                                foci_location, batch, plate_well_site_folder, "Foci.csv"
+                            )
+                            relationship_foci_file = os.path.join(
+                                file_location,
+                                batch,
+                                plate_well_site_folder,
+                                "Foci.csv",
+                            )
+                            relationship_foci_df = read_csvs_with_chunksize(relationship_foci_file)
+                        foci_df = read_csvs_with_chunksize(foci_file)
                         if len(foci_df) == 0:
                             printandlog(
                                 f"{plate_well_site_folder} does not have any foci"
                             )
                             no_SBS_foci_sites.append(plate_well_site_folder)
                             continue
+                        if foci_location:
+                            if 'Parent_Cells' in relationship_foci_df.columns:
+                                foci_df = foci_df.merge(relationship_foci_df[['Number_Object_Number','Parent_Cells']], on='Number_Object_Number', how='left')
+                            else:
+                                printandlog(
+                                    f"{plate_well_site_folder} does not have any foci in parent objects"
+                                )
+                                no_SBS_foci_sites.append(plate_well_site_folder)
+                                continue
+                        else:#TODO - abstract column name
+                            if foci_df['Parent_Cells'].sum() == 0:
+                                printandlog(
+                                    f"{plate_well_site_folder} does not have any foci in parent objects"
+                                )
+                                no_SBS_foci_sites.append(plate_well_site_folder)
+                                continue
 
                         if match_to_library:
+                            if SBS_score_col in foci_df.columns:
+                                foci_df = foci_df.drop(columns=[SBS_score_col])
                             matchdict = barcode_calling_utils.match_barcode_to_library(
                                 library_location, library_structure, call_col, foci_df
                             )
