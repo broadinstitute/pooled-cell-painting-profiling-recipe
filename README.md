@@ -69,3 +69,20 @@ If you would like to pass configuration files that have custom location or namin
 ```python
 python run.py --defaults-config path/to/defaults.json --experiment-config path/to/experiment.json
 ```
+
+### Running with Nextflow
+
+The same recipe steps can be run as a [Nextflow](https://www.nextflow.io/) pipeline (`main.nf`) instead of `run.py`.
+Each step is still one of the `scripts/N.*.py` files above; Nextflow just orchestrates which steps run and in what order, based on the `perform_*` flags in your experiment config.
+
+Install Nextflow (see the [Nextflow docs](https://www.nextflow.io/docs/latest/install.html)), activate the `pooled-profiling` conda environment from Step 1, then run:
+
+```bash
+nextflow run main.nf
+```
+
+To use custom configuration file locations:
+
+```bash
+nextflow run main.nf --defaults_config path/to/defaults.yaml --experiment_config path/to/experiment.json
+```

@@ -11,7 +11,8 @@ from utils.io_utils import load_configs
 def check_experiment_config(experiment_config):
     required_keys = [
         'file_location',
-        'control_barcodes',
+        'control_genes',
+        'poscon_genes',
         'drop_barcodes',
         'data_sets',
         'compartments',
@@ -25,6 +26,7 @@ def check_experiment_config(experiment_config):
         'perform_aggregate',
         'perform_normalize',
         'perform_feature_select',
+        'perform_explore',
         'match_to_library',
         'library_structure',
         'library_location',
@@ -53,6 +55,7 @@ if __name__ == "__main__":
     script_location = os.path.join(location, "scripts")
 
     defaults_config, experiment_config = load_configs(args.defaults_config_path, args.experiment_config_path)
+    check_experiment_config(experiment_config)
 
     if experiment_config['perform_process_qc']:
         p = subprocess.Popen(
