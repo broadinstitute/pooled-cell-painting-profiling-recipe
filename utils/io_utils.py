@@ -1,3 +1,5 @@
+import glob
+import os
 import yaml
 import json
 import pandas as pd
@@ -24,6 +26,22 @@ def parse_data_set(data_set):
         for well in well_list:
             list_plate_well_tuples.append((plate, well))
     return batch, plate_list, list_plate_well_tuples
+
+
+def find_file_with_suffix(folder, suffix, exclude_suffix=None):
+    """
+    Find the file in folder whose name ends in suffix, allowing any prefix.
+    Files ending in exclude_suffix are ignored (e.g. *BarcodeFoci.csv when looking for *Foci.csv).
+    If nothing matches, returns folder/suffix so downstream load errors name a sensible file.
+    """
+    matches = glob.glob(os.path.join(folder, f"*{suffix}"))
+    if exclude_suffix:
+        matches = [x for x in matches if not x.endswith(exclude_suffix)]
+    if len(matches) > 1:
+        raise ValueError(f"Multiple files match *{suffix} in {folder}: {sorted(matches)}")
+    if matches:
+        return matches[0]
+    return os.path.join(folder, suffix)
 
 
 def read_csvs_with_chunksize(filename, chunksize=10000, **kwargs):

@@ -19,7 +19,12 @@ import json
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
 import barcode_calling_utils
-from io_utils import load_configs, parse_data_set, read_csvs_with_chunksize
+from io_utils import (
+    load_configs,
+    parse_data_set,
+    read_csvs_with_chunksize,
+    find_file_with_suffix,
+)
 from cell_quality_utils import CellQuality
 
 
@@ -176,10 +181,10 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                                     "BarcodeFoci.csv",
                                 )
                             else:
-                                barcode_file = os.path.join(
-                                    foci_location,
-                                    batch,
-                                    plate_well_site_folder,
+                                barcode_file = find_file_with_suffix(
+                                    os.path.join(
+                                        foci_location, batch, plate_well_site_folder
+                                    ),
                                     "BarcodeFoci.csv",
                                 )
                             barcodefoci_df = read_csvs_with_chunksize(barcode_file)
@@ -198,8 +203,12 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                                 file_location, batch, plate_well_site_folder, "Foci.csv"
                             )
                         else:
-                            foci_file = os.path.join(
-                                foci_location, batch, plate_well_site_folder, "Foci.csv"
+                            foci_file = find_file_with_suffix(
+                                os.path.join(
+                                    foci_location, batch, plate_well_site_folder
+                                ),
+                                "Foci.csv",
+                                exclude_suffix="BarcodeFoci.csv",
                             )
                             relationship_foci_file = os.path.join(
                                 file_location,
