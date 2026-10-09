@@ -2,8 +2,11 @@
 
 Detailed information on how to customize the `experiment.json` for each Pooled morphological profiling experiment.
 
-`file_location`: This workflow assumes that input data for the workflow was output from image analysis with a folder per site in this parent folder.
+`file_location`: The parent folder for a set of .csv's that have been output into nested /batch_folder/plate-well-site_folders within the parent folder. \
 e.g. `"/Users/eweisbar/Desktop/demo/analysis"`
+
+`external_foci_location`: If you have made measurements on foci that did not happen during the same image_analysis step but instead are brought in from another step, this is the parent folder for those .csv's. Same /batch_folder/plate-well-site_folder nesting as file_location. Files may have a prefix before `Foci.csv` / `BarcodeFoci.csv` (e.g. `Prefix_Foci.csv`); `*BarcodeFoci.csv` is ignored when locating the foci file. Leave blank if your foci measurements are in the same parent folders as other measurements.
+e.g. `"/Users/eweisbar/Desktop/separate_foci_folder/"`
 
 `control_genes`: A list of strings corresponding to the gene name given to controls in your experiment.
 These are used in the normalization step to determine which cells to normalize against.
