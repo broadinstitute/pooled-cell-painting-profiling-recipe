@@ -333,9 +333,11 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
                     sc_merged_df.loc[:, cell_quality_column] = sc_merged_df.loc[
                         :, cell_quality_column
                     ].fillna("Empty")
-                    sc_merged_df.loc[:, cell_quality_index] = sc_merged_df.loc[
-                        :, cell_quality_index
-                    ].fillna(len(cell_quality_dict) + 1)
+                    sc_merged_df.loc[:, cell_quality_index] = (
+                        sc_merged_df.loc[:, cell_quality_index]
+                        .infer_objects(copy=False)
+                        .fillna(len(cell_quality_dict) + 1)
+                    )
 
                     if not os.path.exists(SBS_out):
                         os.makedirs(SBS_out, exist_ok=True)
