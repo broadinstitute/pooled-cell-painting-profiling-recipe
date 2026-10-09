@@ -1,6 +1,8 @@
 {
-"_commenton_file_location":"parent_folder/batch_folder/plate-well-site_folder/csvs",
+"_commenton_file_location":"parent_folder for nested /batch_folder/plate-well-site_folders/csvs",
 "file_location":"/Users/eweisbar/Desktop/parent_folder/",
+"_commenton_external_foci":"leave blank if foci measurements are in file location, nesting as above",
+"external_foci_location":"/Users/eweisbar/Desktop/separate_foci_folder/",
 "_commenton_controls":"control_genes is negative controls to normalize to. poscon_genes is positive controls to check for expected phenotypes.",
 "_commenton_controls2":"control_genes is required. poscon_genes is optional.",
 "control_genes":["negcon","empty_vector"],
