@@ -56,6 +56,14 @@ def handle_excepthook(exc_type, exc_value, exc_traceback):
 sys.excepthook = handle_excepthook
 
 
+def is_header_only_csv(file):
+    """True if the file exists, has a header, and no data rows."""
+    try:
+        return len(pd.read_csv(file, nrows=1)) == 0
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        return False
+
+
 def fail_site(plate_well_site_folder, file, allowed_skip_counter, allowed_skips):
     printandlog(
         f"Skipped {plate_well_site_folder}. Couldn't find or load necessary columns from {file}",
@@ -271,11 +279,8 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                         all_image_dfs.append(image_df)
                     except:
                         if infer_empty_sites:
-                            compartment_file_list = [
-                                image_file.replace("Image", compartment)
-                                for compartment in compartments
-                            ]
-                            if any(os.path.exists(f) for f in compartment_file_list):
+                            parent_compartment_file = image_file.replace("Image", compartments[0])
+                            if not is_header_only_csv(parent_compartment_file):
                                 allowed_skip_counter = fail_site(
                                     plate_well_site_folder,
                                     image_file,
@@ -551,18 +556,23 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
         except:
             continue
 
+        inferred_empty_sites_file = os.path.join(
+            out_root,
+            data_folder,
+            f"Inferred_Empty_Sites_{data_set_name}.csv",
+        )
         if inferred_empty_sites:
             inferred_empty_sites_df = pd.DataFrame(
                 inferred_empty_sites, columns=["Inferred_Empty_Site_Folder"]
             )
-            inferred_empty_sites_df.to_csv(
-                os.path.join(
-                    out_root,
-                    data_folder,
-                    f"Inferred_Empty_Sites_{data_set_name}.csv",
-                ),
-                index=False,
-            )
+            inferred_empty_sites_df.to_csv(inferred_empty_sites_file, index=False)
+        else:
+            if infer_empty_sites and os.path.exists(inferred_empty_sites_file):
+                # remove stale file from a previous run so later steps don't skip sites that have data
+                os.remove(inferred_empty_sites_file)
+                printandlog(
+                    f"No inferred empty sites in {data_set_name}. Removed existing {inferred_empty_sites_file}."
+                )
 
     print("Finished 0.image-qc.")
 
