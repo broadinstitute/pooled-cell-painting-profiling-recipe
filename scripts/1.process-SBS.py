@@ -140,7 +140,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         f"Inferred_Empty_Sites_{data_set_name}.csv",
                     )
                 )
-                .squeeze()
+                .iloc[:, 0]
                 .tolist()
             )
         except:

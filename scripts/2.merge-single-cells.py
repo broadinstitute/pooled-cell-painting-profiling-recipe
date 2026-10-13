@@ -142,7 +142,7 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
                         f"Inferred_Empty_Sites_{data_set_name}.csv",
                     )
                 )
-                .squeeze()
+                .iloc[:, 0]
                 .tolist()
             )
         except:
@@ -157,7 +157,7 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
                         f"No_SBS_Foci_Sites_{data_set_name}.csv",
                     )
                 )
-                .squeeze()
+                .iloc[:, 0]
                 .tolist()
             )
         except:
@@ -172,7 +172,7 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
                         f"No_Assigned_Cells_Sites_{data_set_name}.csv",
                     )
                 )
-                .squeeze()
+                .iloc[:, 0]
                 .tolist()
             )
         except:
