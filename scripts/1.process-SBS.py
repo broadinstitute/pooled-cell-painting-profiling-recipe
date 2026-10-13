@@ -376,10 +376,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                     # Count foci outside of parent compartment (e.g. Cells)
                     try:
                         unassigned_spot_df = complete_foci_df.loc[
-                            (
-                                complete_foci_df.loc[:, f"Parent_{compartments[0]}"]
-                                == 0
-                            ).squeeze(),
+                            complete_foci_df.loc[:, f"Parent_{compartments[0]}"] == 0,
                             :,
                         ]
                         num_unassigned_spots = unassigned_spot_df.shape[0]
@@ -389,16 +386,14 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                     # Count foci in parent compartment (e.g. Cells)
                     try:
                         assigned_spot_df = complete_foci_df.loc[
-                            (
-                                complete_foci_df.loc[:, f"Parent_{compartments[0]}"]
-                                != 0
-                            ).squeeze(),
+                            complete_foci_df.loc[:, f"Parent_{compartments[0]}"] != 0,
                             :,
                         ].copy()
                     except:
                         printandlog(
                             f"{plate_well_site_folder} has no foci in cells. Skipping."
                         )
+                        no_assigned_cells_sites.append(plate_well_site_folder)
                         continue
 
                     num_assigned_cells = len(
