@@ -24,6 +24,7 @@ from io_utils import (
     parse_data_set,
     read_csvs_with_chunksize,
     find_file_with_suffix,
+    site_folders_for_plate_well,
 )
 from cell_quality_utils import CellQuality
 
@@ -65,7 +66,7 @@ def fail_site(plate_well_site_folder, file, allowed_skip_counter, allowed_skips)
         f"Now at {allowed_skip_counter} sites skipped from errors.",
         type="warning",
     )
-    if allowed_skips < allowed_skip_counter:
+    if allowed_skips <= allowed_skip_counter:
         printandlog(
             f"Allowed skip limit of {allowed_skips} reached. Stopping 1.process-SBS.",
             type="warning",
@@ -151,7 +152,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
         for plate in plate_list:
             for plate_well_tuple in [x for x in list_plate_well_tuples if plate in x]:
                 well = plate_well_tuple[1]
-                usefolders = [x for x in folderlist if f"{plate}-{well}" in x]
+                usefolders = site_folders_for_plate_well(folderlist, plate, well)
                 usefolders = [x for x in usefolders if x not in inferred_empty_sites]
 
                 printandlog(f"Now processing {data_set_name}: {batch}, {plate}, {well}")
@@ -240,16 +241,16 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                                     allowed_skips,
                                 )
                                 continue
-                            if 'Parent_Cells' in relationship_foci_df.columns:
-                                foci_df = foci_df.merge(relationship_foci_df[['Number_Object_Number','Parent_Cells']], on='Number_Object_Number', how='left')
+                            if f'Parent_{compartments[0]}' in relationship_foci_df.columns:
+                                foci_df = foci_df.merge(relationship_foci_df[['Number_Object_Number',f'Parent_{compartments[0]}']], on='Number_Object_Number', how='left')
                             else:
                                 printandlog(
                                     f"{plate_well_site_folder} does not have any foci in parent objects"
                                 )
                                 no_SBS_foci_sites.append(plate_well_site_folder)
                                 continue
-                        else:#TODO - abstract column name
-                            if foci_df['Parent_Cells'].sum() == 0:
+                        else:
+                            if foci_df[f'Parent_{compartments[0]}'].sum() == 0:
                                 printandlog(
                                     f"{plate_well_site_folder} does not have any foci in parent objects"
                                 )
@@ -427,17 +428,19 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                         continue
 
                     num_assigned_spots = assigned_spot_df.shape[0]
-                    num_cells_one_spot = (complete_foci_df.loc[complete_foci_df['Parent_Cells']!=0, 'Parent_Cells'].value_counts() == 1).sum()
+                    num_cells_one_spot = (assigned_spot_df[f'Parent_{compartments[0]}'].value_counts() == 1).sum()
                     perfect_spot_dict = {}
                     if len(library_structure) > 1:
                         for col in [x for x in complete_foci_df.columns if SBS_score_col in x]:
                             num_spots = len(complete_foci_df.loc[complete_foci_df[col]==1])
+                            num_spots_in_cells = len(assigned_spot_df.loc[assigned_spot_df[col]==1])
                             perfect_spot_dict[f"percent_perfect_spots{col.replace(SBS_score_col,'')}"] = num_spots/len(complete_foci_df)
-                            perfect_spot_dict[f"percent_perfect_spots{col.replace(SBS_score_col,'')}_in_cells"] = num_spots/num_assigned_spots
+                            perfect_spot_dict[f"percent_perfect_spots{col.replace(SBS_score_col,'')}_in_cells"] = num_spots_in_cells/num_assigned_spots
                     else:
                         num_spots = len(complete_foci_df.loc[complete_foci_df[SBS_score_col]==1])
+                        num_spots_in_cells = len(assigned_spot_df.loc[assigned_spot_df[SBS_score_col]==1])
                         percent_perfect_spots = num_spots/len(complete_foci_df)
-                        percent_perfect_spots_in_cells = num_spots/num_assigned_spots
+                        percent_perfect_spots_in_cells = num_spots_in_cells/num_assigned_spots
 
                     # Assign Cell Quality scores based on gene and barcode assignments
                     crispr_barcode_gene_df = cell_quality.assign_cell_quality(
@@ -568,13 +571,11 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                             ].squeeze()
                         )
 
-                    for quality in foci_df['Spot_Category'].unique():
-                        descriptive_results[f"num_quality_{quality}_spots"] = len(
-                            foci_df.loc[
-                                foci_df["Spot_Category"] == quality,
-                                "Spot_Category",
-                            ].squeeze()
-                        )
+                    if "Spot_Category" in foci_df.columns:
+                        for quality in foci_df["Spot_Category"].unique():
+                            descriptive_results[f"num_quality_{quality}_spots"] = int(
+                                (foci_df["Spot_Category"] == quality).sum()
+                            )
 
                     output_file = os.path.join(output_dir, "site_stats.json")
                     with open(output_file, "w") as f:

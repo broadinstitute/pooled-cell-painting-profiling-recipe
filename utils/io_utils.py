@@ -32,6 +32,16 @@ def parse_data_set(data_set):
     return batch, plate_list, list_plate_well_tuples
 
 
+def site_folders_for_plate_well(folderlist, plate, well):
+    """Site folders are named {plate}-{well}-{site}; match plate and well exactly."""
+    return [x for x in folderlist if x.rsplit("-", 1)[0] == f"{plate}-{well}"]
+
+
+def site_folders_for_plate(folderlist, plate):
+    """Site folders are named {plate}-{well}-{site}; match plate exactly."""
+    return [x for x in folderlist if x.rsplit("-", 2)[0] == plate]
+
+
 def find_file_with_suffix(folder, suffix, exclude_suffix=None):
     """
     Find the file in folder whose name ends in suffix, allowing any prefix.

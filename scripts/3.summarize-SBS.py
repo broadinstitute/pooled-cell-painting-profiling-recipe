@@ -135,7 +135,7 @@ def fail_site(plate_well_site_folder, file, allowed_skip_counter, allowed_skips)
     )
     if allowed_skips <= allowed_skip_counter:
         printandlog(
-            f"Allowed skip limit of {allowed_skips} reached. Stopping 1.process-SBS.",
+            f"Allowed skip limit of {allowed_skips} reached. Stopping 3.summarize-SBS.",
             type="warning",
         )
         sys.exit(1)

@@ -10,7 +10,7 @@ Outputs the following files:
 - data_exploration/{plate}_{data_set_name}_{gene|guide}_normalized_{group}_heatmap.png
 - data_exploration/{plate}_{data_set_name}_gene_normalized_{group}_feature_selected_mAP.csv.gz
 - data_exploration/{plate}_{data_set_name}_gene_normalized_{group}_feature_selected_mAP_scatterplot.png
-- data_exploration/{plate}_{data_set_name}_gene_normalized_{group}_feature_selected_{gene}_cosine_similarity.csv.gz
+- data_exploration/{plate}_{data_set_name}_{gene|guide}_normalized_{group}_feature_selected_{gene}_cosine_similarity.csv.gz
 """
 
 import os
@@ -39,6 +39,10 @@ logging.basicConfig(
     filename=os.path.join(logfolder, "7.explore.log"),
     level=logging.INFO,
 )
+
+
+# Above this many genes, color only control/positive-control genes and grey out the rest
+MAX_GENES_TO_COLOR = 20
 
 
 def printandlog(msg, type="info"):
@@ -123,21 +127,41 @@ def explore(path_to_defaults_config, path_to_experiment_config):
 
                 # create color dictionary for consistency in plot
                 all_unique_genes = groupdf[f"Metadata_{gene_col}"].unique()
-                colors = sns.color_palette("husl", len(all_unique_genes))
-                gene_palette = dict(zip(all_unique_genes, colors))
+                if len(all_unique_genes) > MAX_GENES_TO_COLOR:
+                    # too many genes for a readable legend; only highlight controls
+                    highlight_genes = [
+                        g
+                        for g in dict.fromkeys(list(control_genes) + list(poscon_genes or []))
+                        if g in all_unique_genes
+                    ]
+                    colors = sns.color_palette("husl", len(highlight_genes))
+                    gene_palette = dict(zip(highlight_genes, colors))
+                    gene_palette["Other"] = "lightgrey"
+                    hue_col = "Plot_Group"
+                else:
+                    colors = sns.color_palette("husl", len(all_unique_genes))
+                    gene_palette = dict(zip(all_unique_genes, colors))
+                    hue_col = f"Metadata_{gene_col}"
+
+                if agg == "guide":
+                    guide_groupdf = groupdf
 
                 feature_cols = [x for x in groupdf.columns if "Metadata" not in x]
 
                 embedding = umap.UMAP().fit_transform(groupdf[feature_cols])
                 umap_df = pd.DataFrame(embedding, columns=["UMAP1", "UMAP2"])
                 umap_df[f"Metadata_{gene_col}"] = groupdf[f"Metadata_{gene_col}"].values
+                if hue_col == "Plot_Group":
+                    umap_df[hue_col] = umap_df[f"Metadata_{gene_col}"].where(
+                        umap_df[f"Metadata_{gene_col}"].isin(gene_palette), "Other"
+                    )
 
                 fig, ax = plt.subplots()
                 sns.scatterplot(
                     data=umap_df,
                     x="UMAP1",
                     y="UMAP2",
-                    hue=f"Metadata_{gene_col}",
+                    hue=hue_col,
                     palette=gene_palette,
                     ax=ax,
                 )
@@ -149,7 +173,7 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                     y="UMAP2",
                     marker="h",
                     edgecolor="black",
-                    hue=f"Metadata_{gene_col}",
+                    hue=hue_col,
                     palette=gene_palette,
                     legend=False,
                     ax=ax,
@@ -161,7 +185,7 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                             x="UMAP1",
                             y="UMAP2",
                             edgecolor="black",
-                            hue=f"Metadata_{gene_col}",
+                            hue=hue_col,
                             palette=gene_palette,
                             marker="*",
                             legend=False,
@@ -184,23 +208,31 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                         #
                         # Calculate cosine similarity to positive controls - gene and guide
                         #
+                        ref_df = groupdf.loc[groupdf[f"Metadata_{gene_col}"] == gene, :]
                         cov = cosine_similarity(
-                            groupdf[
-                                [x for x in groupdf.columns if "Metadata" not in x]
-                            ].values,
-                            groupdf.loc[groupdf[f"Metadata_{gene_col}"] == gene, :][
-                                [x for x in groupdf.columns if "Metadata" not in x]
-                            ].values,
+                            groupdf[feature_cols].values,
+                            ref_df[feature_cols].values,
                         )
-                        cos_sim_df = pd.DataFrame(
-                            cov,
-                            columns=["cosine_similarity"],
-                            index=groupdf[f"Metadata_{gene_col}"],
+                        # one column per reference profile (a gene has several guides)
+                        if agg == "guide":
+                            sim_cols = [
+                                f"cosine_similarity_to_{x}"
+                                for x in ref_df[f"Metadata_{guide_col}"]
+                            ]
+                        else:
+                            sim_cols = ["cosine_similarity"]
+                        cos_sim_df = pd.DataFrame(cov, columns=sim_cols)
+                        meta_cols = [f"Metadata_{gene_col}"]
+                        if agg == "guide":
+                            meta_cols.append(f"Metadata_{guide_col}")
+                        cos_sim_df = pd.concat(
+                            [groupdf[meta_cols].reset_index(drop=True), cos_sim_df],
+                            axis=1,
                         )
                         cos_sim_df.to_csv(
                             os.path.join(
                                 outdir_exploration,
-                                f"{plate}_{data_set_name}_{agg}_normalized_{group}_feature_selected_{gene}_cosine_similarity.csv",
+                                f"{plate}_{data_set_name}_{agg}_normalized_{group}_feature_selected_{gene}_cosine_similarity.csv.gz",
                             ),
                             index=False,
                         )
@@ -230,7 +262,7 @@ def explore(path_to_defaults_config, path_to_experiment_config):
             #
             # Calculate mAP for phenotypic activity - guide only
             #
-            df_activity = groupdf.copy(deep=True).dropna()
+            df_activity = guide_groupdf.copy(deep=True).dropna()
             df_activity = df_activity.loc[
                 :, df_activity.nunique() > 1
             ]  # remove constant columns

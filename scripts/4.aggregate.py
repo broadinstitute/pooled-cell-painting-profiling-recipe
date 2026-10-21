@@ -17,7 +17,12 @@ from pycytominer import aggregate as pycytominer_aggregate
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
-from io_utils import load_configs, read_csvs_with_chunksize, parse_data_set
+from io_utils import (
+    load_configs,
+    read_csvs_with_chunksize,
+    parse_data_set,
+    site_folders_for_plate,
+)
 
 # Configure logging
 logfolder = os.path.join(recipe_path, "logs")
@@ -44,6 +49,26 @@ def printandlog(msg, type="info"):
         logging.warning(msg)
     else:
         logging.info(msg)
+
+
+def fail_site(plate_well_site_folder, file, allowed_skip_counter, allowed_skips):
+    printandlog(
+        f"Skipped {plate_well_site_folder}. Couldn't find or load necessary columns from {file}",
+        type="warning",
+    )
+    allowed_skip_counter += 1
+    printandlog(
+        f"Now at {allowed_skip_counter} sites skipped from errors.",
+        type="warning",
+    )
+    if allowed_skips <= allowed_skip_counter:
+        printandlog(
+            f"Allowed skip limit of {allowed_skips} reached. Stopping 4.aggregate.",
+            type="warning",
+        )
+        sys.exit(1)
+    else:
+        return allowed_skip_counter
 
 
 def aggregate(path_to_defaults_config, path_to_experiment_config):
@@ -88,28 +113,30 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
             # Load in single cell data
             if not save_single_file:
                 single_file_df = []
-                if allowed_skips >= allowed_skip_counter:
-                    for plate_well_site_folder in [x for x in usefolders if plate in x]:
-                        try:
-                            infile = os.path.join(
-                                out_root,
-                                single_cell,
-                                "by_site",
-                                plate_well_site_folder,
-                                f"{plate_well_site_folder}_single_cell.csv.gz",
-                            )
-                            df = read_csvs_with_chunksize(infile)
-                            single_file_df.append(df)
-                        except:
-                            printandlog(
-                                f"Skipped loading per-site single cell data for {plate_well_site_folder}.",
-                                type="warning",
-                            )
-                            allowed_skip_counter += 1
-                            printandlog(
-                                f"Now at {allowed_skip_counter} sites skipped from errors.",
-                                type="warning",
-                            )
+                for plate_well_site_folder in site_folders_for_plate(usefolders, plate):
+                    infile = os.path.join(
+                        out_root,
+                        single_cell,
+                        "by_site",
+                        plate_well_site_folder,
+                        f"{plate_well_site_folder}_single_cell.csv.gz",
+                    )
+                    try:
+                        df = read_csvs_with_chunksize(infile)
+                        single_file_df.append(df)
+                    except:
+                        allowed_skip_counter = fail_site(
+                            plate_well_site_folder,
+                            infile,
+                            allowed_skip_counter,
+                            allowed_skips,
+                        )
+                if not single_file_df:
+                    printandlog(
+                        f"No single cell data loaded for {data_set_name} {plate}. Skipping.",
+                        type="warning",
+                    )
+                    continue
                 single_file_df = pd.concat(single_file_df, axis="rows").reset_index(
                     drop=True
                 )

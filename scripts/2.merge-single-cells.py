@@ -20,7 +20,12 @@ import pandas as pd
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
-from io_utils import load_configs, parse_data_set, read_csvs_with_chunksize
+from io_utils import (
+    load_configs,
+    parse_data_set,
+    read_csvs_with_chunksize,
+    site_folders_for_plate_well,
+)
 from cell_quality_utils import get_cell_quality_dict, filter_to_top_BC
 
 # Configure logging
@@ -181,14 +186,14 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
 
         all_usefolders = []
         for plate in plate_list:
+            single_file_df = []
             for plate_well_tuple in [x for x in list_plate_well_tuples if plate in x]:
                 well = plate_well_tuple[1]
-                usefolders = [x for x in folderlist if f"{plate}-{well}" in x]
+                usefolders = site_folders_for_plate_well(folderlist, plate, well)
                 usefolders = [x for x in usefolders if x not in inferred_empty_sites]
                 usefolders = [x for x in usefolders if x not in no_SBS_foci_sites]
                 usefolders = [x for x in usefolders if x not in no_assigned_cells_sites]
                 all_usefolders += usefolders
-                single_file_df = []
                 for plate_well_site_folder in usefolders:
                     plate_well_site_out = os.path.join(
                         single_cell_out, plate_well_site_folder
@@ -262,10 +267,10 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
                                 for x in compartment_df.columns
                             ]
                             compartment_csvs[compartment] = compartment_df
-                    except FileNotFoundError:
+                    except FileNotFoundError as e:
                         allowed_skip_counter = fail_site(
                             plate_well_site_folder,
-                            f"{compartment}.csv",
+                            e.filename,
                             allowed_skip_counter,
                             allowed_skips,
                         )
@@ -384,23 +389,29 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
                             compression=compression,
                             float_format=float_format,
                         )
-        if save_single_file:
-            outfile = os.path.join(
-                out_root, single_cell, f"{plate}_single_cell_{data_set_name}.csv.gz"
-            )
-            if not overwrite_files:
-                if os.path.exists(outfile):
+            if save_single_file:
+                outfile = os.path.join(
+                    out_root, single_cell, f"{plate}_single_cell_{data_set_name}.csv.gz"
+                )
+                if not overwrite_files and os.path.exists(outfile):
                     printandlog(
                         f"Did not save single file for {data_set_name} {plate}. File already exists and overwrite files is False"
                     )
-                    continue
-            pd.concat(single_file_df, axis="rows").reset_index(drop=True).to_csv(
-                outfile,
-                sep=",",
-                index=False,
-                compression=compression,
-                float_format=float_format,
-            )
+                elif not single_file_df:
+                    printandlog(
+                        f"No single cell data to save for {data_set_name} {plate}.",
+                        type="warning",
+                    )
+                else:
+                    pd.concat(single_file_df, axis="rows").reset_index(
+                        drop=True
+                    ).to_csv(
+                        outfile,
+                        sep=",",
+                        index=False,
+                        compression=compression,
+                        float_format=float_format,
+                    )
 
         folders_outfile = os.path.join(outdir_data, f"{data_set_name}_sitelist.json")
         with open(folders_outfile, "w") as file:

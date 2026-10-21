@@ -6,6 +6,7 @@ Outputs the following files:
 
 import os
 import sys
+import glob
 import logging
 import traceback
 import pandas as pd
@@ -73,9 +74,22 @@ def normalize(path_to_defaults_config, path_to_experiment_config):
             data_sets[data_set_name]
         )
 
+        sc_by_gene_folder = os.path.join(
+            out_root, single_cell_folder, "single_cell_by_gene"
+        )
+        if output_bygene:
+            # by-gene files are appended to plate by plate, so clear previous runs' files first
+            for normby in ["gene", "guide"]:
+                for old_file in glob.glob(
+                    os.path.join(
+                        glob.escape(sc_by_gene_folder),
+                        f"{glob.escape(data_set_name)}_{normby}_normalized_*.csv.gz",
+                    )
+                ):
+                    os.remove(old_file)
+
         for plate in plate_list:
             for normby in ["gene", "guide"]:
-                skip_group = False
                 printandlog(f"Normalizing {data_set_name} {plate} by {normby}.")
                 df = read_csvs_with_chunksize(
                     os.path.join(
@@ -121,7 +135,6 @@ def normalize(path_to_defaults_config, path_to_experiment_config):
                         f"No samples were selected for normalization for {data_set_name} {plate} {normby}. Check your control_genes and that your sample contains the control.",
                         type="warning",
                     )
-                    skip_group = True
                     continue
                 output_file = os.path.join(
                     profiles_out, f"{plate}_{data_set_name}_{normby}_normalized.csv.gz"
@@ -136,26 +149,22 @@ def normalize(path_to_defaults_config, path_to_experiment_config):
                     compression_options=compression,
                     float_format=float_format,
                 )
-            if output_bygene and not skip_group:
-                sc_by_gene_folder = os.path.join(
-                    out_root, single_cell_folder, "single_cell_by_gene"
-                )
-                if not os.path.isdir(sc_by_gene_folder):
-                    os.mkdir(sc_by_gene_folder)
 
-                df = read_csvs_with_chunksize(output_file)
-                for gene in df[f"Metadata_{gene_col}"].unique():
-                    slice = df.loc[df[f"Metadata_{gene_col}"] == gene]
-                    gene_file_name = (
-                        f"{data_set_name}_{normby}_normalized_{gene}.csv.gz"
-                    )
-                    gene_path = os.path.join(sc_by_gene_folder, gene_file_name)
-                    if not os.path.exists(gene_path):
-                        gene_df = pd.DataFrame()
-                    else:
-                        gene_df = read_csvs_with_chunksize(gene_path)
-                    gene_df = pd.concat([gene_df, slice])
-                    gene_df.to_csv(gene_path, index=False)
+                if output_bygene:
+                    os.makedirs(sc_by_gene_folder, exist_ok=True)
+                    df = read_csvs_with_chunksize(output_file)
+                    for gene in df[f"Metadata_{gene_col}"].unique():
+                        slice = df.loc[df[f"Metadata_{gene_col}"] == gene]
+                        gene_file_name = (
+                            f"{data_set_name}_{normby}_normalized_{gene}.csv.gz"
+                        )
+                        gene_path = os.path.join(sc_by_gene_folder, gene_file_name)
+                        if not os.path.exists(gene_path):
+                            gene_df = pd.DataFrame()
+                        else:
+                            gene_df = read_csvs_with_chunksize(gene_path)
+                        gene_df = pd.concat([gene_df, slice])
+                        gene_df.to_csv(gene_path, index=False)
 
     printandlog("Finished 5.normalize.")
 

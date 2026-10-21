@@ -66,6 +66,13 @@ def feature_select(path_to_defaults_config, path_to_experiment_config):
 
     profiles_out = os.path.join(out_root, profiles)
 
+    if group not in ["plate", "group", "all"]:
+        printandlog(
+            f"Unrecognized feature_select group '{group}'. Must be one of 'plate', 'group', 'all'. Stopping 6.feature_select.",
+            type="warning",
+        )
+        sys.exit(1)
+
     for normby in ["gene", "guide"]:
         all_normed = pd.DataFrame()
         for data_set_name in data_sets.keys():

@@ -27,7 +27,12 @@ import matplotlib.pyplot as plt
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
-from io_utils import load_configs, parse_data_set, read_csvs_with_chunksize
+from io_utils import (
+    load_configs,
+    parse_data_set,
+    read_csvs_with_chunksize,
+    site_folders_for_plate_well,
+)
 from plotting_utils import make_loc_df, make_plate_layout_plots, apply_margin_titles
 
 # Configure logging
@@ -83,6 +88,28 @@ def fail_site(plate_well_site_folder, file, allowed_skip_counter, allowed_skips)
         sys.exit(1)
     else:
         return allowed_skip_counter
+
+
+def write_inferred_empty_sites(
+    inferred_empty_sites, out_root, data_folder, data_set_name, infer_empty_sites
+):
+    inferred_empty_sites_file = os.path.join(
+        out_root,
+        data_folder,
+        f"Inferred_Empty_Sites_{data_set_name}.csv",
+    )
+    if inferred_empty_sites:
+        inferred_empty_sites_df = pd.DataFrame(
+            inferred_empty_sites, columns=["Inferred_Empty_Site_Folder"]
+        )
+        inferred_empty_sites_df.to_csv(inferred_empty_sites_file, index=False)
+    else:
+        if infer_empty_sites and os.path.exists(inferred_empty_sites_file):
+            # remove stale file from a previous run so later steps don't skip sites that have data
+            os.remove(inferred_empty_sites_file)
+            printandlog(
+                f"No inferred empty sites in {data_set_name}. Removed existing {inferred_empty_sites_file}."
+            )
 
 
 def make_intensity_plot(images_df, cols, outpath):
@@ -202,15 +229,17 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
             folderlist = os.listdir(os.path.join(file_location, batch))
         except:
             printandlog(
-                f"Failed to find list of folders in {os.path.join(file_location, batch)}. Likely need to correct file_location in config."
+                f"Failed to find list of folders in {os.path.join(file_location, batch)}. Likely need to correct file_location in config. Skipping {data_set_name}.",
+                type="warning",
             )
+            continue
         inferred_empty_sites = []
         all_image_dfs = []
         for plate in plate_list:
             all_align_dfs = []
             for plate_well_tuple in [x for x in list_plate_well_tuples if plate in x]:
                 well = plate_well_tuple[1]
-                usefolders = [x for x in folderlist if f"{plate}-{well}" in x]
+                usefolders = site_folders_for_plate_well(folderlist, plate, well)
                 printandlog(f"Now processing {data_set_name}: {batch}, {plate}, {well}")
                 printandlog(f"{len(usefolders)} site folders to process")
 
@@ -308,7 +337,27 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
             outfile = os.path.join(
                 outdir_single_cell, f"{plate}_alignments_{data_set_name}.csv"
             )
-            pd.concat(all_align_dfs).to_csv(outfile, index=False)
+            if all_align_dfs:
+                pd.concat(all_align_dfs).to_csv(outfile, index=False)
+            else:
+                printandlog(
+                    f"No sites with image data for {plate} in {data_set_name}. Not writing {outfile}.",
+                    type="warning",
+                )
+
+        if not all_image_dfs:
+            printandlog(
+                f"No sites with image data in {data_set_name}. Skipping plots and summary files.",
+                type="warning",
+            )
+            write_inferred_empty_sites(
+                inferred_empty_sites,
+                out_root,
+                data_folder,
+                data_set_name,
+                infer_empty_sites,
+            )
+            continue
 
         # Add in x, y coordinates to images_df for plotting
         images_df = pd.concat(all_image_dfs)
@@ -348,7 +397,7 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                 outdir_figs, f"plate_layout_image_stack_alignment_{data_set_name}.png"
             )
             stack_alignment_col = [
-                x for x in image_df.columns if "Correlation_Correlation_" in x
+                x for x in images_df.columns if "Correlation_Correlation_" in x
             ][0]
             make_plate_layout_plots(
                 images_df,
@@ -398,7 +447,7 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                     "Metadata_Site",
                     "Metadata_Well",
                 ]
-            )[[x for x in image_df.columns if "ImageQuality_PowerLogLogSlope_" in x]]
+            )[[x for x in images_df.columns if "ImageQuality_PowerLogLogSlope_" in x]]
             df.columns = df.columns.str.replace("ImageQuality_", "")
             df.columns = df.columns.str.split("_", n=1, expand=True)
             df = df.stack(level=1, future_stack=True)
@@ -438,7 +487,7 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
 
         # Create list of sites with confluent regions
         try:
-            confluent_df = image_df.loc[image_df["Math_PercentConfluent"] > 0][
+            confluent_df = images_df.loc[images_df["Math_PercentConfluent"] > 0][
                 ["Math_PercentConfluent", "Metadata_Identifier"]
             ].sort_values(by=["Metadata_Identifier"])
             if len(confluent_df) > 0:
@@ -456,16 +505,16 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
         # Outputs list of sites that are saturated in any channel
         # Cell Painting images use >1% saturated, Barcoding images uses >.2% saturated
         try:
-            sat_SBS_df = image_df[
+            sat_SBS_df = images_df[
                 [
                     x
-                    for x in image_df.columns
+                    for x in images_df.columns
                     if "ImageQuality_PercentMaximal_" in x and "Cycle" in x
                 ]
                 + ["Metadata_Identifier"]
             ].set_index("Metadata_Identifier")
             SBS_sat_list = (
-                sat_SBS_df.loc[:, (sat_SBS_df > 0.002).any()]
+                sat_SBS_df.loc[(sat_SBS_df > 0.002).any(axis=1)]
                 .reset_index()["Metadata_Identifier"]
                 .tolist()
             )
@@ -474,16 +523,16 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                 data=list(zip(SBS_sat_list, ["Fails"] * len(SBS_sat_list))),
             )
 
-            sat_phenotype_df = image_df[
+            sat_phenotype_df = images_df[
                 [
                     x
-                    for x in image_df.columns
+                    for x in images_df.columns
                     if "ImageQuality_PercentMaximal_" in x and "Cycle" not in x
                 ]
                 + ["Metadata_Identifier"]
             ].set_index("Metadata_Identifier")
             phenotype_sat_list = (
-                sat_phenotype_df.loc[:, (sat_phenotype_df > 0.01).any()]
+                sat_phenotype_df.loc[(sat_phenotype_df > 0.01).any(axis=1)]
                 .reset_index()["Metadata_Identifier"]
                 .tolist()
             )
@@ -518,11 +567,11 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                 try:
                     cols = [
                         x
-                        for x in image_df.columns
+                        for x in images_df.columns
                         if "ImageQuality_StdIntensity_" in x and "Cycle" not in x
                     ] + [
                         x
-                        for x in image_df.columns
+                        for x in images_df.columns
                         if "ImageQuality_PercentMaximal_" in x and "Cycle" not in x
                     ]
                     outpath = os.path.join(
@@ -534,13 +583,15 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                         f"Failed to create phenotyping image intensity plot in {data_set_name}"
                     )
         except:
-            continue
+            printandlog(
+                f"Failed to create phenotyping image intensity plot in {data_set_name}"
+            )
         try:
             if len(sat_SBS_df) > 0:
                 try:
                     cycles = list(set([
                         x.split("Cycle")[1].split("_")[0]
-                        for x in image_df.columns
+                        for x in images_df.columns
                         if "ImageQuality_StdIntensity_Cycle" in x
                     ]))
                     outpath = os.path.join(
@@ -548,32 +599,20 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                         f"Image_Saturation_SBS_{data_set_name}.png",
                     )
                     make_sbs_intensity_plot(
-                        images_df, image_df.columns, cycles, outpath
+                        images_df, images_df.columns, cycles, outpath
                     )
                 except:
                     printandlog(
                         f"Failed to create SBS image intensity plots in {data_set_name}"
                     )
         except:
-            continue
-
-        inferred_empty_sites_file = os.path.join(
-            out_root,
-            data_folder,
-            f"Inferred_Empty_Sites_{data_set_name}.csv",
-        )
-        if inferred_empty_sites:
-            inferred_empty_sites_df = pd.DataFrame(
-                inferred_empty_sites, columns=["Inferred_Empty_Site_Folder"]
+            printandlog(
+                f"Failed to create SBS image intensity plots in {data_set_name}"
             )
-            inferred_empty_sites_df.to_csv(inferred_empty_sites_file, index=False)
-        else:
-            if infer_empty_sites and os.path.exists(inferred_empty_sites_file):
-                # remove stale file from a previous run so later steps don't skip sites that have data
-                os.remove(inferred_empty_sites_file)
-                printandlog(
-                    f"No inferred empty sites in {data_set_name}. Removed existing {inferred_empty_sites_file}."
-                )
+
+        write_inferred_empty_sites(
+            inferred_empty_sites, out_root, data_folder, data_set_name, infer_empty_sites
+        )
 
     print("Finished 0.image-qc.")
 
