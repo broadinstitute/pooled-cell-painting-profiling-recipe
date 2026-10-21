@@ -128,7 +128,7 @@ def feature_select(path_to_defaults_config, path_to_experiment_config):
                         float_format=float_format,
                     )
             elif group == "all":
-                all_normed = pd.concat([all_normed, df])
+                all_normed = pd.concat([all_normed, group_normed])
         if group == "all":
             selected = pycytominer_feature_select(
                 profiles=all_normed,

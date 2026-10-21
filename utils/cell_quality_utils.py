@@ -66,7 +66,16 @@ class CellQuality:
         )
 
     def assign_cell_quality(self, assigned_spot_df, parent_col, score_col, gene_col, barcode_col, SBScycles=12, match_to_library=False, library_structure=None):
-        if len(library_structure) > 1:
+        multiple_barcodes = library_structure is not None and len(library_structure) > 1
+        if multiple_barcodes and self.method != "multiples_T7":
+            raise ValueError(
+                f"Cell quality method '{self.method}' is incompatible with matching multiple barcodes. Use 'multiples_T7'."
+            )
+        if not multiple_barcodes and self.method == "multiples_T7":
+            raise ValueError(
+                "Cell quality method 'multiples_T7' requires matching multiple barcodes (library_structure with more than one entry)."
+            )
+        if multiple_barcodes:
             crispr_barcode_gene_dict = {}
             for col_to_match in library_structure.keys():
                 barcode_group = assigned_spot_df.groupby(
@@ -208,7 +217,7 @@ def filter_to_top_BC(SBS_df, parent_compartment, SBS_score_col_mean):
 def simple_categorize(
     parent_cell, score_col, avg_col="mean", count_col="count", SBScycles=12
 ):
-    if len(score_col) > 1:
+    if not isinstance(score_col, str):
         print(f"simple_categorize method incompatible with matching multiple barcodes")
         sys.exit(1)
     # Written for SBS methods that produce many SBS foci/cell
@@ -259,7 +268,7 @@ def simple_categorize(
 
 
 def simple_T7_categorize(parent_cell, score_col, avg_col="mean", SBScycles=12):
-    if len(score_col) > 1:
+    if not isinstance(score_col, str):
         print(f"simple_T7_categorize method incompatible with matching multiple barcodes")
         sys.exit(1)
     # Written for SBS methods that produce median of 1 SBS focus/cell
@@ -299,7 +308,7 @@ def simple_T7_categorize(parent_cell, score_col, avg_col="mean", SBScycles=12):
 def simple_plus_categorize(
     parent_cell, score_col, avg_col="mean", count_col="count", SBScycles=12
 ):
-    if len(score_col) > 1:
+    if not isinstance(score_col, str):
         print(f"simple_plus_categorize method incompatible with matching multiple barcodes")
         sys.exit(1)
     score_col_avg = f"{score_col}_{avg_col}"
