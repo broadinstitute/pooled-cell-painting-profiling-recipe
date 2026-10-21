@@ -4,6 +4,7 @@ Does not allow for selection of overwrite.
 Outputs the following files:
 - {single_cell}/{plate}_alignments_{data_set_name}.csv
 - {figures}/plate_layout_cells_count_{data_set_name}.png
+- {figures}/plate_layout_percent_confluent_{data_set_name}.png
 - {figures}/plate_layout_image_stack_alignment_{data_set_name}.png
 - {figures}/plate_layout_compartment_threshold_{compartment}_{data_set_name}.png
 - {figures}/Image_Focus_{data_set_name}.png
@@ -333,7 +334,7 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
         # Plot confluent regions plate layout visualization
         try:
             outpath = os.path.join(
-                outdir_figs, f"plate_layout_image_stack_alignment_{data_set_name}.png"
+                outdir_figs, f"plate_layout_percent_confluent_{data_set_name}.png"
             )
             make_plate_layout_plots(
                 images_df, "Math_PercentConfluent", "Percent Confluent Regions", outpath

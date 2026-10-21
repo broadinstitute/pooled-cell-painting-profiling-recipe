@@ -6,7 +6,8 @@ Loads the per-gene feature-selected profiles output by 6.feature-select
 point is a gene, with the negative control gene(s) highlighted.
 
 Outputs the following files:
-- data_exploration/{plate}_{data_set_name}_gene_normalized_{group}_UMAP.png
+- data_exploration/{plate}_{data_set_name}_{gene|guide}_normalized_{group}_UMAP.png
+- data_exploration/{plate}_{data_set_name}_{gene|guide}_normalized_{group}_heatmap.png
 - data_exploration/{plate}_{data_set_name}_gene_normalized_{group}_feature_selected_mAP.csv.gz
 - data_exploration/{plate}_{data_set_name}_gene_normalized_{group}_feature_selected_mAP_scatterplot.png
 - data_exploration/{plate}_{data_set_name}_gene_normalized_{group}_feature_selected_{gene}_cosine_similarity.csv.gz
@@ -213,7 +214,7 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                         [f"Metadata_{gene_col}"],
                         os.path.join(
                             outdir_exploration,
-                            f"{plate}_{data_set_name}_gene_normalized_{group}_UMAP.png",
+                            f"{plate}_{data_set_name}_gene_normalized_{group}_heatmap.png",
                         ),
                     )
                 if agg == "guide":
@@ -222,7 +223,7 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                         [f"Metadata_{gene_col}", f"Metadata_{guide_col}"],
                         os.path.join(
                             outdir_exploration,
-                            f"{plate}_{data_set_name}_guide_normalized_{group}_UMAP.png",
+                            f"{plate}_{data_set_name}_guide_normalized_{group}_heatmap.png",
                         ),
                     )
 
