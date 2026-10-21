@@ -161,6 +161,7 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
     figures_folder = defaults_config["directory_structure"]["figures"]
     cell_quality_column = defaults_config["core"]["cell_quality_column"]
     barcode_col = defaults_config["process"]["process_SBS"]["barcode_col"]
+    gene_col = defaults_config["process"]["process_SBS"]["gene_col"]
     allowed_skips = defaults_config["process"]["summarize_SBS"]["allowed_skips"]
     spot_quality_method = defaults_config["process"]["process_SBS"][
         "spot_quality_method"
@@ -177,6 +178,9 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
 
     sitelist = []
     all_called_barcodes = []
+    all_unique_guides = set()
+    all_unique_genes = set()
+    unique_counts = {}
     all_site_stats = []
     allowed_skip_counter = 0
     ratio_dict = {}
@@ -188,12 +192,14 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
             usefolders = json.load(file)
 
         data_set_called_barcodes = []
+        data_set_guides = set()
+        data_set_genes = set()
         for plate_well_site_folder in usefolders:
             indir = os.path.join(out_root, sbs_folder, plate_well_site_folder)
             try:
                 df = read_csvs_with_chunksize(
                     os.path.join(indir, "processed_SBS.tsv.gz"),
-                    usecols=[barcode_col, "Metadata_Site"],
+                    usecols=[barcode_col, gene_col, "Metadata_Site"],
                     sep="\t",
                 )
             except:
@@ -236,10 +242,21 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
                 continue
 
             data_set_called_barcodes += df[barcode_col].tolist()
+            called_df = df.loc[df[barcode_col] != "Unmatched"]
+            data_set_guides.update(called_df[barcode_col])
+            data_set_genes.update(called_df[gene_col])
             all_site_stats.append(site_stats)
-            all_called_barcodes += data_set_called_barcodes
+            all_called_barcodes += df[barcode_col].tolist()
             per_set_called_quality = pd.concat([per_set_called_quality, quality_df])
             sitelist += [int(df["Metadata_Site"][0])]
+
+        # Unique counts can't be summed across sites/data sets, so track the sets
+        unique_counts[data_set_name] = {
+            "num_unique_guides_called": len(data_set_guides),
+            "num_unique_genes_called": len(data_set_genes),
+        }
+        all_unique_guides |= data_set_guides
+        all_unique_genes |= data_set_genes
 
         # Create and save barcode count summary per data set
         barcode_count_summary_df = make_bc_counts(data_set_called_barcodes)
@@ -407,6 +424,8 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
         # remove data that shouldn't be summed or averaged
         df.pop("num_unique_genes")
         df.pop("num_unique_guides")
+        for k, v in unique_counts[data_set_name].items():
+            df[k] = v
         df.to_json(
             os.path.join(outdir_data, f"Data_Stats_{data_set_name}.json"),
             index=False,
@@ -420,7 +439,8 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
     stats_df['num_total_cells'] = ratio_df['Sum'].sum()
     stats_df['percent_empty_cells'] = stats_df['num_empty_cells'] / stats_df['num_total_cells']
     stats_df["num_spots_per_cell"] = stats_df["num_spots_in_cells"]/stats_df["num_not_empty_cells"]
-    stats_df["num_unique_guides_called"] = barcode_count_summary_df.loc[barcode_count_summary_df['All_Called_Barcodes'] != "Unmatched","count"].sum()
+    stats_df["num_unique_guides_called"] = len(all_unique_guides)
+    stats_df["num_unique_genes_called"] = len(all_unique_genes)
     # remove data that shouldn't be summed or averaged
     stats_df.pop("num_unique_genes")
     stats_df.pop("num_unique_guides")
