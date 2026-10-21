@@ -435,7 +435,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                             perfect_spot_dict[f"percent_perfect_spots{col.replace(SBS_score_col,'')}"] = num_spots/len(complete_foci_df)
                             perfect_spot_dict[f"percent_perfect_spots{col.replace(SBS_score_col,'')}_in_cells"] = num_spots/num_assigned_spots
                     else:
-                        num_spots = len(complete_foci_df.loc[complete_foci_df[col]==1])
+                        num_spots = len(complete_foci_df.loc[complete_foci_df[SBS_score_col]==1])
                         percent_perfect_spots = num_spots/len(complete_foci_df)
                         percent_perfect_spots_in_cells = num_spots/num_assigned_spots
 
