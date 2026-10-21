@@ -1,7 +1,7 @@
 {
 "_commenton_file_location":"parent_folder for nested /batch_folder/plate-well-site_folders/csvs",
 "file_location":"/Users/eweisbar/Desktop/parent_folder/",
-"_commenton_external_foci":"leave blank if foci measurements are in file location, nesting as above",
+"_commenton_external_foci":"leave blank if foci measurements are in file location, supports nesting as above or nested as parent_folder/plate_folder/plate-well-site_folders",
 "external_foci_location":"/Users/eweisbar/Desktop/separate_foci_folder/",
 "_commenton_controls":"control_genes is negative controls to normalize to. poscon_genes is positive controls to check for expected phenotypes.",
 "_commenton_controls2":"control_genes is required. poscon_genes is optional.",
@@ -17,7 +17,7 @@
 "keep_cell_qualities":["Perfect","Great"],
 "_commenton_library": "match_to_library:true if barcode calls need to happen in recipe. match_to_library:false if matching happened during image analyis.",
 "_commenton_library2": "library_structure is dictionary where keys are columns to match, in order. Values are {n: length to match, namecol: column with names to match}.",
-"_commenton_library3": "_structure and _location ignored if match_to_library:false.",
+"_commenton_library3": "_location ignored if match_to_library:false.",
 "match_to_library":true,
 "library_structure":{"iBAR_2":{"n":7,"namecol":"target_symbol"},"iBAR_1":{"n":5,"namecol":"target_symbol"}},
 "library_location":"/path/to/library/Barcodes.csv",

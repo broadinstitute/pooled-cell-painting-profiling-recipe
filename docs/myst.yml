@@ -1,0 +1,30 @@
+# See docs at: https://mystmd.org/guide/frontmatter
+version: 1
+project:
+  id: 20cbaad9-71c1-49fa-a216-1ef99e12df75
+  title: Pooled Cell Painting Profiling Recipe Documentation
+  description: Documentation for creating profiles from raw Pooled Cell Painting or other pooled morphological profiling data.
+  open_access: True
+  license: BSD-3-Clause
+  github: https://github.com/broadinstitute/pooled-cell-painting-profiling-recipe
+  toc:
+    - file: overview.md
+    - title: Getting Started
+      children:
+        - file: configs.md
+        - file: run.md
+    - title: Processing Steps
+      children:
+        - file: 0.image-qc.md
+        - file: 1.process-SBS.md
+        - file: 2.merge-single-cells.md
+        - file: 3.summarize-SBS.md
+        - file: 4.aggregate.md
+        - file: 5.normalize.md
+        - file: 6.feature-select.md
+        - file: 7.explore.md
+site:
+  template: book-theme
+  options:
+     favicon: "images/microscope_favicon.png"
+     logo: "images/microscope_favicon.png"

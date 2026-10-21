@@ -13,7 +13,7 @@ Example datasets for use with this workflow can be found on the [Cell Painting G
 
 ### Recipe Steps
 
-The workflow consists of six steps:
+The workflow consists of eight steps (0-7):
 
 0. [Image QC](scripts/0.image-qc.py).
 Image metrics from CellProfiler outputs are used to generate QC plots and reports.
@@ -30,7 +30,7 @@ Generates a total barcode count summary for comparison to NGS.
 Creates guide- and gene-level profiles by aggregating single-cell profiles using Pycytominer.
 5. [Normalizing profiles](scripts/5.normalize.py).
 Normalizes all profiles on a per-plate basis using Pycytominer.
-6. [Feature selection](scripts/6.feature-selection.py).
+6. [Feature selection](scripts/6.feature-select.py).
 Performs feature selection on normalized profiles using Pycytominer.
 7. [Explore](scripts/7.explore.py).
 Performs preliminary exploration of biological relationships in the profiles output by the recipe.
@@ -38,7 +38,7 @@ Performs preliminary exploration of biological relationships in the profiles out
 ### Logging
 
 The recipe includes creation of a log file for each step.
-The file is named after the step (e.g. 0.prefilter-features.log) and saves in a logs/ folder.
+The file is named after the step (e.g. 1.process-SBS.log) and saves in a logs/ folder.
 The file logs progress information, warnings, and uncaught exceptions.
 
 ## Running the Recipe
@@ -63,9 +63,9 @@ conda activate pooled-profiling
 ### Step 2: Configure the workflow
 
 Edit the [Experiment configuration file](config/experiment.json) to set parameters specific to your experiment.
-More information about the parameters can be found in the [config documentation](config/docs/experiment_README.md).
+More information about the parameters can be found in the [config documentation](docs/configs.md).
 
-Note that there is also a [Defaults configuration file](config/defaults.json) that contains parameters that are less likely to need changing between experiments.
+Note that there is also a [Defaults configuration file](config/defaults.yaml) that contains parameters that are less likely to need changing between experiments.
 These include default assumptions about the structure of this repository and CellProfiler naming conventions.
 
 ### Step 3: Run the workflow
@@ -77,7 +77,7 @@ These include default assumptions about the structure of this repository and Cel
 If you would like to pass configuration files that have custom location or naming, you can do so with the following command:
 
 ```python
-python run.py --defaults-config path/to/defaults.json --experiment-config path/to/experiment.json
+python run.py --defaults-config path/to/defaults.yaml --experiment-config path/to/experiment.json
 ```
 
 #### Run the workflow with Nextflow
