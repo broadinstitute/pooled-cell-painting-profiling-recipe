@@ -18,6 +18,10 @@ def parse_data_set(data_set):
     """
     All data must be in a single same batch
     """
+    if len(data_set) != 1:
+        raise ValueError(
+            f"Each data set must contain exactly one batch, but found {len(data_set)}: {list(data_set.keys())}"
+        )
     batch = list(data_set.keys())[0]
     plate_list = list(data_set[batch].keys())
     list_plate_well_tuples = []
