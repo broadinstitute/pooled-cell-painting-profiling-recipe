@@ -26,6 +26,7 @@ recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
 from io_utils import load_configs, read_csvs_with_chunksize
 from cell_quality_utils import get_cell_quality_dict
+from barcode_calling_utils import get_spot_quality_dict
 from plotting_utils import make_loc_df, make_plate_layout_plots
 
 # Configure logging
@@ -161,7 +162,11 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
     cell_quality_column = defaults_config["core"]["cell_quality_column"]
     barcode_col = defaults_config["process"]["process_SBS"]["barcode_col"]
     allowed_skips = defaults_config["process"]["summarize_SBS"]["allowed_skips"]
+    spot_quality_method = defaults_config["process"]["process_SBS"][
+        "spot_quality_method"
+    ]
     cell_quality_dict = get_cell_quality_dict(cell_quality_method)
+    spot_quality_dict = get_spot_quality_dict(spot_quality_method)
 
     outdir_data = os.path.join(out_root, data_folder)
     if not os.path.exists(outdir_data):
@@ -347,25 +352,44 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
 
     stats_df = pd.DataFrame(all_site_stats)
 
-    # Plot summary barcode stats
+    # Plot summary barcode stats, with spot categories in a fixed order
+    spot_quality_cols = [f"num_quality_{x}_spots" for x in spot_quality_dict.values()]
+    unexpected_cols = [
+        x
+        for x in stats_df.columns
+        if "num_quality" in x and "spots" in x and x not in spot_quality_cols
+    ]
+    if unexpected_cols:
+        msg = (
+            f"Spot quality categories {unexpected_cols} are not in the "
+            f"'{spot_quality_method}' spot quality dict (get_spot_quality_dict in "
+            "barcode_calling_utils.py). Add them to the dict so plot order is defined."
+        )
+        printandlog(msg, type="warning")
+        raise ValueError(msg)
+    # categories with no spots still get a (zero-height) bar
+    for col in spot_quality_cols:
+        if col not in stats_df.columns:
+            stats_df[col] = 0
+    stats_df[spot_quality_cols] = stats_df[spot_quality_cols].fillna(0)
     make_summary_graph(
-        stats_df[[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x]+["Metadata_Dataset_Split"]],
+        stats_df[spot_quality_cols+["Metadata_Dataset_Split"]],
         id_var="Metadata_Dataset_Split",
-        categories=[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x],
+        categories=spot_quality_cols,
         outpath=os.path.join(outdir_figs, "Quality_Spots_by_data_split"),
         object="Foci"
     )
     make_summary_graph(
-        stats_df[[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x]+["Metadata_Well"]],
+        stats_df[spot_quality_cols+["Metadata_Well"]],
         id_var="Metadata_Well",
-        categories=[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x],
+        categories=spot_quality_cols,
         outpath=os.path.join(outdir_figs, "Quality_Spots_by_well"),
         object="Foci"
     )
     make_summary_graph(
-        stats_df[[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x]],
+        stats_df[spot_quality_cols],
         id_var=[],  # All data
-        categories=[x for x in stats_df.columns if 'num_quality' in x and 'spots' in x],
+        categories=spot_quality_cols,
         outpath=os.path.join(outdir_figs, "Quality_Spots_all_data"),
         object="Foci"
     )

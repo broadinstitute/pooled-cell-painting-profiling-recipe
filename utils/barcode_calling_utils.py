@@ -65,6 +65,20 @@ def match_barcode_to_library(library_location, library_structure, call_col, df):
 
     return matchdict
 
+def get_spot_quality_dict(method):
+    # Ordered best to worst; used to fix category order in plots
+    spot_quality_dict = {
+        "simple": {
+            1: "Perfect",
+            2: "Good",
+            3: "Acceptable",
+            4: "Recombinant",
+            5: "BadSameGene",
+            6: "BadDiffGene",
+        },
+    }
+    return spot_quality_dict[method]
+
 # assign spot quality categories to each spot if there are multiple score cols
 def categorize_spots(df, SBS_score_col, score_cols, library_structure, spot_quality_method="simple"):
     if spot_quality_method == "simple":
