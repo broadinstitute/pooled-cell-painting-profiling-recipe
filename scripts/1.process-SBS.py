@@ -172,7 +172,16 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
 
                     # SBS DATA HANDLING
                     try:
-                        if not match_to_library:
+                        if foci_location:
+                            # external foci may be organized as batch/site (like file_location) or plate/site
+                            foci_folder = os.path.join(
+                                foci_location, batch, plate_well_site_folder
+                            )
+                            if not os.path.isdir(foci_folder):
+                                foci_folder = os.path.join(
+                                    foci_location, plate, plate_well_site_folder
+                                )
+                        if not match_to_library: #library matching already done in input files
                             if not foci_location:
                                 barcode_file = os.path.join(
                                     file_location,
@@ -182,10 +191,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                                 )
                             else:
                                 barcode_file = find_file_with_suffix(
-                                    os.path.join(
-                                        foci_location, batch, plate_well_site_folder
-                                    ),
-                                    "BarcodeFoci.csv",
+                                    foci_folder, "BarcodeFoci.csv"
                                 )
                             barcodefoci_df = read_csvs_with_chunksize(barcode_file)
                             # most columns from BarcodeFoci.csv are dropped
@@ -202,11 +208,9 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                             foci_file = os.path.join(
                                 file_location, batch, plate_well_site_folder, "Foci.csv"
                             )
-                        else:
+                        else: 
                             foci_file = find_file_with_suffix(
-                                os.path.join(
-                                    foci_location, batch, plate_well_site_folder
-                                ),
+                                foci_folder,
                                 "Foci.csv",
                                 exclude_suffix="BarcodeFoci.csv",
                             )
@@ -225,6 +229,17 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                             no_SBS_foci_sites.append(plate_well_site_folder)
                             continue
                         if foci_location:
+                            if not foci_df.shape[0] == relationship_foci_df.shape[0]:
+                                printandlog(
+                                    f"{plate_well_site_folder} Foci.csv from analysis and other input source have different number of rows"
+                                )
+                                allowed_skip_counter = fail_site(
+                                    plate_well_site_folder,
+                                    barcode_file,
+                                    allowed_skip_counter,
+                                    allowed_skips,
+                                )
+                                continue
                             if 'Parent_Cells' in relationship_foci_df.columns:
                                 foci_df = foci_df.merge(relationship_foci_df[['Number_Object_Number','Parent_Cells']], on='Number_Object_Number', how='left')
                             else:
@@ -320,7 +335,11 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                                 library_structure,
                                 spot_quality_method,
                             )
-                    except:
+                    except Exception as e:
+                        printandlog(
+                            f"{plate_well_site_folder} failed with {type(e).__name__}: {e}",
+                            type="warning",
+                        )
                         allowed_skip_counter = fail_site(
                             plate_well_site_folder,
                             barcode_file,
