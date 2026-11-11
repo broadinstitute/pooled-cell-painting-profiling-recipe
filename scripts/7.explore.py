@@ -25,11 +25,13 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import umap
 from copairs import map
+from copairs.matching import assign_reference_index
 from sklearn.metrics.pairwise import cosine_similarity
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
 from io_utils import load_configs, read_csvs_with_chunksize, parse_data_set
+from plotting_utils import radar_factory, radar_plot
 
 # Configure logging
 logfolder = os.path.join(recipe_path, "logs")
@@ -73,7 +75,8 @@ def make_heatmap(groupdf, cols, outpath):
     sns.heatmap(
         corr,
         cmap="vlag",
-        vmax=0.3,
+        vmax=1,
+        vmin=-1,
         center=0,
         square=True,
         linewidths=0.5,
@@ -107,6 +110,18 @@ def explore(path_to_defaults_config, path_to_experiment_config):
     outdir_exploration = os.path.join(out_root, exploration_folder)
     if not os.path.exists(outdir_exploration):
         os.makedirs(outdir_exploration, exist_ok=True)
+
+
+    # setup for radar plots below - TODO to automate getting channel names and lengths in the future
+    # or at least make them a passthrough
+    radar3 = radar_factory(3, frame='polygon')
+    radar7 = radar_factory(7, frame='polygon')
+    radar5 = radar_factory(5, frame='polygon')
+    subsets = {'Compartments':['Nuclei', 'Cells', 'Cytoplasm'],
+            'Classes':['AreaShape','Correlation','Granularity','Intensity','Neighbors','RadialDistribution','Texture'],
+            'Channels':['Brightfield','DNA','ER','Phalloidin','WGA']}
+    factories = [radar3, radar7, radar5]
+    factory_names = ['radar3','radar7','radar5']
 
     for data_set_name in data_sets.keys():
         printandlog(f"Starting {data_set_name}")
@@ -259,8 +274,28 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                         ),
                     )
 
+                #
+                # Create radar plots - gene and guide maps
+                #
+                if agg == "gene":
+                    radar_gene_folder = os.path.join(outdir_exploration,'gene_radar_plots',data_set_name,plate)
+                    os.makedirs(radar_gene_folder,exist_ok=True)
+                    for eachgene in all_unique_genes:
+                        radar_plot(subsets,factory_names,factories, groupdf.query(f"Metadata_{gene_col} == '{eachgene}'"),
+                                   os.path.join(radar_gene_folder,f'{eachgene}_radar.png'))
+
+                if agg == "guide":
+                    all_unique_guides = groupdf[f"Metadata_{guide_col}"].unique()
+                    radar_guide_folder = os.path.join(outdir_exploration,'guide_radar_plots',data_set_name,plate)
+                    os.makedirs(radar_guide_folder,exist_ok=True)
+                    for eachguide in all_unique_guides:
+                        guide_to_gene = groupdf.query(f"Metadata_{guide_col} == '{eachguide}'")[f'Metadata_{gene_col}'].unique()[0]
+                        radar_plot(subsets,factory_names,factories,
+                                    groupdf.query(f"Metadata_{guide_col} == '{eachguide}'"),
+                                    os.path.join(radar_guide_folder,f'{guide_to_gene}_{eachguide}_radar.png'))
+
             #
-            # Calculate mAP for phenotypic activity - guide only
+            # Calculate mAP for phenotypic ACTIVITY (can be distinguished from negcon) - guide only
             #
             df_activity = guide_groupdf.copy(deep=True).dropna()
             df_activity = df_activity.loc[
@@ -268,16 +303,13 @@ def explore(path_to_defaults_config, path_to_experiment_config):
             ]  # remove constant columns
 
             # make default value equal to row index
-            df_activity["Metadata_reference_index"] = df_activity.index
-            # make index equal to -1 for all treatment replicates (non-DMSO)
-            df_activity.loc[
-                ~(df_activity[f"Metadata_{gene_col}"].isin(control_genes)),
-                "Metadata_reference_index",
-            ] = -1
-            df_activity.insert(
-                0,
-                "Metadata_reference_index",
-                df_activity.pop("Metadata_reference_index"),
+            reference_col = "Metadata_reference_index"
+
+            df_activity = assign_reference_index(
+                df_activity,
+                f"Metadata_{gene_col} in {list(control_genes)}",  # condition to get reference profiles (neg controls)
+                reference_col=reference_col,
+                default_value=-1,
             )
 
             # positive pairs are replicates of the same treatment
@@ -305,7 +337,7 @@ def explore(path_to_defaults_config, path_to_experiment_config):
             df.to_csv(
                 os.path.join(
                     outdir_exploration,
-                    f"{plate}_{data_set_name}_guide_normalized_{group}_feature_selected_mAP.csv.gz",
+                    f"{plate}_{data_set_name}_guide_normalized_{group}_feature_selected_mAP_activity.csv.gz",
                 ),
                 index=False,
             )
@@ -342,10 +374,102 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                         )
                     ]
                 ax.legend(handles=legend_elements, loc="best")
-            ax.set_title(f"{plate} {data_set_name} guide normalized by {group}")
+            ax.set_title(f"{plate} {data_set_name} phenotypic activity, guide normalized by {group}")
             outpath = os.path.join(
                 outdir_exploration,
-                f"{plate}_{data_set_name}_guide_normalized_{group}_feature_selected_mAP_scatterplot.png",
+                f"{plate}_{data_set_name}_guide_normalized_{group}_feature_selected_mAP_activity_scatterplot.png",
+            )
+            fig.savefig(outpath, dpi=300, bbox_inches="tight")
+            plt.close(fig)
+
+
+            #
+            # Calculate mAP for phenotypic DISTINCTIVENESS (can be distinguished from other bio) - guide only
+            #
+            df_distinctiveness = guide_groupdf.copy(deep=True).dropna()
+            df_distinctiveness = df_distinctiveness.loc[
+                :, df_distinctiveness.nunique() > 1
+            ]  # remove constant columns
+
+            # make default value equal to row index
+            df_distinctiveness["Metadata_reference_index"] = df_distinctiveness.index
+            # make index equal to -1 for all treatment replicates (non-DMSO)
+            df_distinctiveness.loc[
+                ~(df_distinctiveness[f"Metadata_{gene_col}"].isin(control_genes)),
+                "Metadata_reference_index",
+            ] = -1
+            df_distinctiveness.insert(
+                0,
+                "Metadata_reference_index",
+                df_distinctiveness.pop("Metadata_reference_index"),
+            )
+
+            # positive pairs are replicates of the same treatment
+            # negative pairs are replicates of different treatments
+            pos_sameby = [f"Metadata_{gene_col}", "Metadata_reference_index"]
+            pos_diffby = []
+            neg_sameby = []
+            neg_diffby = [f"Metadata_{gene_col}", "Metadata_reference_index"]
+
+            metadata = df_distinctiveness.filter(regex="^Metadata")
+            profiles = df_distinctiveness.filter(regex="^(?!Metadata)").values
+
+            replicate_aps = map.average_precision(
+                metadata, profiles, pos_sameby, pos_diffby, neg_sameby, neg_diffby
+            )
+            replicate_maps = map.mean_average_precision(
+                replicate_aps, pos_sameby, null_size=10000, threshold=0.05, seed=0
+            )
+            replicate_maps["-log10(p-value)"] = -replicate_maps[
+                "corrected_p_value"
+            ].apply(np.log10)
+
+            # Output mAP results, sorted by mAP
+            df = replicate_maps.reset_index().sort_values(by="mean_average_precision")
+            df.to_csv(
+                os.path.join(
+                    outdir_exploration,
+                    f"{plate}_{data_set_name}_guide_normalized_{group}_feature_selected_mAP_distinctiveness.csv.gz",
+                ),
+                index=False,
+            )
+
+            # Plot mAP results
+            fig, ax = plt.subplots()
+            sns.scatterplot(
+                data=df,
+                x="mean_average_precision",
+                y="-log10(p-value)",
+                ax=ax,
+            )
+            if poscon_genes:
+                legend_elements = []
+                for gene in poscon_genes:
+                    sns.scatterplot(
+                        data=df.loc[df[f"Metadata_{gene_col}"] == gene],
+                        x="mean_average_precision",
+                        y="-log10(p-value)",
+                        edgecolor="black",
+                        marker="^",
+                        legend=False,
+                        ax=ax,
+                    )
+                    legend_elements += [
+                        Line2D(
+                            [0],
+                            [0],
+                            marker="^",
+                            color="tab:blue",
+                            label=gene,
+                            markersize=5,
+                            lw=0,
+                        )
+                    ]
+                ax.legend(handles=legend_elements, loc="best")
+            ax.set_title(f"{plate} {data_set_name} phenotypic distinctiveness, guide normalized by {group}")
+            outpath = os.path.join(
+                outdir_exploration,
+                f"{plate}_{data_set_name}_guide_normalized_{group}_feature_selected_mAP_distinctiveness_scatterplot.png",
             )
             fig.savefig(outpath, dpi=300, bbox_inches="tight")
             plt.close(fig)
