@@ -7,3 +7,7 @@ work/
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+# Things that are data - if you made a copy of this repo, you can/should commit these, but not just for code
+data/*
+scripts/public/*
+logs/*
