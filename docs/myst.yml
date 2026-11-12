@@ -23,6 +23,7 @@ project:
         - file: 5.normalize.md
         - file: 6.feature-select.md
         - file: 7.explore.md
+        - file: 8.prep-marimo.md
 site:
   template: book-theme
   options:
