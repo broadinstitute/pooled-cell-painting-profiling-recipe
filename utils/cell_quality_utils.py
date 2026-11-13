@@ -1,5 +1,5 @@
 """
-Functions to determine cell quality
+Functions to determine cell quality TODO add for multiple-barcode methods
 
 # Method: Simple
 1 - Perfect Cell
@@ -56,6 +56,8 @@ class CellQuality:
             self.categorize = simple_plus_categorize
         elif self.method == "multiples_T7":
             self.categorize = multiples_T7_categorize
+        elif self.method =="multiples_T7_permissive":
+            self.categorize = multiples_T7_permissive_categorize
 
         category_dict = get_cell_quality_dict(self.method)
         self.category_df = (
@@ -67,13 +69,13 @@ class CellQuality:
 
     def assign_cell_quality(self, assigned_spot_df, parent_col, score_col, gene_col, barcode_col, SBScycles=12, match_to_library=False, library_structure=None):
         multiple_barcodes = library_structure is not None and len(library_structure) > 1
-        if multiple_barcodes and self.method != "multiples_T7":
+        if multiple_barcodes and self.method not in ["multiples_T7", "multiples_T7_permissive"]:
             raise ValueError(
-                f"Cell quality method '{self.method}' is incompatible with matching multiple barcodes. Use 'multiples_T7'."
+                f"Cell quality method '{self.method}' is incompatible with matching multiple barcodes. Use 'multiples_T7' or 'multiples_T7_permissive'."
             )
-        if not multiple_barcodes and self.method == "multiples_T7":
+        if not multiple_barcodes and self.method in ["multiples_T7", "multiples_T7_permissive"]:
             raise ValueError(
-                "Cell quality method 'multiples_T7' requires matching multiple barcodes (library_structure with more than one entry)."
+                "Cell quality methods 'multiples_T7' and 'mutliples_T7_permissive' requires matching multiple barcodes (library_structure with more than one entry)."
             )
         if multiple_barcodes:
             crispr_barcode_gene_dict = {}
@@ -96,20 +98,42 @@ class CellQuality:
             # Assign a consensus barcode and gene if iBARs match
             assigned_spot_df['Barcode_MatchedTo_Barcode'] = "Unmatched" #TODO abstract col name
             assigned_spot_df['Barcode_MatchedTo_GeneCode'] = "Unmatched"
-            assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_GeneCode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[0]]
-            assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_Barcode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[0].replace("GeneCode","Barcode")]
-            quality_df = (
-                pd.DataFrame(
-                    assigned_spot_df.groupby(parent_col).apply(
-                        lambda x: self.categorize(x, cols_to_match[1]),
-                        include_groups=False,
-                    ),
-                    columns=[self.category_col_index],
-                )
-                .reset_index()
-                .merge(crispr_barcode_gene_df, on=parent_col)
-                .merge(assigned_spot_df[[parent_col, "Barcode_MatchedTo_Barcode", "Barcode_MatchedTo_GeneCode"]], on=parent_col)
-            ).assign(Quality_Method=self.method)
+            if self.method == "multiples_T7":
+                # Assign a consensus barcode and gene if iBARs match 
+                assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_GeneCode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[0]]
+                assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_Barcode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[0].replace("GeneCode","Barcode")]
+                quality_df = (
+                    pd.DataFrame(
+                        assigned_spot_df.groupby(parent_col).apply(
+                            lambda x: self.categorize(x, cols_to_match[1]),
+                            include_groups=False,
+                        ),
+                        columns=[self.category_col_index],
+                    )
+                    .reset_index()
+                    .merge(crispr_barcode_gene_df, on=parent_col)
+                    .merge(assigned_spot_df[[parent_col, "Barcode_MatchedTo_Barcode", "Barcode_MatchedTo_GeneCode"]], on=parent_col)
+                ).assign(Quality_Method=self.method)
+            else:
+                if library_structure[list(library_structure.keys())[0]]['n'] > library_structure[list(library_structure.keys())[1]]['n']:
+                    idx_to_use = 0
+                else:
+                    idx_to_use = 1
+                assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_GeneCode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[idx_to_use]]
+                assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, "Barcode_MatchedTo_Barcode"] = assigned_spot_df.loc[assigned_spot_df['GeneCallsMatch'] == True, cols_to_match[idx_to_use].replace("GeneCode","Barcode")]
+                quality_df = (pd.DataFrame(
+                                    assigned_spot_df.groupby(parent_col).apply(
+                                        lambda x: self.categorize(x, cols_to_match[idx_to_use]),
+                                        include_groups=False,
+                                    ),
+                                    columns=[self.category_col_index],
+                                )
+                                .reset_index()
+                                .merge(crispr_barcode_gene_df, on=parent_col)
+                                .merge(assigned_spot_df[[parent_col, "Barcode_MatchedTo_Barcode", "Barcode_MatchedTo_GeneCode"]], on=parent_col)
+                            ).assign(Quality_Method=self.method)
+
+
         else:
             barcode_group = assigned_spot_df.groupby(
                 [parent_col] + [gene_col, barcode_col]
@@ -202,6 +226,13 @@ def get_cell_quality_dict(method):
             2: "Good",
             3: "Acceptable",
             4: "Bad"
+        },
+        "multiples_T7_permissive": {
+            1: "Perfect",
+            2: "Good",
+            3: "Imperfect",
+            4: "Bad",
+            5: "Unusable"
         },
     }
     return cell_quality_dict[method]
@@ -366,4 +397,46 @@ def multiples_T7_categorize(parent_cell,gene_col1):
             score = 4
     else:
         score = 4
+    return score
+
+def multiples_T7_permissive_categorize(parent_cell,gene_col1):
+    """Written for SBS methods that produce median of 1 SBS focus/cell AND have multiple barcodes (iBARs)
+    Meant to be used with barcode calling method for dropping the short barcode as needed, which has quality levels
+    1: "Perfect" (both barcodes match and are perfect), 
+    2: "Good" (both barcodes match and are hamming-correctable),
+    3: "Acceptable" (both barcodes match, longest is hamming-correctable),
+    4: "Bad" (barcodes don't match, longest is hamming-correctable and shortest is not),
+    5: "Recombinant" (barcodes don't match, but both are hamming-correctable)),
+    6: "BadLongBar" (long barcode is not within hamming-correctable)
+    Logic:
+    - If all barcodes match and are Perfect: Perfect
+    - If all match and are Perfect/Good/Acceptable: Good
+    - If all match but some are Bad: Imperfect 
+    - If any Recombinant: Unusable
+    - If all match but are a bad long barcode: Unusable
+    - If at least one BadLongBar but it matches a Perfect/Good/Acceptable/Bad: Bad
+    - If not all match and any Recombinant: Unusable
+    - If all that are in Perfect, Good, Acceptable match (aka only non-matchers are Bad/BadLongBar): Bad
+    - Else, unusable   
+    """
+    if parent_cell[gene_col1].nunique() == 1:
+        if all(parent_cell['Spot_Category'] == "Perfect"):
+            score = 1
+        elif all(parent_cell['Spot_Category'].isin(["Perfect", "Good", "Acceptable"])):
+            score = 2
+        elif all(parent_cell['Spot_Category'].isin(["Perfect", "Good", "Acceptable", "Bad"])):
+            score = 3
+        elif len(parent_cell['Spot_Category']) == 1: # only one spot, and it's Recombinant or BadLongBar or we'd never get here
+            score = 5
+        elif any(parent_cell['Spot_Category'] =="Recombinant"):
+            score = 5
+        else:
+            score = 4 #You can have some BadLongBar if others are good and it's still close enough to match, as a treat
+    else:
+        if any(parent_cell['Spot_Category']=="Recombinant"):
+            score = 5
+        elif parent_cell.query('Spot_Category in ["Perfect", "Good", "Acceptable"]')[gene_col1].nunique() == 1:
+            score = 4
+        else:
+            score = 5
     return score
