@@ -29,5 +29,7 @@
 "perform_aggregate":true,
 "perform_normalize":true,
 "perform_feature_select":true,
-"perform_explore":true
+"perform_explore":true,
+"perform_marimo":false,
+"qc_report_loc":"Users/eweisbar/Desktop/qc_reports/"
 }

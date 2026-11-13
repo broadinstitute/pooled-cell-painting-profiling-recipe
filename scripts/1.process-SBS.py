@@ -334,7 +334,8 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                                 SBS_score_col,
                                 [x for x in foci_df.columns if SBS_score_col in x],
                                 library_structure,
-                                spot_quality_method,
+                                library_location,
+                                spot_quality_method
                             )
                     except Exception as e:
                         printandlog(

@@ -128,3 +128,16 @@ if __name__ == "__main__":
         if p.returncode != 0:
             print(f"Step 7.explore failed unexpectedly")
             sys.exit(1)
+
+    if experiment_config['perform_marimo']:
+        p = subprocess.Popen(
+                    ["python", os.path.join(script_location, "8.prep-marimo.py"),args.defaults_config_path, args.experiment_config_path],
+                )
+        p.communicate()
+        if p.returncode != 0:
+            print(f"Step 8.prep-marimo failed unexpectedly")
+            sys.exit(1)
+        p = subprocess.Popen(
+                            ["uvx", "marimo", "run", "--sandbox", os.path.join(script_location, "8.1.prep-marimo.py")],
+                        )
+        p.communicate()

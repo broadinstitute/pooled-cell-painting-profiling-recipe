@@ -1,0 +1,24 @@
+[workspace]
+authors = ["bethac07 <bcimini@broadinstitute.org>"]
+channels = ["conda-forge", "https://conda.anaconda.org/conda-forge"]
+name = "pooled-profiling"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = { version = "<3.13", channel = "conda-forge" }
+pandas = { version = "==2.3.3", channel = "conda-forge" }
+numpy = { version = "==2.3.3", channel = "conda-forge" }
+matplotlib = { version = "==3.10.6", channel = "conda-forge" }
+seaborn = { version = "==0.13.2", channel = "conda-forge" }
+black = { version = "==25.1.0", channel = "conda-forge" }
+pyyaml = { channel = "conda-forge" }
+ipykernel = { channel = "conda-forge" }
+pip = { channel = "conda-forge" }
+
+[pypi-dependencies]
+pycytominer = "==1.6.1"
+umap-learn = "*"
+copairs = "==0.5.4"

@@ -11,6 +11,7 @@ import traceback
 import pandas as pd
 
 from pycytominer import feature_select as pycytominer_feature_select
+from pycytominer.cyto_utils import write_gct
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
@@ -63,6 +64,7 @@ def feature_select(path_to_defaults_config, path_to_experiment_config):
     features = defaults_config["process"]["feature_select"]["features"]
     na_cutoff = defaults_config["process"]["feature_select"]["na_cutoff"]
     corr_threshold = defaults_config["process"]["feature_select"]["corr_threshold"]
+    do_gct = defaults_config["process"]["feature_select"]["gct"]
 
     profiles_out = os.path.join(out_root, profiles)
 
@@ -127,6 +129,10 @@ def feature_select(path_to_defaults_config, path_to_experiment_config):
                         compression=compression,
                         float_format=float_format,
                     )
+                    if do_gct:
+                        write_gct(profiles=perplate, output_file = os.path.join(
+                                                    profiles_out,f"{plate}_{data_set_name}_{normby}_normalized_feature_selected_by{group}.gct"))
+
             elif group == "all":
                 all_normed = pd.concat([all_normed, group_normed])
         if group == "all":
@@ -153,6 +159,9 @@ def feature_select(path_to_defaults_config, path_to_experiment_config):
                         compression=compression,
                         float_format=float_format,
                     )
+                    if do_gct:
+                        write_gct(profiles=perplate, output_file = os.path.join(
+                                                    profiles_out,f"{plate}_{data_set_name}_{normby}_normalized_feature_selected_by{group}.gct"))
     printandlog("Done with 6.feature_select")
 
 

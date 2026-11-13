@@ -69,3 +69,4 @@ process:
     features: infer
     na_cutoff: 0
     corr_threshold: 0.9
+    gct: true
