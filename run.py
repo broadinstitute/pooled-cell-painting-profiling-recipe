@@ -138,6 +138,6 @@ if __name__ == "__main__":
             print(f"Step 8.prep-marimo failed unexpectedly")
             sys.exit(1)
         p = subprocess.Popen(
-                            ["uvx", "marimo", "run", "--sandbox", os.path.join(script_location, "8.1.prep-marimo.py")],
+                            ["uvx", "marimo", "run", "--sandbox", os.path.join(defaults_config["directory_structure"]["root"], "marimo", "8.1.make_qc_report.py")],
                         )
         p.communicate()
