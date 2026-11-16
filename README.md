@@ -60,6 +60,18 @@ conda env create --force --file environment.yml
 conda activate pooled-profiling
 ```
 
+A [pixi](https://pixi.prefix.dev/) file is also provided for convenience, though the environment file should be viewed as the source of ground truth; the pixi environment can be regenerated from it at any time with 
+
+```bash
+pixi init --import environment.yml
+```
+
+To activate the existing or newly made pixi file, run (in this folder)
+
+```bash
+pixi shell
+```
+
 ### Step 2: Configure the workflow
 
 Edit the [Experiment configuration file](config/experiment.json) to set parameters specific to your experiment.

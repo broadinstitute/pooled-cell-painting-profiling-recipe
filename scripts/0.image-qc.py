@@ -386,7 +386,7 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                 outdir_figs, f"plate_layout_percent_confluent_{data_set_name}.png"
             )
             make_plate_layout_plots(
-                images_df, "Math_PercentConfluent", "Percent Confluent Regions", outpath
+                images_df, "Math_PercentConfluent", "Percent Confluent Regions", outpath, legend=True
             )
         except:
             printandlog(f"Failed to create confluent regions plot for {data_set_name}")
