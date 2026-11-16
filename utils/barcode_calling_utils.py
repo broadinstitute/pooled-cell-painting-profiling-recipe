@@ -167,8 +167,8 @@ def categorize_spots(df, SBS_score_col, score_cols, library_structure, library_l
                                                             list(library_structure.keys())[short_index],
                                                             short_len)
 
-            long_score = row[score_cols][long_index]
-            short_score = row[score_cols][short_index]
+            long_score = row[score_cols].iloc[long_index]
+            short_score = row[score_cols].iloc[short_index]
 
             min_permissible_score_long = (long_len - hamming_distance_long) /long_len
             min_permissible_score_short = (short_len - hamming_distance_short) /short_len
