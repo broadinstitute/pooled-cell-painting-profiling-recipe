@@ -55,7 +55,7 @@ def prep_marimo(path_to_defaults_config, path_to_experiment_config):
     out_root = defaults_config["directory_structure"]["root"]
     qc_location = experiment_config["qc_report_loc"]
 
-    marimo_folder_loc = os.path.join(recipe_path, 'scripts','public')
+    marimo_folder_loc = os.path.join(out_root, 'marimo','public')
 
     if not os.path.exists(marimo_folder_loc):
         os.makedirs(marimo_folder_loc,exist_ok=True)
@@ -76,6 +76,7 @@ def prep_marimo(path_to_defaults_config, path_to_experiment_config):
     with open(os.path.join(marimo_folder_loc,'data_sets.json'),'w') as f:
         json.dump(data_sets,f)
 
+    shutil.copy(os.path.join(recipe_path, 'scripts','8.1.make_qc_report.py'), os.path.join(out_root, 'marimo','8.1.make_qc_report.py'))
 
 #################################
 # MAIN USER INTERACTION

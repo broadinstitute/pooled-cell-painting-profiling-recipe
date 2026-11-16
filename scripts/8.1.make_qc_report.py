@@ -36,8 +36,9 @@ def _():
 
 @app.cell
 def _(json):
-    public_root = 'scripts/public'
-    exp_config = json.load(open('scripts/public/data_sets.json'))
+    script_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    public_root = os.path.join(script_path, 'marimo','public')
+    exp_config = json.load(open(os.path.join(script_path,'marimo','public','data_sets.json')))
     experiment_list = list(exp_config.keys())
     return exp_config, experiment_list, public_root
 
@@ -168,7 +169,7 @@ def _(exp, mo, os, pd, plate, public_root):
 
 @app.cell
 def _(exp, glob, os, plate):
-    gene_radar_plot_list = glob.glob(f"**/data_exploration/gene_radar_plots/{exp}/{plate}/*_radar.png",recursive=True)
+    gene_radar_plot_list = glob.glob(f"{public_root}/*gene_radar_plots_{exp}_{plate}_*.png",recursive=True)
     gene_radar_plot_dict = {os.path.split(x)[1]:x for x in gene_radar_plot_list}
     gene_radar_plot_selectors = list(gene_radar_plot_dict.keys())
     gene_radar_plot_selectors.sort()
@@ -194,7 +195,7 @@ def _(gene_radar_plot_dict, gene_radar_plot_el, mo):
 
 @app.cell
 def _(exp, glob, os, plate):
-    guide_radar_plot_list = glob.glob(f"**/data_exploration/guide_radar_plots/{exp}/{plate}/*_radar.png",recursive=True)
+    guide_radar_plot_list = glob.glob(f"{public_root}/*guide_radar_plots_{exp}_{plate}_*.png",recursive=True)
     guide_radar_plot_dict = {os.path.split(x)[1]:x for x in guide_radar_plot_list}
     guide_radar_plot_selectors = list(guide_radar_plot_dict.keys())
     guide_radar_plot_selectors.sort()
@@ -305,7 +306,7 @@ def _(mo, well_list):
 
 @app.cell
 def _(barcode_alignment_plot_el, glob, mo, plate):
-    barcode_alignment_plot_list = glob.glob(f"**/8_alignment_barcoding_{plate}*{barcode_alignment_plot_el.value}_*.png",recursive=True)
+    barcode_alignment_plot_list = glob.glob(f"{public_root}**/8_alignment_barcoding_{plate}*{barcode_alignment_plot_el.value}_*.png",recursive=True)
     barcode_alignment_plot_list.sort()
     mo.vstack([
     mo.hstack([mo.image(barcode_alignment_plot_list[0],width=250),mo.image(barcode_alignment_plot_list[1],width=250),mo.image(barcode_alignment_plot_list[2],width=250)]),
@@ -361,7 +362,7 @@ def _(exp, mo, os, public_root):
 
 @app.cell
 def _(glob, mo):
-    image_list = glob.glob("scripts/**/*.png",recursive=True)
+    image_list = glob.glob(f"{public_root}/**/*.png",recursive=True)
     generic_image_picker = mo.ui.dropdown(options=image_list, value = image_list[0], label = "Pick an image to view")
     mo.vstack([
         mo.md(f"## Want to exlore more? Choose any image generated across all experiments ({len(image_list)} in total)"),
