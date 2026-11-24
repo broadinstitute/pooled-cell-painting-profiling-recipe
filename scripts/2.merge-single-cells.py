@@ -105,6 +105,15 @@ def merge_single_cells(path_to_defaults_config, path_to_experiment_config):
     save_single_file = defaults_config["process"]["single_cell"]["save_single_file"]
     save_per_site_file = defaults_config["process"]["single_cell"]["save_per_site_file"]
     cell_quality_dict = get_cell_quality_dict(cell_quality_method)
+    invalid_keep = [x for x in keep_cell_qualities if x not in cell_quality_dict.values()]
+    if invalid_keep:
+        msg = (
+            f"keep_cell_qualities {invalid_keep} are not categories of cell_quality_method "
+            f"'{cell_quality_method}' (valid: {list(cell_quality_dict.values())}). "
+            "No cells with these qualities can be kept."
+        )
+        printandlog(msg, type="warning")
+        raise ValueError(msg)
 
     single_cell_out = os.path.join(out_root, single_cell, "by_site")
     if not os.path.exists(single_cell_out):
