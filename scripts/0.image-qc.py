@@ -15,6 +15,7 @@ Outputs the following files:
 - summary_data/Sites_With_Saturation_{data_set_name}.csv
 """
 
+import json
 import os
 import sys
 import logging
@@ -236,6 +237,8 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
 
     allowed_skip_counter = 0
     inferred_pheno_chans_dict = {}
+    image_heights = set()
+    image_widths = set()
     for data_set_name in data_sets.keys():
         printandlog(f"Starting {data_set_name}")
         batch, plate_list, list_plate_well_tuples = parse_data_set(
@@ -271,6 +274,8 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                         )
                         image_df = read_csvs_with_chunksize(image_file)
                         inferred_pheno_chans.update(infer_pheno_chans(image_df.columns))
+                        image_heights.update(image_df[[x for x in image_df.columns if "Height_" in x and "Cycle" not in x]].to_numpy().ravel())
+                        image_widths.update(image_df[[x for x in image_df.columns if "Width_" in x and "Cycle" not in x]].to_numpy().ravel())
                         keep_cols = (
                             ["Count_Cells", "Math_PercentConfluent"]
                             + [
@@ -634,7 +639,7 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
 
         inferred_pheno_chans_dict[data_set_name] = inferred_pheno_chans
 
-    # Save inferred pheno channels
+    # Save metadata for image visualization
     # check if all inferred pheno channels are the same across data sets
     channel_sets = [set(v) for v in inferred_pheno_chans_dict.values()]
     assert (
@@ -642,13 +647,23 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
     ), "Inferred phenotyping channels differ across data sets. Please check the Image.csv files."
     pheno_chans = sorted(channel_sets[0]) if channel_sets else []
 
+    assert (
+        len(image_heights) == 1 and len(image_widths) == 1
+    ), "Image heights or widths differ across sites. Please check the Image.csv files."
+
+    vis_metadata = {
+        "inferred_phenotyping_channels": pheno_chans,
+        "image_height": int(next(iter(image_heights))) if image_heights else None,
+        "image_width": int(next(iter(image_widths))) if image_widths else None,
+    }
     if len(pheno_chans) > 0:
-        pheno_chans_file = os.path.join(
+        vis_file = os.path.join(
             out_root,
             data_folder,
-            f"Phenotyping_channels_inferred.json",
+            f"Visualization_metadata.json",
         )
-        pd.Series(pheno_chans).to_json(pheno_chans_file, orient="values")
+        with open(vis_file, "w") as f:
+            json.dump(vis_metadata, f)
 
     print("Finished 0.image-qc.")
 

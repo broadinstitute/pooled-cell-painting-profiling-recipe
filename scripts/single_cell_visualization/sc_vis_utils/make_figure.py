@@ -5,7 +5,7 @@ import matplotlib.colors as mcolors
 import skimage
 import time
 
-from utils import read_from_bucket
+from sc_vis_utils import read_image
 
 def CP_to_RGB_single(im_cp, channels, percentile=100):
     """
@@ -103,8 +103,8 @@ def crop_single_cell_image(image, xCenter, yCenter, halfBoxSize):
 
 
 def make_figure(gene, df, im_dict, cell_selection_method, box_size,
-                objects, color, bc_nuclei, bc_nuclei_name, percentile
-                ):
+                objects, color, bc_nuclei, bc_nuclei_name, percentile,
+                use_alignments=True):
     im_channels = list(im_dict.keys())
     col_channels = list(im_dict.values())
     title=gene + "_" + cell_selection_method
@@ -132,20 +132,23 @@ def make_figure(gene, df, im_dict, cell_selection_method, box_size,
             if index == 0:
                 axarr[index, ci].set_title(im_channels[ci])
 
-            ch_fName = df.loc[index, "FileName_Corr" + im_channels[ci]]
-            ch_pName = df.loc[index, "PathName_Corr" + im_channels[ci]]
+            # FileName_ columns hold the full path to the image
+            imPath = df.loc[index, "FileName_Corr" + im_channels[ci]]
             
-            xCenterC = xCenter + int(
-                df.loc[
-                    index, "Align_Xshift_" + col_channels[ci]]
-            )
-            yCenterC = yCenter + int(
-                df.loc[
-                    index, "Align_Yshift_" + col_channels[ci]]
-            )
+            if use_alignments:
+                xCenterC = xCenter + int(
+                    df.loc[
+                        index, "Align_Xshift_" + im_channels[ci]]
+                )
+                yCenterC = yCenter + int(
+                    df.loc[
+                        index, "Align_Yshift_" + im_channels[ci]]
+                )
+            else:
+                # no alignment offsets available: crop at the nucleus center
+                xCenterC, yCenterC = xCenter, yCenter
 
-            imPath = os.path.join(ch_pName,ch_fName)
-            image = np.squeeze(read_from_bucket.read_image(imPath))
+            image = np.squeeze(read_image.read_image(imPath))
 
             # make images brighter for visibility
             image = skimage.exposure.rescale_intensity(
@@ -163,10 +166,8 @@ def make_figure(gene, df, im_dict, cell_selection_method, box_size,
             if index == 0:
                 axarr[index, num_channel_cols].set_title("SBS Nuclei")
             # different naming, don't need alignment shift
-            ch_fName = df.loc[index, "FileName_" + bc_nuclei_name]
-            ch_pName = df.loc[index, "PathName_" + bc_nuclei_name]
-            imPath = ch_pName + "/" + ch_fName
-            image = np.squeeze(read_from_bucket.read_image(imPath))
+            imPath = df.loc[index, "FileName_" + bc_nuclei_name]
+            image = np.squeeze(read_image.read_image(imPath))
             # make images brighter for visibility
             image = skimage.exposure.rescale_intensity(
                 image, in_range=(image.min(), np.percentile(image, percentile))
@@ -193,9 +194,10 @@ def make_figure(gene, df, im_dict, cell_selection_method, box_size,
             if index == 0:
                 axarr[index, num_channel_cols].set_title("Cell Object")
             imPath = df.loc[index, "Path_CellObjects"]
-            object_im = np.squeeze(read_from_bucket.read_image(imPath))
-            # a rest seems to reduce weirdness in fig creation of objects?
-            time.sleep(10)
+            object_im = np.squeeze(read_image.read_image(imPath))
+            if read_image.is_s3_uri(imPath):
+                # a rest seems to reduce weirdness in fig creation of objects?
+                time.sleep(10)
             object_im_crop = crop_single_cell_image(
                 object_im, xCenter, yCenter, halfbox_size
             )
@@ -247,9 +249,9 @@ def make_figure(gene, df, im_dict, cell_selection_method, box_size,
             imylabel = (
                 df.loc[index, "Metadata_Label"]
                 + "\n"
-                + df.loc[index, "Metadata_Foci_Barcode_MatchedTo_Barcode"][0:9]
+                + df.loc[index, "Metadata_Barcode_MatchedTo_Barcode"][0:9]
             )
         else:
-            imylabel = df.loc[index, "Metadata_Foci_Barcode_MatchedTo_Barcode"][0:12]
+            imylabel = df.loc[index, "Metadata_Barcode_MatchedTo_Barcode"][0:12]
         axarr[index, 0].set_ylabel(imylabel)
     return f
