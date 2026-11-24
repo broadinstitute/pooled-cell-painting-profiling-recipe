@@ -70,9 +70,10 @@ CHANNEL_COLORS = {
     "DAPI": "Blue",
     "WGA": "Red",
     "Phalloidin": "Green",
+    "Brightfield": "White",
 }
 
-outdir = "outputs"  # location to output figures
+outdir = "single_cell_figures"  # location to output figures
 
 
 #################################
@@ -130,7 +131,9 @@ def process_figures(
     os.makedirs(outdir, exist_ok=True)
 
     # load all load_data from {recipe}/load_data and combine
-    load_data_files = sorted(glob.glob(os.path.join(recipe_path, "load_data", "*.csv")))
+    load_data_files = sorted(
+        glob.glob(os.path.join(recipe_path, "load_data", "**", "*.csv"), recursive=True)
+    )
     if not load_data_files:
         raise FileNotFoundError(
             f"No load_data csvs found in {os.path.join(recipe_path, 'load_data')}"

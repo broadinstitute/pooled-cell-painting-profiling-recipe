@@ -43,9 +43,10 @@ def extract_single_cell_samples(
     if cell_selection_method == "random":
         if platefilter:
             df_p_s = df_p_s.loc[df_p_s["Metadata_Plate"].isin(platefilter)]
+        # genes with fewer cells than requested just use all of their cells
         dff = (
             df_p_s.reset_index(drop=True)
-            .sample(n=n_cells, replace=False)
+            .sample(n=min(n_cells, len(df_p_s)), replace=False)
             .reset_index(drop=True)
         )
 

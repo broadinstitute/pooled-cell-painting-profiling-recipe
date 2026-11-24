@@ -7,7 +7,7 @@ import time
 
 from sc_vis_utils import read_image
 
-def CP_to_RGB_single(im_cp, channels, percentile=100):
+def CP_to_RGB_single(im_cp, channels, percentile=100, channel_colors=None):
     """
     This function takes a cell painting image (as channels last array) and converts it to RGB
 
@@ -24,21 +24,12 @@ def CP_to_RGB_single(im_cp, channels, percentile=100):
     """
 
     depth = 65535
-    channels_colormap = {
-        "DNA": "Blue",
-        "ER": "Green",
-        "RNA": "Yellow",
-        "AGP": "Red",
-        "Mito": "Magenta",
-        "DAPI": "Blue",
-        "WGA": "Red",
-        "Phalloidin": "Green",
-        "ZO1": "Magenta",
-        "outline": "White"
-    }
+    # channels without a passed-in color are shown in white
+    channels_colormap = channel_colors or {}
 
     channel_colors = [
-        np.array(mcolors.to_rgb(channels_colormap[c])) * depth for c in channels
+        np.array(mcolors.to_rgb(channels_colormap.get(c, "White"))) * depth
+        for c in channels
     ]
 
     comb_pars = [1 / im_cp.shape[2]] * im_cp.shape[2]
@@ -102,6 +93,16 @@ def crop_single_cell_image(image, xCenter, yCenter, halfBoxSize):
     return image_cropped
 
 
+def find_filename_col(df, channel):
+    """Find the FileName_ column for a channel; datasets may or may not have 'Corr' in the name."""
+    for candidate in (f"FileName_{channel}", f"FileName_Corr{channel}"):
+        if candidate in df.columns:
+            return candidate
+    raise KeyError(
+        f"No FileName_{channel} or FileName_Corr{channel} column found in the load_data."
+    )
+
+
 def make_figure(gene, df, im_dict, cell_selection_method, box_size,
                 objects, color, bc_nuclei, bc_nuclei_name, percentile,
                 use_alignments=True):
@@ -133,7 +134,7 @@ def make_figure(gene, df, im_dict, cell_selection_method, box_size,
                 axarr[index, ci].set_title(im_channels[ci])
 
             # FileName_ columns hold the full path to the image
-            imPath = df.loc[index, "FileName_Corr" + im_channels[ci]]
+            imPath = df.loc[index, find_filename_col(df, im_channels[ci])]
             
             if use_alignments:
                 xCenterC = xCenter + int(
@@ -221,7 +222,8 @@ def make_figure(gene, df, im_dict, cell_selection_method, box_size,
         if color:
             c+=1
             color_im, colorImagesList = CP_to_RGB_single(
-                sc_collage_row[:, :, : len(im_channels)], im_channels, percentile
+                sc_collage_row[:, :, : len(im_channels)], im_channels, percentile,
+                channel_colors=im_dict,
             )
 
             axarr[index, c].imshow(color_im, interpolation='nearest')
