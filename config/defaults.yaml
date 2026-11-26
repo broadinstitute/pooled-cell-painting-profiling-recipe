@@ -36,7 +36,7 @@ process:
     foci_cols:
       - Barcode_BarcodeCalled
       - Barcode_MatchedTo_ID
-    spot_quality_method: simple
+    spot_quality_method: ignore_short_barcode
   single_cell:
     allowed_skips: 10
     flag_cols:
@@ -50,7 +50,7 @@ process:
     allowed_skips: 10
   aggregate:
     allowed_skips: 10
-    operation: median
+    operation: mean
     features: infer
   normalize:
     output_bygene: true
@@ -68,5 +68,5 @@ process:
     use_samples: all
     features: infer
     na_cutoff: 0
-    corr_threshold: 0.9
+    corr_threshold: 0.8
     gct: true
