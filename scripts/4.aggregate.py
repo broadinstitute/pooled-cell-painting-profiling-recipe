@@ -155,6 +155,7 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
                 strata=[f"Metadata_{gene_col}", f"Metadata_{barcode_col}"],
                 features=features,
                 operation=operation,
+                compute_object_count = True,
             )
             aggregate_df = aggregate_df.assign(
                         Metadata_Batch=batch,
@@ -179,6 +180,7 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
                 strata=[f"Metadata_{gene_col}"],
                 features=features,
                 operation=operation,
+                compute_object_count = True,
             )
             aggregate_df = aggregate_df.assign(
                         Metadata_Batch=batch,

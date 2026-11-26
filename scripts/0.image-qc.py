@@ -15,6 +15,7 @@ Outputs the following files:
 - summary_data/Sites_With_Saturation_{data_set_name}.csv
 """
 
+import json
 import os
 import sys
 import logging
@@ -188,6 +189,21 @@ def make_sbs_intensity_plot(images_df, image_df_columns, cycles, outpath):
     fig.savefig(outpath, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
+def infer_pheno_chans(image_df_columns):
+    pheno_chans = []
+    for col in image_df_columns:
+        if "Align_Xshift_" in col and "Cycle" not in col:
+            chan = col.split("Align_Xshift_")[1]
+            pheno_chans.append(chan)
+    if len(pheno_chans) == 0:
+        for col in image_df_columns:
+            if "Granularity_1_" in col and "Cycle" not in col:
+                chan = col.split("Granularity_1_")[1]
+                pheno_chans.append(chan)
+    # remove 'AlignedRed' - default name in alignment module, not a real channel
+    pheno_chans = [chan for chan in pheno_chans if chan != "AlignedRed"]
+    return pheno_chans
+
 
 def process_qc(path_to_defaults_config, path_to_experiment_config):
     printandlog("Started 0.image-qc.")
@@ -220,6 +236,9 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
         os.makedirs(outdir_single_cell, exist_ok=True)
 
     allowed_skip_counter = 0
+    inferred_pheno_chans_dict = {}
+    image_heights = set()
+    image_widths = set()
     for data_set_name in data_sets.keys():
         printandlog(f"Starting {data_set_name}")
         batch, plate_list, list_plate_well_tuples = parse_data_set(
@@ -234,6 +253,7 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
             )
             continue
         inferred_empty_sites = []
+        inferred_pheno_chans = set()
         all_image_dfs = []
         for plate in plate_list:
             all_align_dfs = []
@@ -253,6 +273,9 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
                             "Image.csv",
                         )
                         image_df = read_csvs_with_chunksize(image_file)
+                        inferred_pheno_chans.update(infer_pheno_chans(image_df.columns))
+                        image_heights.update(image_df[[x for x in image_df.columns if "Height_" in x and "Cycle" not in x]].to_numpy().ravel())
+                        image_widths.update(image_df[[x for x in image_df.columns if "Width_" in x and "Cycle" not in x]].to_numpy().ravel())
                         keep_cols = (
                             ["Count_Cells", "Math_PercentConfluent"]
                             + [
@@ -613,6 +636,34 @@ def process_qc(path_to_defaults_config, path_to_experiment_config):
         write_inferred_empty_sites(
             inferred_empty_sites, out_root, data_folder, data_set_name, infer_empty_sites
         )
+
+        inferred_pheno_chans_dict[data_set_name] = inferred_pheno_chans
+
+    # Save metadata for image visualization
+    # check if all inferred pheno channels are the same across data sets
+    channel_sets = [set(v) for v in inferred_pheno_chans_dict.values()]
+    assert (
+        len({frozenset(s) for s in channel_sets}) <= 1
+    ), "Inferred phenotyping channels differ across data sets. Please check the Image.csv files."
+    pheno_chans = sorted(channel_sets[0]) if channel_sets else []
+
+    assert (
+        len(image_heights) == 1 and len(image_widths) == 1
+    ), "Image heights or widths differ across sites. Please check the Image.csv files."
+
+    vis_metadata = {
+        "inferred_phenotyping_channels": pheno_chans,
+        "image_height": int(next(iter(image_heights))) if image_heights else None,
+        "image_width": int(next(iter(image_widths))) if image_widths else None,
+    }
+    if len(pheno_chans) > 0:
+        vis_file = os.path.join(
+            out_root,
+            data_folder,
+            f"Visualization_metadata.json",
+        )
+        with open(vis_file, "w") as f:
+            json.dump(vis_metadata, f)
 
     print("Finished 0.image-qc.")
 

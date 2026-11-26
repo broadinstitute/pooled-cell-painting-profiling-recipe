@@ -286,6 +286,11 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
             ],
             columns=[cell_quality_column],
         )
+        # categories with no cells in this dataset still get a (zero) column
+        for col in list(cell_quality_dict.values()) + ["Empty"]:
+            if col not in ratio_df.columns:
+                ratio_df[col] = 0
+        ratio_df = ratio_df.fillna(0)
         ratio_df = ratio_df.assign(
             Sum=ratio_df.sum(axis=1),
             Pass_Filter=ratio_df[

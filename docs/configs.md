@@ -199,7 +199,8 @@ Note that Pycytominer assumes standard Cell Painting compartments of `Cell`, `Cy
 
 #### normalize
 
-`output_bygene`: Boolean indicating whether to additionally write the normalized profiles split into one file per gene.
+`output_bygene`: Boolean indicating whether to additionally normalize the single cells and write them split into one file per gene and one per guide.
+This requires the single-cell data from step 2 and is used for single-cell visualization.
 
 `method`: The normalization method passed to Pycytominer's normalize function (e.g. `standardize`, `robustize`, `mad_robustize`).
 See Pycytominer documentation for more information.
