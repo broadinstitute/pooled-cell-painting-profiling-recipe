@@ -28,7 +28,7 @@ ASSUMES:
 
 BEFORE RUNNING:
 - Run the recipe through 5.normalize.py to generate the single-cell CSVs
-- Download load_data.csv's used for analysis to load_data/
+- Download load_data.csv's used for analysis to {data}/load_data/
 """
 
 import argparse
@@ -61,6 +61,7 @@ DEFAULT_OBJECT_ROOT = None  # root directory for cell objects
 
 # Channel -> display color, as understood by make_figure.CP_to_RGB_single.
 # Edit if your phenotyping channels are not listed.
+# Channels not included here will be shown in white
 CHANNEL_COLORS = {
     "DNA": "Blue",
     "ER": "Green",
@@ -130,13 +131,13 @@ def process_figures(
 
     os.makedirs(outdir, exist_ok=True)
 
-    # load all load_data from {recipe}/load_data and combine
+    # load all load_data from {data_folder}/load_data and combine
     load_data_files = sorted(
-        glob.glob(os.path.join(recipe_path, "load_data", "**", "*.csv"), recursive=True)
+        glob.glob(os.path.join(data_folder, "load_data", "**", "*.csv"), recursive=True)
     )
     if not load_data_files:
         raise FileNotFoundError(
-            f"No load_data csvs found in {os.path.join(recipe_path, 'load_data')}"
+            f"No load_data csvs found in {os.path.join(data_folder, 'load_data')}"
         )
     all_loaddata = pd.concat(
         [pd.read_csv(file) for file in load_data_files], ignore_index=True

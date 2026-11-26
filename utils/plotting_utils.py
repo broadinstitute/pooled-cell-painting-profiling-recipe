@@ -99,7 +99,7 @@ def make_plate_layout_plots(images_df, colorby, title, outpath, legend=False):
     fig.savefig(outpath, dpi=300, bbox_inches="tight", pad_inches=0.3)
     plt.close(fig)
 
-def radar_factory(num_vars, frame='circle'):
+def radar_factory(num_vars, name = '', frame='circle'):
     """
     Create a radar chart with `num_vars` Axes.
 
@@ -128,7 +128,7 @@ def radar_factory(num_vars, frame='circle'):
 
     class RadarAxes(PolarAxes):
 
-        name = f'radar{num_vars}'
+        name = f'radar_{name}'
         PolarTransform = RadarTransform
 
         def __init__(self, *args, **kwargs):

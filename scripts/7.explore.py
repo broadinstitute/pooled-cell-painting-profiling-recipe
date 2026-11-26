@@ -5,6 +5,8 @@ Loads the per-gene feature-selected profiles output by 6.feature-select
 (gene-level only, not guide-level) and plots a UMAP embedding where each
 point is a gene, with the negative control gene(s) highlighted.
 
+TODO THIS IS OUTDATED ABOVE AND BELOW
+
 Outputs the following files:
 - data_exploration/{plate}_{data_set_name}_{gene|guide}_normalized_{group}_UMAP.png
 - data_exploration/{plate}_{data_set_name}_{gene|guide}_normalized_{group}_heatmap.png
@@ -27,6 +29,7 @@ import umap
 from copairs import map
 from copairs.matching import assign_reference_index
 from sklearn.metrics.pairwise import cosine_similarity
+from single_cell_visualization.create_figures import process_figures
 
 recipe_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(recipe_path, "utils"))
@@ -111,18 +114,6 @@ def explore(path_to_defaults_config, path_to_experiment_config):
     if not os.path.exists(outdir_exploration):
         os.makedirs(outdir_exploration, exist_ok=True)
 
-
-    # setup for radar plots below - TODO to automate getting channel names and lengths in the future
-    # or at least make them a passthrough
-    radar3 = radar_factory(3, frame='polygon')
-    radar7 = radar_factory(7, frame='polygon')
-    radar5 = radar_factory(5, frame='polygon')
-    subsets = {'Compartments':['Nuclei', 'Cells', 'Cytoplasm'],
-            'Classes':['AreaShape','Correlation','Granularity','Intensity','Neighbors','RadialDistribution','Texture'],
-            'Channels':['Brightfield','DNA','ER','Phalloidin','WGA']}
-    factories = [radar3, radar7, radar5]
-    factory_names = ['radar3','radar7','radar5']
-
     for data_set_name in data_sets.keys():
         printandlog(f"Starting {data_set_name}")
         batch, plate_list, list_plate_well_tuples = parse_data_set(
@@ -136,6 +127,25 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                         f"{plate}_{data_set_name}_{agg}_normalized_feature_selected_by{group}.csv.gz",
                     )
                 )
+
+                compartments = list(set([x.split('_')[0] for x in groupdf.columns if 'Metadata' not in x]))
+                compartments.sort()
+                classes = list(set([x.split('_')[1] for x in groupdf.columns if 'Metadata' not in x]))
+                classes.sort()
+                # Probably fair to assume that if we're measuring anything about a channel, it's its intensity
+                channels = list(set([x.split('_')[-1] for x in groupdf.columns if 'Intensity' in x and 'Distance' not in x]))
+                channels.sort()
+                # setup for radar plots below - TODO to automate getting channel names and lengths in the future
+                # or at least make them a passthrough
+                radar_compartments = radar_factory(len(compartments), name='compartments', frame='polygon')
+                radar_classes = radar_factory(len(classes), name='classes', frame='polygon')
+                radar_channels = radar_factory(len(channels), name='channels', frame='polygon')
+                subsets = {'Compartments':compartments,
+                        'Classes':classes,
+                        'Channels':channels}
+                factories = [radar_compartments, radar_classes, radar_channels]
+                factory_names = ['radar_compartments','radar_classes','radar_channels']
+
                 #
                 # Create UMAP embedding - gene and guide maps
                 #
@@ -473,6 +483,11 @@ def explore(path_to_defaults_config, path_to_experiment_config):
             )
             fig.savefig(outpath, dpi=300, bbox_inches="tight")
             plt.close(fig)
+
+            if experiment_config.get('perform_single_cell_vis',False):
+                process_figures(path_to_defaults_config,path_to_experiment_config,
+                                data_set_name, all_unique_genes,
+                                agg,'representative')
 
     printandlog("Finished 7.explore.")
 
