@@ -99,7 +99,7 @@ def make_plate_layout_plots(images_df, colorby, title, outpath, legend=False):
     fig.savefig(outpath, dpi=300, bbox_inches="tight", pad_inches=0.3)
     plt.close(fig)
 
-def radar_factory(num_vars, name = '', frame='circle'):
+def radar_factory(num_vars, name, frame='circle'):
     """
     Create a radar chart with `num_vars` Axes.
 
@@ -115,6 +115,7 @@ def radar_factory(num_vars, name = '', frame='circle'):
     """
     # calculate evenly-spaced axis angles
     theta = np.linspace(0, 2*np.pi, num_vars, endpoint=False)
+    radar_name = f'radar_{name}'
 
     class RadarTransform(PolarAxes.PolarTransform):
 
@@ -128,7 +129,7 @@ def radar_factory(num_vars, name = '', frame='circle'):
 
     class RadarAxes(PolarAxes):
 
-        name = f'radar_{name}'
+        name = radar_name
         PolarTransform = RadarTransform
 
         def __init__(self, *args, **kwargs):
@@ -198,7 +199,7 @@ def update_projection(axes, ax, projection='3d', fig=None, varlabels=None):
         axes.flat[start].set_varlabels(varlabels)
 
 def radar_plot(subsets,factory_names,factories,df,file_name):
-    fig, axs = plt.subplots(figsize=(9, 9), nrows=1, ncols=3)
+    fig, axs = plt.subplots(figsize=(9, 9), nrows=1, ncols=3, gridspec_kw={'wspace':1})
     for ax, subset, sub_factory in zip(axs.flat,subsets.keys(), factory_names):
         ax.set_title(subset)
         update_projection(axs,ax,sub_factory,fig,subsets[subset])
@@ -209,6 +210,7 @@ def radar_plot(subsets,factory_names,factories,df,file_name):
             for each_subset in subsets[subset]:
                 sub_data.append(fn(df[[x for x in df.columns if each_subset in x]].values))
             ax.plot(factory,sub_data)
+            ax.tick_params(labelsize=6)
 
     axs.flat[2].legend(['Mean', '10th percentile','Lower Quartile','Median','Upper Quartile', '90th percentile'],loc=(0.9, .95),
                             labelspacing=0.1, fontsize='small')

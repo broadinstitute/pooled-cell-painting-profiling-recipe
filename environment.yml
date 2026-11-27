@@ -11,6 +11,8 @@ dependencies:
 - conda-forge::pyyaml
 - conda-forge::ipykernel
 - conda-forge::pip
+- conda-forge::scikit-image
+- conda-forge::boto-3
 - pip:
   - pycytominer==1.6.1
   - umap-learn

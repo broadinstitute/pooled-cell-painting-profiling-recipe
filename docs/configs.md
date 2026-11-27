@@ -238,7 +238,9 @@ Note that Pycytominer assumes standard Cell Painting compartments of `Cell`, `Cy
 
 #### explore
 
-See `perform_single_cell_vis` in the "Running" section
+(See also `perform_single_cell_vis` in the "Running" section)
+
+`load_data_loc`: Used if running single cell visualization (can be ignored if not); location of load_data CSVs to be used to pull images for figures
 
 #### marimo
 

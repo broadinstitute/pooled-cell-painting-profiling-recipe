@@ -137,9 +137,9 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                 channels.sort()
                 # setup for radar plots below - TODO to automate getting channel names and lengths in the future
                 # or at least make them a passthrough
-                radar_compartments = radar_factory(len(compartments), name='compartments', frame='polygon')
-                radar_classes = radar_factory(len(classes), name='classes', frame='polygon')
-                radar_channels = radar_factory(len(channels), name='channels', frame='polygon')
+                radar_compartments = radar_factory(len(compartments), 'compartments', frame='polygon')
+                radar_classes = radar_factory(len(classes), 'classes', frame='polygon')
+                radar_channels = radar_factory(len(channels), 'channels', frame='polygon')
                 subsets = {'Compartments':compartments,
                         'Classes':classes,
                         'Channels':channels}
@@ -303,6 +303,12 @@ def explore(path_to_defaults_config, path_to_experiment_config):
                         radar_plot(subsets,factory_names,factories,
                                     groupdf.query(f"Metadata_{guide_col} == '{eachguide}'"),
                                     os.path.join(radar_guide_folder,f'{guide_to_gene}_{eachguide}_radar.png'))
+
+                if experiment_config.get('perform_single_cell_vis',False) and agg=='gene':
+                    process_figures(path_to_defaults_config,path_to_experiment_config,
+                                data_set_name, all_unique_genes,
+                                agg,'representative',object_root=experiment_config['file_location'], fast=True,
+                                bc_nuclei=False, n_cells=10)
 
             #
             # Calculate mAP for phenotypic ACTIVITY (can be distinguished from negcon) - guide only
@@ -483,11 +489,6 @@ def explore(path_to_defaults_config, path_to_experiment_config):
             )
             fig.savefig(outpath, dpi=300, bbox_inches="tight")
             plt.close(fig)
-
-            if experiment_config.get('perform_single_cell_vis',False):
-                process_figures(path_to_defaults_config,path_to_experiment_config,
-                                data_set_name, all_unique_genes,
-                                agg,'representative')
 
     printandlog("Finished 7.explore.")
 

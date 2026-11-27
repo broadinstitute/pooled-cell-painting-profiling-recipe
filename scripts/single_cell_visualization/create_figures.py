@@ -6,7 +6,7 @@ Usage:
         --grouping {gene,guide} --method {random,representative} \
         [--defaults-config DEFAULTS_CONFIG] [--experiment-config EXPERIMENT_CONFIG] \
         [--n-cells N] [--box-size PX] [--dpi DPI] [--percentile P] \
-        [--no-objects] [--no-color] [--no-bc-nuclei] [--bc-nuclei-name NAME]
+        [--no-objects] [--no-color] [--no-bc-nuclei] [--bc-nuclei-name NAME] [--fast]
 
 Required: --data-set, --genes, --grouping, --method.
 Optional: --defaults-config and --experiment-config (default to config/defaults.yaml and
@@ -20,7 +20,7 @@ Reads:
 - {plate}_load_data_pipeline9.csv (see LOAD_DATA_TEMPLATE below)
 
 Outputs the following files:
-- outputs/{gene}_{data_set_name}_{cell_selection_method}_{plate}.png
+- {data}/data_exploration/single_cell_figures/{gene}_{data_set_name}_{cell_selection_method}_{plate}.png
 
 ASSUMES:
 - FileName_<channel> columns of load_data hold the full path to each image
@@ -72,9 +72,11 @@ CHANNEL_COLORS = {
     "WGA": "Red",
     "Phalloidin": "Green",
     "Brightfield": "White",
+    "TOMM20": "Magenta",
+    "COX4": "Magenta"
 }
 
-outdir = "single_cell_figures"  # location to output figures
+outdir_name = "single_cell_figures"  # location to output figures
 
 
 #################################
@@ -98,6 +100,7 @@ def process_figures(
     bc_nuclei_name=DEFAULT_BC_NUCLEI_NAME,
     percentile=DEFAULT_PERCENTILE,
     object_root=DEFAULT_OBJECT_ROOT,
+    fast = False
 ):
     defaults_config, experiment_config = load_configs(
         path_to_defaults_config, path_to_experiment_config
@@ -110,6 +113,7 @@ def process_figures(
 
     out_root = defaults_config["directory_structure"]["root"]
     data_folder = defaults_config["directory_structure"]["data"]
+    load_data_folder = experiment_config["load_data_loc"]
     single_cell = defaults_config["directory_structure"]["single_cell"]
     single_cell_dir = os.path.join(out_root, single_cell)
     sc_files_dir = os.path.join(single_cell_dir, "single_cell_by_gene")
@@ -129,11 +133,13 @@ def process_figures(
     if objects and not object_root:
         raise ValueError("--object-root is required unless --no-objects is passed.")
 
+    outdir = os.path.join(out_root,'data_exploration',outdir_name, data_set)
+
     os.makedirs(outdir, exist_ok=True)
 
-    # load all load_data from {data_folder}/load_data and combine
+    # load all load_data from the load_data folder and combine
     load_data_files = sorted(
-        glob.glob(os.path.join(data_folder, "load_data", "**", "*.csv"), recursive=True)
+        glob.glob(os.path.join(load_data_folder, "**", "*.csv"), recursive=True)
     )
     if not load_data_files:
         raise FileNotFoundError(
@@ -219,6 +225,10 @@ def process_figures(
                     box_size / 2,
                 )
 
+                if fast and df.shape[0] >2000:
+                    df = df.sample(n=2000)
+                    print("Filtered to 2000 cells to run more quickly")
+
                 if df.shape[0] > 0:
                     (
                         df,
@@ -295,6 +305,7 @@ if __name__ == "__main__":
     opt.add_argument("--no-objects", dest="objects", action="store_false", help="Omit cell objects")
     opt.add_argument("--no-color", dest="color", action="store_false", help="Omit color composite")
     opt.add_argument("--no-bc-nuclei", dest="bc_nuclei", action="store_false", help="Omit SBS nuclei")
+    opt.add_argument("--fast", dest="fast", action="store_true", help="Do clustering from a random subsample of 2000 cells, rather than all cells")
 
     args = parser.parse_args()
     process_figures(
@@ -313,4 +324,5 @@ if __name__ == "__main__":
         bc_nuclei_name=args.bc_nuclei_name,
         percentile=args.percentile,
         object_root=args.object_root,
+        fast=args.fast
     )

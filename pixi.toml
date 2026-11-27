@@ -17,6 +17,8 @@ black = { version = "==25.1.0", channel = "conda-forge" }
 pyyaml = { channel = "conda-forge" }
 ipykernel = { channel = "conda-forge" }
 pip = { channel = "conda-forge" }
+scikit-image = ">=0.26.0,<0.27"
+boto3 = ">=1.44.11,<2"
 
 [pypi-dependencies]
 pycytominer = "==1.6.1"
