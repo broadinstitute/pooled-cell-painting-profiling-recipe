@@ -213,7 +213,7 @@ def process_SBS(path_to_defaults_config, path_to_experiment_config):
                             foci_file = find_file_with_suffix(
                                 foci_folder,
                                 "Foci.csv",
-                                exclude_suffix="BarcodeFoci.csv",
+                                exclude_suffix=["BarcodeFoci.csv", "PreFoci.csv"],
                             )
                             relationship_foci_file = os.path.join(
                                 file_location,
