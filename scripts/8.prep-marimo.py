@@ -15,7 +15,7 @@ logfolder = os.path.join(recipe_path, "logs")
 if not os.path.isdir(logfolder):
     os.mkdir(logfolder)
 logging.basicConfig(
-    filename=os.path.join(logfolder, "6.feature-select.log"),
+    filename=os.path.join(logfolder, "8.prep-marimo.log"),
     level=logging.INFO,
 )
 
@@ -38,7 +38,8 @@ def printandlog(msg, type="info"):
 
 def rename_to_public_folder(root,filename,marimo_folder_loc):
     name_without_root = filename[len(root):]
-    #print(name_without_root)
+    if name_without_root[0] == '/':
+        name_without_root = name_without_root[1:]
     name_without_root = name_without_root.replace('/','_')
     shutil.copy(filename,os.path.join(marimo_folder_loc,name_without_root))
 
@@ -60,8 +61,14 @@ def prep_marimo(path_to_defaults_config, path_to_experiment_config):
     if not os.path.exists(marimo_folder_loc):
         os.makedirs(marimo_folder_loc,exist_ok=True)
 
+    plate_list = list(set([z for x in data_sets.keys() for y in data_sets[x].keys() for z in data_sets[x][y].keys()]))
+
     image_recipe_glob = glob.glob(f"{out_root}/**/*.png",recursive=True)
     image_qcfile_glob = glob.glob(f"{qc_location}/**/*.png",recursive=True)
+    #all other files should be only for this experiment, but QC files may not be
+    image_qcfile_glob_subset = []
+    for plate in plate_list:
+        image_qcfile_glob_subset += [x for x in image_qcfile_glob if plate in x]
     profiles_glob = glob.glob(f"{out_root}/**/*_normalized_feature_selected_byall.csv.gz",recursive=True)
     mAP_glob = glob.glob(f"{out_root}/**/*_feature_selected_mAP_activity.csv.gz",recursive=True)
     stats_glob = glob.glob(f"{out_root}/**/Data_Stats*.json",recursive=True)
@@ -69,7 +76,7 @@ def prep_marimo(path_to_defaults_config, path_to_experiment_config):
     all_recipe_globs = image_recipe_glob + profiles_glob + mAP_glob + stats_glob
     for each_glob in all_recipe_globs:
         rename_to_public_folder(out_root, each_glob, marimo_folder_loc)
-    for each_glob in image_qcfile_glob:
+    for each_glob in image_qcfile_glob_subset:
         rename_to_public_folder(qc_location, each_glob, marimo_folder_loc)
 
 

@@ -11,7 +11,7 @@
 
 import marimo
 
-__generated_with = "0.25.2"
+__generated_with = "0.26.0"
 app = marimo.App(width="medium")
 
 
@@ -35,7 +35,7 @@ def _():
 
 
 @app.cell
-def _(json):
+def _(json, os):
     script_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     public_root = os.path.join(script_path, 'marimo','public')
     exp_config = json.load(open(os.path.join(script_path,'marimo','public','data_sets.json')))
@@ -52,7 +52,6 @@ def _(mo):
 
     ## Start by choosing the sub-experiment
     """)
-    return
 
 
 @app.cell
@@ -101,7 +100,51 @@ def _(mo):
     mo.md("""
     ## Profiling stats
     """)
-    return
+
+
+@app.cell
+def _(mo):
+    sig_slider = mo.ui.slider(start=1, stop=20, step=1,value=5, label="Choose the absolute value of feature deviations that should be used to say a gene has a phenotype")
+    return (sig_slider,)
+
+
+@app.cell
+def _(gene_df, mAP_df, mo, sig_slider):
+    def count_sig_genes(gene_df, abs_level = 5):
+        do_sig = []
+        dont_sig = []
+        for row in range(gene_df.shape[0]):
+            if gene_df.loc[row][[x for x in gene_df.columns if "Metadata" not in x]].max() > abs_level:
+                do_sig.append(gene_df.loc[row]['Metadata_Barcode_MatchedTo_GeneCode'])
+            elif gene_df.loc[row][[x for x in gene_df.columns if "Metadata" not in x]].min() < -abs_level:
+                do_sig.append(gene_df.loc[row]['Metadata_Barcode_MatchedTo_GeneCode'])
+            else:
+                dont_sig.append(gene_df.loc[row]['Metadata_Barcode_MatchedTo_GeneCode'])
+        return(do_sig, dont_sig)
+
+
+
+    sig, no_sig = count_sig_genes(gene_df, abs_level=sig_slider.value)
+    #do
+
+    mo.md(f"""
+    **Top level takehomes:**
+
+    In this experiment {int(mAP_df['below_corrected_p'].sum())} genes (of {mAP_df.shape[0]} tested) pass the strictest mAP threshold (a measure of overall profile strength).
+
+    {len(sig)} genes (of {len(sig)+len(no_sig)}) have at least one feature with an absolute value of more than {sig_slider.value} deviations from the center; you can change this value with slider below. There are {gene_df.shape[1]} features overall; 400-1000 is "typical", values outside this range might indicate some profiling settings might want to be adjusted.
+
+    The list of genes with at least one significant feature:
+    {', '.join(sorted(sig))}
+
+    The list of genes with at no significant features:
+    {', '.join(sorted(no_sig))}
+    """)
+
+
+@app.cell
+def _(sig_slider):
+    sig_slider
 
 
 @app.cell
@@ -111,7 +154,6 @@ def _(exp, mo, os, plate, public_root):
         mo.image(os.path.join(public_root,f"data_exploration_{plate}_{exp}_guide_normalized_all_feature_selected_mAP_activity_scatterplot.png"), width = 600)
     ]
     )
-    return
 
 
 @app.cell
@@ -122,7 +164,7 @@ def _(exp, mo, os, pd, plate, public_root):
         mAP_df
     ]
     )
-    return
+    return (mAP_df,)
 
 
 @app.cell
@@ -132,7 +174,6 @@ def _(exp, mo, os, plate, public_root):
         mo.image(os.path.join(public_root,f"data_exploration_{plate}_{exp}_gene_normalized_all_heatmap.png"))
     ]
     )
-    return
 
 
 @app.cell
@@ -142,7 +183,6 @@ def _(exp, mo, os, plate, public_root):
         mo.image(os.path.join(public_root,f"data_exploration_{plate}_{exp}_guide_normalized_all_heatmap.png"))
     ]
     )
-    return
 
 
 @app.cell
@@ -153,7 +193,7 @@ def _(exp, mo, os, pd, plate, public_root):
         gene_df
     ]
     )
-    return
+    return (gene_df,)
 
 
 @app.cell
@@ -164,11 +204,10 @@ def _(exp, mo, os, pd, plate, public_root):
         guide_df
     ]
     )
-    return
 
 
 @app.cell
-def _(exp, glob, os, plate):
+def _(exp, glob, os, plate, public_root):
     gene_radar_plot_list = glob.glob(f"{public_root}/*gene_radar_plots_{exp}_{plate}_*.png",recursive=True)
     gene_radar_plot_dict = {os.path.split(x)[1]:x for x in gene_radar_plot_list}
     gene_radar_plot_selectors = list(gene_radar_plot_dict.keys())
@@ -190,11 +229,35 @@ def _(gene_radar_plot_selectors, mo):
 @app.cell
 def _(gene_radar_plot_dict, gene_radar_plot_el, mo):
     mo.image(gene_radar_plot_dict[gene_radar_plot_el.value])
-    return
 
 
 @app.cell
-def _(exp, glob, os, plate):
+def _(exp, glob, os, plate, public_root):
+    sc_plot_list = glob.glob(f"{public_root}/*single_cell_figures_{exp}*_representative_{plate}.png",recursive=True)
+    sc_plot_dict = {os.path.split(x)[1]:x for x in sc_plot_list}
+    sc_plot_selectors = list(sc_plot_dict.keys())
+    sc_plot_selectors.sort()
+    return sc_plot_dict, sc_plot_selectors
+
+
+@app.cell
+def _(mo, sc_plot_selectors):
+    sc_plot_el = mo.ui.dropdown(options=sc_plot_selectors, value = sc_plot_selectors[0], label = 'Choose a gene-level representative cell image to view')
+    mo.vstack([
+        mo.md("### Per-Gene Representative cell images - pick a gene and see what has changed!"),
+        sc_plot_el
+    ]
+    )
+    return (sc_plot_el,)
+
+
+@app.cell
+def _(mo, sc_plot_dict, sc_plot_el):
+    mo.image(sc_plot_dict[sc_plot_el.value])
+
+
+@app.cell
+def _(exp, glob, os, plate, public_root):
     guide_radar_plot_list = glob.glob(f"{public_root}/*guide_radar_plots_{exp}_{plate}_*.png",recursive=True)
     guide_radar_plot_dict = {os.path.split(x)[1]:x for x in guide_radar_plot_list}
     guide_radar_plot_selectors = list(guide_radar_plot_dict.keys())
@@ -216,7 +279,6 @@ def _(guide_radar_plot_selectors, mo):
 @app.cell
 def _(guide_radar_plot_dict, guide_radar_plot_el, mo):
     mo.image(guide_radar_plot_dict[guide_radar_plot_el.value])
-    return
 
 
 @app.cell
@@ -225,14 +287,12 @@ def _(mo):
     ## Selected measurements of barcode quality calling
     ### Raw stats for this sub-experiment
     """)
-    return
 
 
 @app.cell
 def _(exp, json, os, public_root):
     data_stats = json.load(open(os.path.join(public_root,f"summary_data_Data_Stats_{exp}.json")))
     data_stats
-    return
 
 
 @app.cell
@@ -242,7 +302,6 @@ def _(mo, os, public_root):
         mo.image(os.path.join(public_root,f"summary_figures_Quality_Spots_by_data_split.png"))
     ]
     )
-    return
 
 
 @app.cell
@@ -252,7 +311,6 @@ def _(mo, os, public_root):
         mo.image(os.path.join(public_root,f"summary_figures_Quality_Cells_by_data_split.png"))
     ]
     )
-    return
 
 
 @app.cell
@@ -262,7 +320,6 @@ def _(mo, os, plate, public_root):
         mo.image(os.path.join(public_root,f"13_preprocessing_{plate}_observed_minus_exp_nucleotide_frequency.png"))
     ]
     )
-    return
 
 
 @app.cell
@@ -270,27 +327,24 @@ def _(mo):
     mo.md("""
     ## Selected measurements of overall experiment quality
     """)
-    return
 
 
 @app.cell
-def _(batch, mo, os, plate, public_root):
+def _(batch, glob, mo, os, plate, public_root):
     mo.vstack([
         mo.md("### Phenotyping illum corr (not experiment specific)"),
-        mo.image(os.path.join(public_root,f"1_illumination_painting_{plate}_painting.{batch}_{plate}.montage.png"))
+        mo.image(glob.glob(os.path.join(public_root, f"*_illumination_painting_{plate}_painting.{batch}_{plate}.montage.png"))[0])
     ]
     )
-    return
 
 
 @app.cell
-def _(batch, mo, os, plate, public_root):
+def _(batch, glob, mo, os, plate, public_root):
     mo.vstack([
         mo.md("### Barcoding illum corr (not experiment specific)"),
-        mo.image(os.path.join(public_root,f"5_illumination_barcoding_{plate}_barcoding.{batch}_{plate}.montage.png"))
+        mo.image(glob.glob(os.path.join(public_root, f"*_illumination_barcoding_{plate}_barcoding.{batch}_{plate}.montage.png"))[0])
     ]
     )
-    return
 
 
 @app.cell
@@ -305,8 +359,8 @@ def _(mo, well_list):
 
 
 @app.cell
-def _(barcode_alignment_plot_el, glob, mo, plate):
-    barcode_alignment_plot_list = glob.glob(f"{public_root}**/8_alignment_barcoding_{plate}*{barcode_alignment_plot_el.value}_*.png",recursive=True)
+def _(barcode_alignment_plot_el, glob, mo, plate, public_root):
+    barcode_alignment_plot_list = glob.glob(f"{public_root}**/*_alignment_barcoding_{plate}*{barcode_alignment_plot_el.value}_*.png",recursive=True)
     barcode_alignment_plot_list.sort()
     mo.vstack([
     mo.hstack([mo.image(barcode_alignment_plot_list[0],width=250),mo.image(barcode_alignment_plot_list[1],width=250),mo.image(barcode_alignment_plot_list[2],width=250)]),
@@ -316,18 +370,16 @@ def _(barcode_alignment_plot_el, glob, mo, plate):
             ]
         )
     #mo.image(guide_radar_plot_dict[guide_radar_plot_el.value])
-    return
 
 
 @app.cell
-def _(barcode_alignment_plot_el, mo, os, plate, public_root):
+def _(barcode_alignment_plot_el, glob, mo, os, plate, public_root):
 
     mo.vstack([
         mo.md("### Cross-arm alignment plots"),
-    mo.image(os.path.join(public_root,f"9_alignment_combined_{plate}_{plate}-{barcode_alignment_plot_el.value}_AlignCombined_QC.png"))
+    mo.image(glob.glob(os.path.join(public_root,f"*_alignment_combined_{plate}_{plate}-{barcode_alignment_plot_el.value}_AlignCombined_QC.png"))[0])
     ]
     )
-    return
 
 
 @app.cell
@@ -337,7 +389,6 @@ def _(exp, mo, os, public_root):
     mo.image(os.path.join(public_root,f"summary_figures_plate_layout_cells_count_{exp}.png"),width=150)
     ]
     )
-    return
 
 
 @app.cell
@@ -347,7 +398,6 @@ def _(exp, mo, os, public_root):
     mo.image(os.path.join(public_root,f"summary_figures_plate_layout_percent_confluent_{exp}.png"),width=150)
     ]
     )
-    return
 
 
 @app.cell
@@ -357,11 +407,10 @@ def _(exp, mo, os, public_root):
     mo.image(os.path.join(public_root,f"summary_figures_plate_layout_PercentEmpty_{exp}.png"),width=150)
     ]
     )
-    return
 
 
 @app.cell
-def _(glob, mo):
+def _(glob, mo, public_root):
     image_list = glob.glob(f"{public_root}/**/*.png",recursive=True)
     generic_image_picker = mo.ui.dropdown(options=image_list, value = image_list[0], label = "Pick an image to view")
     mo.vstack([
@@ -375,7 +424,6 @@ def _(glob, mo):
 @app.cell
 def _(generic_image_picker, mo):
     mo.image(generic_image_picker.value)
-    return
 
 
 if __name__ == "__main__":
