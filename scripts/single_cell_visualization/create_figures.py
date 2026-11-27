@@ -6,7 +6,8 @@ Usage:
         --grouping {gene,guide} --method {random,representative} \
         [--defaults-config DEFAULTS_CONFIG] [--experiment-config EXPERIMENT_CONFIG] \
         [--n-cells N] [--box-size PX] [--dpi DPI] [--percentile P] \
-        [--no-objects] [--no-color] [--no-bc-nuclei] [--bc-nuclei-name NAME] [--fast]
+        [--no-objects] [--no-color] [--no-bc-nuclei] [--bc-nuclei-name NAME] [--fast] \
+        [--overwrite]
 
 Required: --data-set, --genes, --grouping, --method.
 Optional: --defaults-config and --experiment-config (default to config/defaults.yaml and
@@ -100,7 +101,8 @@ def process_figures(
     bc_nuclei_name=DEFAULT_BC_NUCLEI_NAME,
     percentile=DEFAULT_PERCENTILE,
     object_root=DEFAULT_OBJECT_ROOT,
-    fast = False
+    fast = False,
+    overwrite = False,
 ):
     defaults_config, experiment_config = load_configs(
         path_to_defaults_config, path_to_experiment_config
@@ -185,89 +187,102 @@ def process_figures(
 
             for gene in genelist:
                 print(f"Making figure for gene/guide {gene}")
-                # load the single cell profiles for the specified gene and data set
-                df = pd.read_csv(
-                    os.path.join(
-                        sc_files_dir,
-                        file_naming.format(
-                            data_set_name=data_set_name,
-                            grouping=grouping,
-                            gene=gene,
-                        ),
-                    )
-                )
-                # clean up the dataframe
-                df["Metadata_Site"] = df["Metadata_Site"].astype(int)
-                df["Metadata_Label"] = (
-                    df["Metadata_Well"] + "-" + df["Metadata_Site"].astype(str)
-                )
+                gene_fig_name = os.path.join(
+                                        outdir,
+                                        f"{gene}_{data_set_name}_{cell_selection_method}_{plate}.png",
+                                    )
 
-                # add the alignment columns, only if there are any
-                if use_alignments:
+                if os.path.exists(gene_fig_name) and not overwrite :
+                    print(f"Skipping {gene}, already done")
+                else:
+                    # load the single cell profiles for the specified gene and data set
+                    df = pd.read_csv(
+                        os.path.join(
+                            sc_files_dir,
+                            file_naming.format(
+                                data_set_name=data_set_name,
+                                grouping=grouping,
+                                gene=gene,
+                            ),
+                        )
+                    )
+                    # clean up the dataframe
+                    df["Metadata_Site"] = df["Metadata_Site"].astype(int)
+                    df["Metadata_Label"] = (
+                        df["Metadata_Well"] + "-" + df["Metadata_Site"].astype(str)
+                    )
+
+                    # add the alignment columns, only if there are any
+                    if use_alignments:
+                        df = df.merge(
+                            alignments,
+                            on=["Metadata_Plate", "Metadata_Well", "Metadata_Site"],
+                            how="left",
+                        )
                     df = df.merge(
-                        alignments,
+                        loaddata,
                         on=["Metadata_Plate", "Metadata_Well", "Metadata_Site"],
                         how="left",
                     )
-                df = df.merge(
-                    loaddata,
-                    on=["Metadata_Plate", "Metadata_Well", "Metadata_Site"],
-                    how="left",
-                )
 
-                # filter out cells that are too close to the edge of the image
-                df, _ = filter_out_edge_single_cells.edgeCellFilter(
-                    df,
-                    "Nuclei_AreaShape_Center_X",
-                    "Nuclei_AreaShape_Center_Y",
-                    im_height,
-                    im_width,
-                    box_size / 2,
-                )
-
-                if fast and df.shape[0] >2000:
-                    df = df.sample(n=2000)
-                    print("Filtered to 2000 cells to run more quickly")
-
-                if df.shape[0] > 0:
-                    (
+                    # filter out cells that are too close to the edge of the image
+                    df, _ = filter_out_edge_single_cells.edgeCellFilter(
                         df,
-                        cp_features_analysis,
-                    ) = extract_single_cell_samples.extract_single_cell_samples(
+                        "Nuclei_AreaShape_Center_X",
+                        "Nuclei_AreaShape_Center_Y",
+                        im_height,
+                        im_width,
+                        box_size / 2,
+                    )
+
+                    if fast and df.shape[0] >2000:
+                        df = df.sample(n=2000)
+                        print("Filtered to 2000 cells to run more quickly")
+
+                    if df.shape[0] > 0:
+                        (
+                            df,
+                            cp_features_analysis,
+                        ) = extract_single_cell_samples.extract_single_cell_samples(
+                            df,
+                            n_cells,
+                            cell_selection_method,
+                            platefilter=[plate],
+                        )
+                        print(
+                            f"Filtered to {len(df)} cells using {cell_selection_method} selection method."
+                        )
+
+                        if df.shape [0] == 0:
+                            print(f"No cells for {gene} passed clustering, something may be wrong")
+                            continue
+
+                    else:
+                        print(f"No cells found for {gene} after filtering.")
+                        continue
+
+                    figure = make_figure.make_figure(
+                        gene,
                         df,
-                        n_cells,
+                        im_dict,
                         cell_selection_method,
-                        platefilter=[plate],
+                        box_size,
+                        objects,
+                        color,
+                        bc_nuclei,
+                        bc_nuclei_name,
+                        percentile,
+                        use_alignments=use_alignments,
                     )
-                    print(
-                        f"Filtered to {len(df)} cells using {cell_selection_method} selection method."
+
+                    figure.savefig(
+                        os.path.join(
+                            outdir,
+                            f"{gene}_{data_set_name}_{cell_selection_method}_{plate}.png",
+                        ),
+                        dpi=dpi_quality,
                     )
-                else:
-                    print(f"No cells found for {gene} after filtering.")
-                    continue
-
-                figure = make_figure.make_figure(
-                    gene,
-                    df,
-                    im_dict,
-                    cell_selection_method,
-                    box_size,
-                    objects,
-                    color,
-                    bc_nuclei,
-                    bc_nuclei_name,
-                    percentile,
-                    use_alignments=use_alignments,
-                )
-
-                figure.savefig(
-                    os.path.join(
-                        outdir,
-                        f"{gene}_{data_set_name}_{cell_selection_method}_{plate}.png",
-                    ),
-                    dpi=dpi_quality,
-                )
-                plt.close("all")
+                    plt.close("all")
 
 
 #################################
@@ -306,6 +321,7 @@ if __name__ == "__main__":
     opt.add_argument("--no-color", dest="color", action="store_false", help="Omit color composite")
     opt.add_argument("--no-bc-nuclei", dest="bc_nuclei", action="store_false", help="Omit SBS nuclei")
     opt.add_argument("--fast", dest="fast", action="store_true", help="Do clustering from a random subsample of 2000 cells, rather than all cells")
+    opt.add_argument("--overwrite", dest="overwrite", action="store_true", help = "Whether or not to overwrite figures that already exist; default false")
 
     args = parser.parse_args()
     process_figures(
@@ -324,5 +340,6 @@ if __name__ == "__main__":
         bc_nuclei_name=args.bc_nuclei_name,
         percentile=args.percentile,
         object_root=args.object_root,
-        fast=args.fast
+        fast=args.fast,
+        overwrite=args.overwrite,
     )
