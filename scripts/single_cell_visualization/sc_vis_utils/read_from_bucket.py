@@ -36,6 +36,7 @@ def read_csv_gzip(path):
 def read_image(path):
 
     bucket, key = split_path(path)
+    key = key.replace('//','/') #sometimes the script making this accidentally has a //, but s3 paths should not
     response = get_s3_client().get_object(Bucket=bucket, Key=key)
     format_ext = path.split(".")[-1]
     image = mpimg.imread(BytesIO(response["Body"].read()), format=format_ext)

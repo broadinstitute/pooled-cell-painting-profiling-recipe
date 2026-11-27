@@ -49,8 +49,11 @@ def find_file_with_suffix(folder, suffix, exclude_suffix=None):
     If nothing matches, returns folder/suffix so downstream load errors name a sensible file.
     """
     matches = glob.glob(os.path.join(folder, f"*{suffix}"))
-    if exclude_suffix:
+    if exclude_suffix and type(exclude_suffix)==str:
         matches = [x for x in matches if not x.endswith(exclude_suffix)]
+    elif exclude_suffix and type(exclude_suffix)==list:
+        for to_exclude in exclude_suffix:
+            matches = [x for x in matches if not x.endswith(to_exclude)]
     if len(matches) > 1:
         raise ValueError(f"Multiple files match *{suffix} in {folder}: {sorted(matches)}")
     if matches:

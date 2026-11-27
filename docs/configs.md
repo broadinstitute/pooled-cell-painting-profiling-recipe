@@ -79,9 +79,11 @@ e.g. for `multiples_T7`: `["Perfect","Good"]`; for `simple_T7`: `["Perfect","Gre
 Note that this is only respected by `1.process-SBS.py` and `2.merge-single-cells.py`. \
 e.g. `true` or `false`
 
-`perform_process_qc`, `perform_process_SBS`, `perform_process_single_cells`, `perform_summarize_SBS`, `perform_aggregate`, `perform_normalize`, `perform_feature_select`, `perform_explore`: Should steps 0 through 7 (respectively) be performed?
+`perform_process_qc`, `perform_process_SBS`, `perform_process_single_cells`, `perform_summarize_SBS`, `perform_aggregate`, `perform_normalize`, `perform_feature_select`, `perform_explore`, `perform_marimo`: Should steps 0 through 8 (respectively) be performed?
 This allows skipping of steps that have already been completed. \
 e.g. `true` or `false`
+
+`perform_single_cell_vis`: In step 7, should representative cell visualization be created?
 
 ## defaults.yaml
 
@@ -233,3 +235,13 @@ Note that Pycytominer assumes standard Cell Painting compartments of `Cell`, `Cy
 `na_cutoff`: The proportion of missing values in a column to tolerate before removing.
 
 `corr_threshold`: Float between (0, 1) to exclude features if they have a correlation above.
+
+#### explore
+
+(See also `perform_single_cell_vis` in the "Running" section)
+
+`load_data_loc`: Used if running single cell visualization (can be ignored if not); location of load_data CSVs to be used to pull images for figures
+
+#### marimo
+
+`qc_report_loc`: Where the marimo notebook and its associated files should live.

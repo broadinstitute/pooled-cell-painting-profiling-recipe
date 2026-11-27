@@ -95,7 +95,7 @@ def make_summary_graph(df, id_var, categories, outpath, object):
         (
             so.Plot(melt, x=variable, y="value", color=variable)
             .facet(col=id_var, wrap=wrap)
-            .add(so.Bar(alpha=1))
+            .add(so.Bar(alpha=1),so.Stack())
             .label(x="", y=f"{object} count", color=f"{object} Quality")
             .layout(engine="constrained")
             .on(fig)
@@ -419,7 +419,7 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
     # Create summary data stats
     ratio_df = ratio_df.reset_index()
     for data_set_name in data_sets.keys():
-        df_sum = stats_df.loc[stats_df['Metadata_Dataset_Split']==data_set_name][[x for x in stats_df.columns if 'percent' not in x]].groupby("Metadata_Dataset_Split").sum().reset_index()
+        df_sum = stats_df.loc[stats_df['Metadata_Dataset_Split']==data_set_name][[x for x in stats_df.columns if 'percent' not in x]].groupby("Metadata_Dataset_Split").sum(numeric_only=True).reset_index()
         df_pct = stats_df.loc[stats_df['Metadata_Dataset_Split']==data_set_name][[x for x in stats_df.columns if 'percent' in x]+["Metadata_Dataset_Split"]].groupby("Metadata_Dataset_Split").mean().reset_index()
         df = pd.concat([df_sum[[x for x in df_sum.columns if "Metadata" not in x]], df_pct[[x for x in df_pct.columns if "Metadata" not in x]]], axis=1).iloc[0]
         df['num_empty_cells'] = ratio_df.loc[ratio_df['Metadata_Dataset_Split']==data_set_name]['Empty'].sum()
@@ -433,7 +433,6 @@ def summarize_SBS(path_to_defaults_config, path_to_experiment_config):
             df[k] = v
         df.to_json(
             os.path.join(outdir_data, f"Data_Stats_{data_set_name}.json"),
-            index=False,
             indent=4,
         )
     df_sum = stats_df[[x for x in stats_df.columns if 'percent' not in x if 'Metadata' not in x]].sum()

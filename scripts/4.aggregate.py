@@ -157,6 +157,9 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
                 operation=operation,
                 compute_object_count = True,
             )
+
+            aggregate_df = aggregate_df.query('Metadata_Barcode_MatchedTo_GeneCode != "Unmatched"')
+
             aggregate_df = aggregate_df.assign(
                         Metadata_Batch=batch,
                         Metadata_Plate=plate,
@@ -182,6 +185,9 @@ def aggregate(path_to_defaults_config, path_to_experiment_config):
                 operation=operation,
                 compute_object_count = True,
             )
+
+            aggregate_df = aggregate_df.query('Metadata_Barcode_MatchedTo_GeneCode != "Unmatched"')
+
             aggregate_df = aggregate_df.assign(
                         Metadata_Batch=batch,
                         Metadata_Plate=plate,

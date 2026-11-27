@@ -6,7 +6,8 @@ Usage:
         --grouping {gene,guide} --method {random,representative} \
         [--defaults-config DEFAULTS_CONFIG] [--experiment-config EXPERIMENT_CONFIG] \
         [--n-cells N] [--box-size PX] [--dpi DPI] [--percentile P] \
-        [--no-objects] [--no-color] [--no-bc-nuclei] [--bc-nuclei-name NAME]
+        [--no-objects] [--no-color] [--no-bc-nuclei] [--bc-nuclei-name NAME] [--fast] \
+        [--overwrite]
 
 Required: --data-set, --genes, --grouping, --method.
 Optional: --defaults-config and --experiment-config (default to config/defaults.yaml and
@@ -20,7 +21,7 @@ Reads:
 - {plate}_load_data_pipeline9.csv (see LOAD_DATA_TEMPLATE below)
 
 Outputs the following files:
-- outputs/{gene}_{data_set_name}_{cell_selection_method}_{plate}.png
+- {data}/data_exploration/single_cell_figures/{gene}_{data_set_name}_{cell_selection_method}_{plate}.png
 
 ASSUMES:
 - FileName_<channel> columns of load_data hold the full path to each image
@@ -28,7 +29,7 @@ ASSUMES:
 
 BEFORE RUNNING:
 - Run the recipe through 5.normalize.py to generate the single-cell CSVs
-- Download load_data.csv's used for analysis to load_data/
+- Download load_data.csv's used for analysis to {data}/load_data/
 """
 
 import argparse
@@ -61,6 +62,7 @@ DEFAULT_OBJECT_ROOT = None  # root directory for cell objects
 
 # Channel -> display color, as understood by make_figure.CP_to_RGB_single.
 # Edit if your phenotyping channels are not listed.
+# Channels not included here will be shown in white
 CHANNEL_COLORS = {
     "DNA": "Blue",
     "ER": "Green",
@@ -71,9 +73,11 @@ CHANNEL_COLORS = {
     "WGA": "Red",
     "Phalloidin": "Green",
     "Brightfield": "White",
+    "TOMM20": "Magenta",
+    "COX4": "Magenta"
 }
 
-outdir = "single_cell_figures"  # location to output figures
+outdir_name = "single_cell_figures"  # location to output figures
 
 
 #################################
@@ -97,6 +101,8 @@ def process_figures(
     bc_nuclei_name=DEFAULT_BC_NUCLEI_NAME,
     percentile=DEFAULT_PERCENTILE,
     object_root=DEFAULT_OBJECT_ROOT,
+    fast = False,
+    overwrite = False,
 ):
     defaults_config, experiment_config = load_configs(
         path_to_defaults_config, path_to_experiment_config
@@ -109,6 +115,7 @@ def process_figures(
 
     out_root = defaults_config["directory_structure"]["root"]
     data_folder = defaults_config["directory_structure"]["data"]
+    load_data_folder = experiment_config["load_data_loc"]
     single_cell = defaults_config["directory_structure"]["single_cell"]
     single_cell_dir = os.path.join(out_root, single_cell)
     sc_files_dir = os.path.join(single_cell_dir, "single_cell_by_gene")
@@ -128,15 +135,17 @@ def process_figures(
     if objects and not object_root:
         raise ValueError("--object-root is required unless --no-objects is passed.")
 
+    outdir = os.path.join(out_root,'data_exploration',outdir_name, data_set)
+
     os.makedirs(outdir, exist_ok=True)
 
-    # load all load_data from {recipe}/load_data and combine
+    # load all load_data from the load_data folder and combine
     load_data_files = sorted(
-        glob.glob(os.path.join(recipe_path, "load_data", "**", "*.csv"), recursive=True)
+        glob.glob(os.path.join(load_data_folder, "**", "*.csv"), recursive=True)
     )
     if not load_data_files:
         raise FileNotFoundError(
-            f"No load_data csvs found in {os.path.join(recipe_path, 'load_data')}"
+            f"No load_data csvs found in {os.path.join(data_folder, 'load_data')}"
         )
     all_loaddata = pd.concat(
         [pd.read_csv(file) for file in load_data_files], ignore_index=True
@@ -178,85 +187,102 @@ def process_figures(
 
             for gene in genelist:
                 print(f"Making figure for gene/guide {gene}")
-                # load the single cell profiles for the specified gene and data set
-                df = pd.read_csv(
-                    os.path.join(
-                        sc_files_dir,
-                        file_naming.format(
-                            data_set_name=data_set_name,
-                            grouping=grouping,
-                            gene=gene,
-                        ),
-                    )
-                )
-                # clean up the dataframe
-                df["Metadata_Site"] = df["Metadata_Site"].astype(int)
-                df["Metadata_Label"] = (
-                    df["Metadata_Well"] + "-" + df["Metadata_Site"].astype(str)
-                )
+                gene_fig_name = os.path.join(
+                                        outdir,
+                                        f"{gene}_{data_set_name}_{cell_selection_method}_{plate}.png",
+                                    )
 
-                # add the alignment columns, only if there are any
-                if use_alignments:
+                if os.path.exists(gene_fig_name) and not overwrite :
+                    print(f"Skipping {gene}, already done")
+                else:
+                    # load the single cell profiles for the specified gene and data set
+                    df = pd.read_csv(
+                        os.path.join(
+                            sc_files_dir,
+                            file_naming.format(
+                                data_set_name=data_set_name,
+                                grouping=grouping,
+                                gene=gene,
+                            ),
+                        )
+                    )
+                    # clean up the dataframe
+                    df["Metadata_Site"] = df["Metadata_Site"].astype(int)
+                    df["Metadata_Label"] = (
+                        df["Metadata_Well"] + "-" + df["Metadata_Site"].astype(str)
+                    )
+
+                    # add the alignment columns, only if there are any
+                    if use_alignments:
+                        df = df.merge(
+                            alignments,
+                            on=["Metadata_Plate", "Metadata_Well", "Metadata_Site"],
+                            how="left",
+                        )
                     df = df.merge(
-                        alignments,
+                        loaddata,
                         on=["Metadata_Plate", "Metadata_Well", "Metadata_Site"],
                         how="left",
                     )
-                df = df.merge(
-                    loaddata,
-                    on=["Metadata_Plate", "Metadata_Well", "Metadata_Site"],
-                    how="left",
-                )
 
-                # filter out cells that are too close to the edge of the image
-                df, _ = filter_out_edge_single_cells.edgeCellFilter(
-                    df,
-                    "Nuclei_AreaShape_Center_X",
-                    "Nuclei_AreaShape_Center_Y",
-                    im_height,
-                    im_width,
-                    box_size / 2,
-                )
+                    # filter out cells that are too close to the edge of the image
+                    df, _ = filter_out_edge_single_cells.edgeCellFilter(
+                        df,
+                        "Nuclei_AreaShape_Center_X",
+                        "Nuclei_AreaShape_Center_Y",
+                        im_height,
+                        im_width,
+                        box_size / 2,
+                    )
 
-                if df.shape[0] > 0:
-                    (
+                    if fast and df.shape[0] >2000:
+                        df = df.sample(n=2000)
+                        print("Filtered to 2000 cells to run more quickly")
+
+                    if df.shape[0] > 0:
+                        (
+                            df,
+                            cp_features_analysis,
+                        ) = extract_single_cell_samples.extract_single_cell_samples(
+                            df,
+                            n_cells,
+                            cell_selection_method,
+                            platefilter=[plate],
+                        )
+                        print(
+                            f"Filtered to {len(df)} cells using {cell_selection_method} selection method."
+                        )
+
+                        if df.shape [0] == 0:
+                            print(f"No cells for {gene} passed clustering, something may be wrong")
+                            continue
+
+                    else:
+                        print(f"No cells found for {gene} after filtering.")
+                        continue
+
+                    figure = make_figure.make_figure(
+                        gene,
                         df,
-                        cp_features_analysis,
-                    ) = extract_single_cell_samples.extract_single_cell_samples(
-                        df,
-                        n_cells,
+                        im_dict,
                         cell_selection_method,
-                        platefilter=[plate],
+                        box_size,
+                        objects,
+                        color,
+                        bc_nuclei,
+                        bc_nuclei_name,
+                        percentile,
+                        use_alignments=use_alignments,
                     )
-                    print(
-                        f"Filtered to {len(df)} cells using {cell_selection_method} selection method."
+
+                    figure.savefig(
+                        os.path.join(
+                            outdir,
+                            f"{gene}_{data_set_name}_{cell_selection_method}_{plate}.png",
+                        ),
+                        dpi=dpi_quality,
                     )
-                else:
-                    print(f"No cells found for {gene} after filtering.")
-                    continue
-
-                figure = make_figure.make_figure(
-                    gene,
-                    df,
-                    im_dict,
-                    cell_selection_method,
-                    box_size,
-                    objects,
-                    color,
-                    bc_nuclei,
-                    bc_nuclei_name,
-                    percentile,
-                    use_alignments=use_alignments,
-                )
-
-                figure.savefig(
-                    os.path.join(
-                        outdir,
-                        f"{gene}_{data_set_name}_{cell_selection_method}_{plate}.png",
-                    ),
-                    dpi=dpi_quality,
-                )
-                plt.close("all")
+                    plt.close("all")
 
 
 #################################
@@ -294,6 +320,8 @@ if __name__ == "__main__":
     opt.add_argument("--no-objects", dest="objects", action="store_false", help="Omit cell objects")
     opt.add_argument("--no-color", dest="color", action="store_false", help="Omit color composite")
     opt.add_argument("--no-bc-nuclei", dest="bc_nuclei", action="store_false", help="Omit SBS nuclei")
+    opt.add_argument("--fast", dest="fast", action="store_true", help="Do clustering from a random subsample of 2000 cells, rather than all cells")
+    opt.add_argument("--overwrite", dest="overwrite", action="store_true", help = "Whether or not to overwrite figures that already exist; default false")
 
     args = parser.parse_args()
     process_figures(
@@ -312,4 +340,6 @@ if __name__ == "__main__":
         bc_nuclei_name=args.bc_nuclei_name,
         percentile=args.percentile,
         object_root=args.object_root,
+        fast=args.fast,
+        overwrite=args.overwrite,
     )
